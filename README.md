@@ -1,58 +1,167 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Gintly — Sistema de Gestión Integral de Negocios
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Descripción: Sistema web **SaaS multi-tenant** para el control operativo, financiero y administrativo de PYMES (ferreterías, distribuidoras, comerciales y afines), orientada a propietarios que gestionan su negocio de forma presencial, delegada o remota. Cada operación queda registrada, es trazable a un responsable y se concilia entre las áreas operativas. Su diseño responde a un Documento de Requisitos de Negocio (BRD) y un Documento de Requerimientos Funcionales (FRD) formales.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Tabla de contenido
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- [Arquitectura](#arquitectura)
+- [Stack tecnológico](#stack-tecnológico)
+- [Módulos del sistema](#módulos-del-sistema)
+- [Requisitos previos](#requisitos-previos)
+- [Instalación y configuración local](#instalación-y-configuración-local)
+- [Acceso al sistema](#acceso-al-sistema)
+- [Roles y control de acceso](#roles-y-control-de-acceso)
+- [Documentación del proyecto](#documentación-del-proyecto)
+- [Autoría](#autoría)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Arquitectura
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Gintly es una aplicación web **SaaS multi-tenant** bajo el modelo *shared database, shared schema*: todos los negocios (tenants) operan sobre una misma base de datos, con aislamiento lógico garantizado por una columna `business_id` presente en cada tabla operativa.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Principios arquitectónicos clave:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- **Aislamiento por tenant.** Un *Global Scope* de Eloquent inyecta automáticamente el filtro `business_id` en cada consulta, de modo que ningún negocio accede a datos de otro. El aislamiento es transparente para la capa de aplicación.
+- **Autorización por negocio.** El control de roles usa `spatie/laravel-permission` en modo *teams*, donde el `team_id` corresponde al `business_id`. Un mismo usuario puede tener roles distintos en negocios distintos.
+- **Integridad transaccional.** Toda operación crítica (venta, retiro, recepción, abono, cierre de caja) se ejecuta dentro de una transacción atómica: se completa por entero o se revierte, sin estados intermedios.
+- **Inmutabilidad y trazabilidad.** Los comprobantes fiscales y los libros de movimientos (inventario, caja, auditoría) son de solo inserción: nunca se editan ni se borran físicamente; se anulan o se compensan, preservando la pista de auditoría.
+- **Diseño relacional en Tercera Forma Normal (3FN).** El modelo de datos elimina dependencias transitivas y evita redundancia; los valores derivados se calculan o se materializan de forma controlada, nunca se duplican como fuente.
 
-## Agentic Development
+---
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Stack tecnológico
+
+**Backend:** PHP <8.3.30> · Laravel <12.x> 
+**Base de datos:** MySQL 8 (InnoDB, diseño relacional en 2FN)
+**Autorización:** spatie/laravel-permission (modo *teams*)
+**Entorno local:** Laragon (Apache + MySQL) o equivalente
+**Control de versiones:** Git + GitHub
+**Estándar de código:**: PSR-12
+
+---
+
+## Módulos del sistema
+
+El sistema se organiza en módulos funcionales, ordenados por capas de dependencia de datos (maestros → transaccionales → de control):
+
+01 - Seguridad, Identidad y Auditoría.
+02 - Catálogo y Datos Maestros.
+03 - Inventario y Bodega.
+04 - Compras, Proveedores y Recepción.
+05 – Clientes.
+06 - Gestión de Caja.
+07 - Ventas y Facturación.
+08 - Ventas al Crédito y Cuentas por Cobrar.
+09 - Entregas y Retiros de mercancias.
+10 - Devoluciones, Reingreso y Mermas.
+11 - Conciliación, Alertas y Anomalías: Motor antifraude.
+12 - Reportería, KPIs e Inteligencia de Negocios:
+
+Cada módulo se encuentra detallado en la documentación del proyecto.
+
+---
+
+## Requisitos previos
+
+- **PHP <8.3.30>** con las extensiones estándar de Laravel.
+- **Composer** activo (incluido en Laragon).
+- **MySQL 8** con un entorno local que provea Apache y MySQL (Laragon recomendado, o equivalente).
+- **Git** para el control de versiones.
+
+---
+
+## Instalación y configuración local
+
+### 1. Clonar el repositorio
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cd C:\laragon\www\
+git clone https://github.com/pablo-guerre-0706/gintly_app.git
+cd gintly_app
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Instalar dependencias
 
-## Contributing
+```bash
+composer install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 3. Configurar el entorno
 
-## Code of Conduct
+```bash
+# Duplicar la plantilla de variables de entorno
+copy .env.example .env
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Generar la clave de la aplicación
+php artisan key:generate
+```
 
-## Security Vulnerabilities
+### 4. Configurar la base de datos
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. Crear una base de datos en MySQL llamada `gintly_app`.
+2. Ajustar las credenciales en el archivo `.env`:
 
-## License
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=gintly_app
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 5. Ejecutar migraciones y datos de prueba
+
+```bash
+php artisan migrate --seed
+```
+
+**Nota de arquitectura:** el modo *teams* de `spatie/laravel-permission` debe estar activo (`'teams' => true` en `config/permission.php`) **antes** de correr las migraciones. El seeder crea un negocio de demostración con su "Consumidor Final" (cliente genérico) y las reglas base de anomalías, de modo que el sistema queda operativo tras la instalación.
+
+### 6. Instalar y compilar dependencias de Frontend
+
+```bash
+npm install
+
+npm run dev
+```
+
+---
+
+## Acceso al sistema
+
+Con Apache y MySQL activos en Laragon, ingresar desde el navegador a:
+https://github.com/pablo-guerre-0706/gintly_app.git
+
+---
+
+**Usuario de demostración (generado por el seeder):**
+Propietario => `<demo@gintly.test>` => `<password>`
+
+---
+
+## Roles y control de acceso
+
+El control de acceso se implementa con `spatie/laravel-permission` (roles y permisos por negocio) reforzado con *Middlewares* y *Policies* de Laravel, bajo el principio de menor privilegio:
+**ROL-01** Propietario / Dirección. Acceso total, reportes financieros y gestión absoluta.
+**ROL-02** Administrador. Supervisa, valida anomalías y tiene acceso general con permisos dados por el propietario.
+**ROL-03** Usuario Operativo. Ejecuta operaciones diarias en formularios funcionales, navegación estándar.
+**ROL-SYS** Sistema. Procesos automáticos: descuentos transaccionales, cron de conciliación, cálculo de discrepancias y enrutamiento de alertas.
+
+---
+
+## Documentación del proyecto
+
+**BRD** Requerimientos de negocio, objetivos, alcance y KPIs
+**FRD** Requerimientos funcionales por módulo, actores y reglas de negocio
+**Diccionario de datos** Entidades, atributos, tipos y relaciones
+**Diagrama ER** Modelo entidad-relación y modelo relacional 2FN
+
+---
+
+## Autoría
+
+Proyecto desarrollado por **Pablo Antonio Guerrero Guillen, Roberto Carlos Romero, Gianfranco Ubau Torres**.
