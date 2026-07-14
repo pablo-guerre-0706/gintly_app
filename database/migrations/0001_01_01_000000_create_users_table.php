@@ -12,13 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+            $table->id();                                          // BIGINT UNSIGNED, PK, AI
+            $table->unsignedBigInteger('business_id');            // NOT NULL. FK diferida
+            $table->unsignedBigInteger('branch_id')->nullable();  // NULL. FK diferida
+            $table->string('name', 150);
+            $table->string('email', 180);                         // SIN ->unique() global
+            $table->string('password');                           // hash bcrypt/argon (255)
+            $table->boolean('is_active')->default(true);          // desactivación lógica de acceso
+            $table->timestamp('last_login_at')->nullable();       // para detectar omisiones
+            $table->rememberToken();                              // VARCHAR(100) estándar Laravel
             $table->timestamps();
+            $table->softDeletes();
+
+            // Unicidad correcta: el email es único POR negocio, no globalmente
+            $table->unique(['business_id', 'email']);
+
+            // Índice para las consultas soft-delete (WHERE deleted_at IS NULL)
+            $table->index('deleted_at');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
