@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Círculo 1 y business_id (Opción B): users referencia a businesses y branches
+        // Circulo: users referencia a businesses y branches
         Schema::table('users', function (Blueprint $table) {
             $table->foreign('business_id')->references('id')->on('businesses')
                   ->cascadeOnDelete();                          // borrar negocio, borra sus usuarios
             $table->foreign('branch_id')->references('id')->on('branches')
-              ->nullOnDelete();                             // borrar sucursal, usuarios quedan sin ella
+              ->nullOnDelete();                                 // borrar sucursal, usuarios quedan sin ella
         });
 
-        // Círculo 1 (lado inverso): businesses referencia al owner
+        // Círculo 1 (inverso): businesses referencia al owner
         Schema::table('businesses', function (Blueprint $table) {
             $table->foreign('owner_user_id')->references('id')->on('users')
                   ->nullOnDelete();                             // borrar dueño, negocio queda sin owner
