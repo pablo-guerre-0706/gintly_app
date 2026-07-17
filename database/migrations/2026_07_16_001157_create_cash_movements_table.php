@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
 
             $table->enum('type', ['ingreso', 'egreso'])->index();
-            $table->enum('category', ['venta', 'egreso_autorizado', 'retiro', 'ajuste', 'fondo_inicial'])->index();
+            $table->enum('category', ['venta', 'egreso_autorizado', 'retiro', 'ajuste', 'fondo_inicial', 'cobro_credito'])->index();
 
             // Clave del arqueo: 'efectivo' cuenta billetes. Venta con tarjeta entra al libro
             // y no al conteo físico. El cálculo de expected_amount filtra por 'efectivo'.
