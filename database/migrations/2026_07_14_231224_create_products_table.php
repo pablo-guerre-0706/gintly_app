@@ -29,6 +29,7 @@ return new class extends Migration
             $table->enum('type', ['simple', 'compound', 'service'])->index(); // discriminador
             $table->decimal('sale_price', 12, 2)->default(0.00);
             $table->decimal('cost', 12, 2)->default(0.00);
+            $table->boolean('is_taxable')->default(true); // FALSE = producto exento de IVA
             $table->boolean('tracks_inventory')->default(true);  // regla: service ⇒ false (capa app)
             $table->boolean('is_active')->default(true);
             $table->timestamps();
@@ -39,8 +40,10 @@ return new class extends Migration
         });
 
         // CHECK de dominio: precio y costo nunca negativos. Enforced en MySQL 8.0.16+
-        DB::statement('ALTER TABLE products ADD CONSTRAINT chk_products_sale_price CHECK (sale_price >= 0)');
-        DB::statement('ALTER TABLE products ADD CONSTRAINT chk_products_cost CHECK (cost >= 0)');
+        DB::statement('ALTER TABLE products ADD CONSTRAINT chk_products_sale_price
+            CHECK (sale_price >= 0)');
+        DB::statement('ALTER TABLE products ADD CONSTRAINT chk_products_cost
+            CHECK (cost >= 0)');
     }
 
     /**

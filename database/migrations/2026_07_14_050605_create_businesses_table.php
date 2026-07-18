@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('slug', 160)->unique();                 // identificador URL-safe único
             $table->unsignedBigInteger('owner_user_id')->nullable(); // columna sola; FK diferida
             $table->string('plan', 50)->default('basic');
+            // IVA por defecto (Nic. 15%). Parametrizable por país
+            $table->decimal('tax_rate', 5, 4)->default(0.1500);
             $table->enum('status', ['active', 'suspended', 'trial'])
               ->default('trial')->index();                     // estado de cuenta, indexado
             $table->timestamps();
