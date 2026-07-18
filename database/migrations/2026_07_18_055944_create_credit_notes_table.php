@@ -19,7 +19,7 @@ return new class extends Migration
 
             // FK + UNIQUE separados (patrón fiable, sin depender del orden del encadenamiento).
             // Una devolución una nota de crédito.
-            $table->foreignId('sales_return_id')->constrained('returns')->restrictOnDelete();
+            $table->foreignId('sales_return_id')->constrained('sales_returns')->restrictOnDelete();
             $table->unique('sales_return_id');
 
             $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();

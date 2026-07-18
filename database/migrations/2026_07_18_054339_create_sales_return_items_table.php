@@ -33,7 +33,7 @@ return new class extends Migration
             // Sin timestamps: el diccionario no los lista
         });
 
-        DB::statement('ALTER TABLE return_items ADD CONSTRAINT chk_return_item_quantity
+        DB::statement('ALTER TABLE sales_return_items ADD CONSTRAINT chk_sales_return_item_quantity
             CHECK (quantity > 0)');
     }
 
