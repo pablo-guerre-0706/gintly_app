@@ -44,6 +44,8 @@ return new class extends Migration
             CHECK (sale_price >= 0)');
         DB::statement('ALTER TABLE products ADD CONSTRAINT chk_products_cost
             CHECK (cost >= 0)');
+        DB::statement("ALTER TABLE products ADD CONSTRAINT chk_service_no_inventory
+            CHECK (type <> 'service' OR tracks_inventory = 0)");
     }
 
     /**
