@@ -13,6 +13,22 @@
 
 namespace App\Models{
 /**
+ * @property \App\Enums\AccountPayableStatus $status
+ * @property-read string $balance
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\GoodsReceipt|null $goodsReceipt
+ * @property-read \App\Models\PurchaseOrder|null $purchaseOrder
+ * @property-read \App\Models\Supplier|null $supplier
+ * @property-read \App\Models\User|null $unblockedBy
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AccountPayable newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AccountPayable newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AccountPayable query()
+ */
+	class AccountPayable extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
  * @property int $id
  * @property int $business_id
  * @property int|null $user_id
@@ -187,6 +203,151 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property string $name
+ * @property \App\Enums\DocumentType $document_type
+ * @property string|null $document_number
+ * @property string|null $email
+ * @property string|null $phone_number
+ * @property \Illuminate\Support\Carbon|null $birth_date
+ * @property bool $is_generic
+ * @property bool $is_active
+ * @property numeric $credit_limit
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property int|null $generic_lock
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CustomerAddress> $addresses
+ * @property-read int|null $addresses_count
+ * @property-read \App\Models\Business|null $business
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer real()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereBirthDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereCreditLimit($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereDocumentNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereDocumentType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereGenericLock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereIsGeneric($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer wherePhoneNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer withoutTrashed()
+ */
+	class Customer extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $customer_id
+ * @property string $label
+ * @property string $address_line
+ * @property string|null $reference
+ * @property bool $is_default
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Customer|null $customer
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereAddressLine($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereIsDefault($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereLabel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereReference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CustomerAddress whereUpdatedAt($value)
+ */
+	class CustomerAddress extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $purchase_order_id
+ * @property int $warehouse_id
+ * @property int $user_id
+ * @property string|null $supplier_invoice_number
+ * @property numeric|null $supplier_invoice_total
+ * @property \App\Enums\GoodsReceiptMatchStatus $match_status
+ * @property \Illuminate\Support\Carbon $received_at
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GoodsReceiptItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\PurchaseOrder|null $purchaseOrder
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereMatchStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt wherePurchaseOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereReceivedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereSupplierInvoiceNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereSupplierInvoiceTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceipt whereWarehouseId($value)
+ */
+	class GoodsReceipt extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $goods_receipt_id
+ * @property int $purchase_order_item_id
+ * @property int $product_id
+ * @property numeric $received_quantity
+ * @property numeric $invoiced_unit_cost
+ * @property numeric $line_total
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\GoodsReceipt $goodsReceipt
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\PurchaseOrderItem $purchaseOrderItem
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereGoodsReceiptId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereInvoicedUnitCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereLineTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem wherePurchaseOrderItemId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|GoodsReceiptItem whereReceivedQuantity($value)
+ */
+	class GoodsReceiptItem extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int $warehouse_id
  * @property int $user_id
  * @property int|null $physical_count_id
@@ -238,6 +399,7 @@ namespace App\Models{
  * @property-read \App\Models\Business|null $business
  * @property-read \App\Models\InventoryAdjustment|null $inventoryAdjustment
  * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\PurchaseOrder|null $purchaseOrder
  * @property-read \App\Models\StockTransfer|null $stockTransfer
  * @property-read \App\Models\User|null $user
  * @property-read \App\Models\Warehouse|null $warehouse
@@ -387,6 +549,84 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $branch_id
+ * @property int $supplier_id
+ * @property int $user_id
+ * @property string $code
+ * @property \App\Enums\PurchaseOrderStatus $status
+ * @property numeric $expected_total
+ * @property \Illuminate\Support\Carbon $ordered_at
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AccountPayable> $accountsPayable
+ * @property-read int|null $accounts_payable_count
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\GoodsReceipt> $goodsReceipts
+ * @property-read int|null $goods_receipts_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PurchaseOrderItem> $items
+ * @property-read int|null $items_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryMovement> $movements
+ * @property-read int|null $movements_count
+ * @property-read \App\Models\Supplier|null $supplier
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereExpectedTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereOrderedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereSupplierId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrder withoutTrashed()
+ */
+	class PurchaseOrder extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $purchase_order_id
+ * @property int $product_id
+ * @property numeric $ordered_quantity
+ * @property numeric $received_quantity
+ * @property numeric $agreed_unit_cost
+ * @property numeric $line_total
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\PurchaseOrder|null $purchaseOrder
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereAgreedUnitCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereLineTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereOrderedQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem wherePurchaseOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereReceivedQuantity($value)
+ */
+	class PurchaseOrderItem extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int $product_id
  * @property int $warehouse_id
  * @property numeric $quantity
@@ -451,6 +691,50 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereUserId($value)
  */
 	class StockTransfer extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property string $name
+ * @property string|null $tax_id
+ * @property string|null $email
+ * @property string|null $phone
+ * @property \App\Enums\SupplierStatus $status
+ * @property int|null $approved_by
+ * @property \Illuminate\Support\Carbon|null $approved_at
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AccountPayable> $accountsPayable
+ * @property-read int|null $accounts_payable_count
+ * @property-read \App\Models\User|null $approvedBy
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PurchaseOrder> $purchaseOrders
+ * @property-read int|null $purchase_orders_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereApprovedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereApprovedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier wherePhone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereTaxId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Supplier withoutTrashed()
+ */
+	class Supplier extends \Eloquent {}
 }
 
 namespace App\Models{

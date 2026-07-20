@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -35,6 +36,13 @@ return new class extends Migration
             $table->unique(['business_id', 'document_number']);
             $table->index('deleted_at');
         });
+
+        DB::statement("ALTER TABLE customers
+            ADD COLUMN generic_lock BIGINT UNSIGNED
+                GENERATED ALWAYS AS (CASE WHEN is_generic = 1 THEN business_id END) VIRTUAL,
+            ADD UNIQUE KEY uniq_generic_customer_per_business (generic_lock)");
+        DB::statement('ALTER TABLE customers ADD CONSTRAINT chk_customer_credit_limit_non_negative
+            CHECK (credit_limit >= 0)');
     }
 
     /**

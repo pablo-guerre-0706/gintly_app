@@ -2,9 +2,10 @@
 
 namespace App\Observers;
 
+use App\Enums\DocumentType;
 use App\Models\Business;
 use App\Models\Customer;
-use App\Models\Anomaly_rule;
+use App\Models\AnomalyRule;
 
 class BusinessObserver
 {
@@ -12,18 +13,30 @@ class BusinessObserver
      * Se dispara automáticamente DESPUÉS de que un negocio
      * se guarda en la base de datos.
      */
-    public function created(Business $business): void     
+    public function created(Business $business): void
     {
-        // 1- Creamos su "Consumidor Final" (cliente generico por negocio)
-        /*Customer::firstOrcreate(
-            ['business_id' => $business->id, 'is_generic' => true],
-            [
-            'name'            => 'Consumidor Final',
-            'document_type'   => 'generico',
-            'document_number' => null,
-            'is_active'       => true,
-            ]
-        );8/
+        // MOD-05: cliente genérico "Consumidor Final" (uno por negocio, protegido).
+        $exists = Customer::query()
+            ->where('business_id', $business->id)
+            ->where('is_generic', true)
+            ->exists();
+
+        if (! $exists) {
+            $generic = new Customer([
+                'name'          => 'Consumidor Final',
+                'document_type' => DocumentType::Generico,
+                'is_active'     => true,
+            ]);
+            $generic->business_id = $business->id;  // atributos protegidos: asignación directa
+            $generic->is_generic  = true;
+            $generic->save();
+        }
+
+        // TODO (MOD-11): sembrar el catálogo base de anomaly_rules (6 reglas del BRD).
+
+
+
+
 
         // 2- Catalogo base de reglas de anomalias (MOD-11)
         $reglas = [
