@@ -26,7 +26,7 @@ return new class extends Migration
             $table->decimal('opening_amount', 14, 2);              // fondo inicial declarado
             $table->decimal('expected_amount', 14, 2)->nullable(); // teórico; se llena al cerrar
             $table->decimal('counted_amount', 14, 2)->nullable();  // arqueo ciego: lo que el cajero declara
-            $table->decimal('difference', 14, 2)->nullable();      // counted − expected (foto inmutable)
+            $table->json('counted_denominations')->nullable();  // evidencia del arqueo ciego (RF-06-04)
 
             $table->timestamp('opened_at');
             $table->timestamp('closed_at')->nullable();
@@ -38,7 +38,6 @@ return new class extends Migration
         DB::statement('ALTER TABLE cash_sessions ADD CONSTRAINT chk_cash_session_opening
             CHECK (opening_amount >= 0)');
         // UNA sola sesión 'abierta' por caja — garantizada por el MOTOR, no por la aplicación.
-        //
         // MySQL 8 no tiene índices parciales (el "WHERE status='abierta'" de PostgreSQL). Se emula
         // con una columna generada VIRTUAL que vale cash_register_id solo mientras la sesión está
         // abierta, y NULL en cualquier otro estado. Sobre ella, un UNIQUE:
@@ -51,6 +50,13 @@ return new class extends Migration
                     GENERATED ALWAYS AS (CASE WHEN status = 'abierta' THEN cash_register_id END) VIRTUAL,
                 ADD UNIQUE KEY uniq_open_session_per_register (open_register_lock)
         ");
+        DB::statement("ALTER TABLE cash_sessions
+            ADD COLUMN open_user_lock BIGINT UNSIGNED
+                GENERATED ALWAYS AS (CASE WHEN status = 'abierta' THEN opened_by END) VIRTUAL,
+            ADD UNIQUE KEY uniq_open_session_per_user (open_user_lock)");
+        DB::statement("ALTER TABLE cash_sessions
+            ADD COLUMN difference DECIMAL(14,2)
+            GENERATED ALWAYS AS (counted_amount - expected_amount) STORED");
     }
 
     /**

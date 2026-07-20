@@ -1,5 +1,5 @@
 <?php
-// app/Enums/SupplierStatus.php
+
 namespace App\Enums;
 
 enum SupplierStatus: string

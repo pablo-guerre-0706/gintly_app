@@ -169,6 +169,126 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $cash_session_id
+ * @property int $user_id
+ * @property \App\Enums\CashMovementType $type
+ * @property \App\Enums\CashMovementCategory $category
+ * @property \App\Enums\PaymentMethod $payment_method
+ * @property numeric $amount
+ * @property int|null $sale_id
+ * @property int|null $authorized_by
+ * @property string|null $description
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property-read \App\Models\User|null $authorizedBy
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CashSession $cashSession
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereAuthorizedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereCashSessionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereCategory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement wherePaymentMethod($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereSaleId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement whereUserId($value)
+ */
+	class CashMovement extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $branch_id
+ * @property string $name
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CashSession> $sessions
+ * @property-read int|null $sessions_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashRegister withoutTrashed()
+ */
+	class CashRegister extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $cash_register_id
+ * @property int $opened_by
+ * @property int|null $closed_by
+ * @property \App\Enums\CashSessionStatus $status
+ * @property numeric $opening_amount
+ * @property numeric|null $expected_amount
+ * @property numeric|null $counted_amount
+ * @property array<array-key, mixed>|null $counted_denominations
+ * @property \Illuminate\Support\Carbon $opened_at
+ * @property \Illuminate\Support\Carbon|null $closed_at
+ * @property string|null $closing_notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $open_register_lock
+ * @property int|null $open_user_lock
+ * @property numeric|null $difference
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CashRegister|null $cashRegister
+ * @property-read \App\Models\User|null $closedBy
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CashMovement> $movements
+ * @property-read int|null $movements_count
+ * @property-read \App\Models\User|null $openedBy
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereCashRegisterId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereClosedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereClosedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereClosingNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereCountedAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereCountedDenominations($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereDifference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereExpectedAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereOpenRegisterLock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereOpenUserLock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereOpenedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereOpenedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereOpeningAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CashSession whereUpdatedAt($value)
+ */
+	class CashSession extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int|null $parent_id
  * @property string $name
  * @property bool $is_active

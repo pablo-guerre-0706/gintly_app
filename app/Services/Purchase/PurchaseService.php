@@ -188,7 +188,7 @@ class PurchaseService
         });
     }
 
-    // ───────────────────────────── Helpers privados ─────────────────────────────
+    // ─────── Helpers privados ───────
 
     /** RF-04-02 / ERR-04B: sin estado 'aprobado', no hay orden de compra. */
     private function assertSupplierApproved(Supplier $supplier): void

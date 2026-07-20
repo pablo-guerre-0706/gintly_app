@@ -1,5 +1,5 @@
 <?php
-// app/Enums/PurchaseOrderStatus.php
+
 namespace App\Enums;
 
 enum PurchaseOrderStatus: string

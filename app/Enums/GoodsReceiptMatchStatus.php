@@ -1,5 +1,5 @@
 <?php
-// app/Enums/GoodsReceiptMatchStatus.php
+
 namespace App\Enums;
 
 enum GoodsReceiptMatchStatus: string

@@ -1,5 +1,5 @@
 <?php
-// app/Enums/InventoryAdjustmentType.php
+
 namespace App\Enums;
 
 enum InventoryAdjustmentType: string

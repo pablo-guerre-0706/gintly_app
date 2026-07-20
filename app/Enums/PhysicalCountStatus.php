@@ -1,5 +1,5 @@
 <?php
-// app/Enums/PhysicalCountStatus.php
+
 namespace App\Enums;
 
 enum PhysicalCountStatus: string

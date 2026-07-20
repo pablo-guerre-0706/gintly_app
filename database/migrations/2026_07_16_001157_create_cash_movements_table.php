@@ -40,6 +40,8 @@ return new class extends Migration
         });
         DB::statement('ALTER TABLE cash_movements ADD CONSTRAINT chk_cash_movement_amount
             CHECK (amount > 0)');
+        DB::statement("ALTER TABLE cash_movements ADD CONSTRAINT chk_cash_movement_egreso_auth
+            CHECK (category <> 'egreso_autorizado' OR authorized_by IS NOT NULL)");
     }
 
     /**

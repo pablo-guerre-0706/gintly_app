@@ -1,5 +1,5 @@
 <?php
-// app/Enums/AccountPayableStatus.php
+
 namespace App\Enums;
 
 enum AccountPayableStatus: string

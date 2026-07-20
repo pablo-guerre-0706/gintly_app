@@ -1,5 +1,5 @@
 <?php
-// app/Enums/StockTransferStatus.php
+
 namespace App\Enums;
 
 enum StockTransferStatus: string
