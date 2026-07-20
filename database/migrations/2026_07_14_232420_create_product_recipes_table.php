@@ -30,7 +30,11 @@ return new class extends Migration
         });
 
         // CHECK de dominio para evitar que exista una cantidad de insumo cero o negativa
-        DB::statement('ALTER TABLE product_recipes ADD CONSTRAINT chk_recipe_quantity CHECK (quantity > 0)');
+        DB::statement('ALTER TABLE product_recipes ADD CONSTRAINT chk_recipe_quantity
+            CHECK (quantity > 0)');
+        // FIX auditoría MOD-02: guarda de auto-composición directa a nivel de motor (RF-02-05).
+        DB::statement('ALTER TABLE product_recipes ADD CONSTRAINT chk_recipe_no_self
+            CHECK (compound_id <> ingredient_id)');
     }
 
     /**

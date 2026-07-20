@@ -82,6 +82,35 @@ namespace App\Models{
 namespace App\Models{
 /**
  * @property int $id
+ * @property int $business_id
+ * @property string $name
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property-read int|null $products_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Brand withoutTrashed()
+ */
+	class Brand extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
  * @property string $name
  * @property string $slug
  * @property int|null $owner_user_id
@@ -118,6 +147,145 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Business withoutTrashed()
  */
 	class Business extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int|null $parent_id
+ * @property string $name
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Category> $children
+ * @property-read int|null $children_count
+ * @property-read Category|null $parent
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property-read int|null $products_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereParentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Category withoutTrashed()
+ */
+	class Category extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $category_id
+ * @property int|null $brand_id
+ * @property int $unit_id
+ * @property string $sku
+ * @property string $name
+ * @property \App\Enums\ProductType $type
+ * @property numeric $sale_price
+ * @property numeric $cost
+ * @property bool $is_taxable
+ * @property bool $tracks_inventory
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \App\Models\Brand|null $brand
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Category|null $category
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Product> $ingredients
+ * @property-read int|null $ingredients_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $recipeItems
+ * @property-read int|null $recipe_items_count
+ * @property-read \App\Models\UnitOfMeasure $unit
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $usedAsIngredientIn
+ * @property-read int|null $used_as_ingredient_in_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereBrandId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCategoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereIsTaxable($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereSalePrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereSku($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereTracksInventory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUnitId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product withoutTrashed()
+ */
+	class Product extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $compound_id
+ * @property int $ingredient_id
+ * @property numeric $quantity
+ * @property int $unit_id
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Product|null $compound
+ * @property-read \App\Models\Product|null $ingredient
+ * @property-read \App\Models\UnitOfMeasure $unit
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereCompoundId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereIngredientId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereUnitId($value)
+ */
+	class ProductRecipe extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property string $name
+ * @property string $abbreviation
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Product> $products
+ * @property-read int|null $products_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $recipeLines
+ * @property-read int|null $recipe_lines_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure whereAbbreviation($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UnitOfMeasure whereUpdatedAt($value)
+ */
+	class UnitOfMeasure extends \Eloquent {}
 }
 
 namespace App\Models{
