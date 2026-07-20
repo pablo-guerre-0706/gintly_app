@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * @mixin \Illuminate\Database\Eloquent\Model
+ * @method static void addGlobalScope(\Illuminate\Database\Eloquent\Scope $scope)
+ * @method static void creating(\Closure $callback)
  */
 trait BelongsToBusiness
 {

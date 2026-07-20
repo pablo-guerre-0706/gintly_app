@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -29,6 +30,14 @@ return new class extends Migration
             // Sin esto, la primera concurrencia te deja dos saldos contradictorios.
             $table->unique(['product_id', 'warehouse_id']);
         });
+
+        DB::statement('ALTER TABLE stock_levels ADD CONSTRAINT chk_stock_qty_non_negative
+            CHECK (quantity >= 0)');
+        DB::statement('ALTER TABLE stock_levels ADD CONSTRAINT chk_stock_reserved_non_negative
+            CHECK (reserved_quantity >= 0)');
+        // Invariante anti-sobreventa: lo reservado nunca supera lo físico (available >= 0).
+        DB::statement('ALTER TABLE stock_levels ADD CONSTRAINT chk_stock_available_non_negative
+            CHECK (reserved_quantity <= quantity)');
     }
 
     /**

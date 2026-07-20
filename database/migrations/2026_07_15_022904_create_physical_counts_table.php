@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -24,13 +25,16 @@ return new class extends Migration
 
             $table->decimal('system_quantity', 14, 3);   // saldo lógico al momento del conteo
             $table->decimal('counted_quantity', 14, 3);  // lo contado físicamente
-            $table->decimal('difference', 14, 3);        // counted − system (+sobrante / −faltante)
 
             $table->enum('status', ['abierto', 'justificado', 'ajustado'])->index();
             $table->string('notes', 500)->nullable();
             $table->timestamp('counted_at');
             $table->timestamps();
         });
+
+        DB::statement("ALTER TABLE physical_counts
+            ADD COLUMN difference DECIMAL(14,3)
+            GENERATED ALWAYS AS (counted_quantity - system_quantity) STORED AFTER counted_quantity");
     }
 
     /**

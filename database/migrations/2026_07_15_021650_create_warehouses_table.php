@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -24,6 +25,11 @@ return new class extends Migration
             $table->unique(['business_id', 'branch_id', 'name']);
             $table->index('deleted_at');
         });
+
+        DB::statement("ALTER TABLE warehouses
+            ADD COLUMN default_lock BIGINT UNSIGNED
+            GENERATED ALWAYS AS (CASE WHEN is_default = 1 THEN branch_id END) VIRTUAL,
+            ADD UNIQUE KEY uniq_default_warehouse_per_branch (default_lock)");
     }
 
     /**

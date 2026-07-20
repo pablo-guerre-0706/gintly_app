@@ -187,6 +187,127 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $warehouse_id
+ * @property int $user_id
+ * @property int|null $physical_count_id
+ * @property \App\Enums\InventoryAdjustmentType $type
+ * @property string $reason
+ * @property \Illuminate\Support\Carbon $adjusted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryMovement> $movements
+ * @property-read int|null $movements_count
+ * @property-read \App\Models\PhysicalCount|null $physicalCount
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereAdjustedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment wherePhysicalCountId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryAdjustment whereWarehouseId($value)
+ */
+	class InventoryAdjustment extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $product_id
+ * @property int $warehouse_id
+ * @property int|null $user_id
+ * @property \App\Enums\InventoryMovementType $type
+ * @property numeric $quantity
+ * @property numeric $balance_after
+ * @property numeric|null $unit_cost
+ * @property int|null $stock_transfer_id
+ * @property int|null $inventory_adjustment_id
+ * @property int|null $purchase_order_id
+ * @property int|null $dispatch_id
+ * @property string|null $reason
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\InventoryAdjustment|null $inventoryAdjustment
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\StockTransfer|null $stockTransfer
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereBalanceAfter($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereDispatchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereInventoryAdjustmentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement wherePurchaseOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereStockTransferId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereUnitCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InventoryMovement whereWarehouseId($value)
+ */
+	class InventoryMovement extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $product_id
+ * @property int $warehouse_id
+ * @property int $user_id
+ * @property numeric $system_quantity
+ * @property numeric $counted_quantity
+ * @property numeric|null $difference
+ * @property \App\Enums\PhysicalCountStatus $status
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon $counted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryAdjustment> $adjustments
+ * @property-read int|null $adjustments_count
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereCountedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereCountedQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereDifference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereSystemQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|PhysicalCount whereWarehouseId($value)
+ */
+	class PhysicalCount extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int $category_id
  * @property int|null $brand_id
  * @property int $unit_id
@@ -260,6 +381,76 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductRecipe whereUnitId($value)
  */
 	class ProductRecipe extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $product_id
+ * @property int $warehouse_id
+ * @property numeric $quantity
+ * @property numeric|null $min_stock
+ * @property numeric|null $max_stock
+ * @property numeric $reserved_quantity
+ * @property numeric $average_cost
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string $available
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereAverageCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereMaxStock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereMinStock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereReservedQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockLevel whereWarehouseId($value)
+ */
+	class StockLevel extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $from_warehouse_id
+ * @property int $to_warehouse_id
+ * @property int $user_id
+ * @property string $code
+ * @property \App\Enums\StockTransferStatus $status
+ * @property \Illuminate\Support\Carbon $transferred_at
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Warehouse|null $fromWarehouse
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryMovement> $movements
+ * @property-read int|null $movements_count
+ * @property-read \App\Models\Warehouse|null $toWarehouse
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereFromWarehouseId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereToWarehouseId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereTransferredAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|StockTransfer whereUserId($value)
+ */
+	class StockTransfer extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -342,5 +533,51 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutTrashed()
  */
 	class User extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $branch_id
+ * @property string $name
+ * @property bool $is_default
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property int|null $default_lock
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryAdjustment> $adjustments
+ * @property-read int|null $adjustments_count
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockTransfer> $incomingTransfers
+ * @property-read int|null $incoming_transfers_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryMovement> $movements
+ * @property-read int|null $movements_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockTransfer> $outgoingTransfers
+ * @property-read int|null $outgoing_transfers_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PhysicalCount> $physicalCounts
+ * @property-read int|null $physical_counts_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StockLevel> $stockLevels
+ * @property-read int|null $stock_levels_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereDefaultLock($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereIsDefault($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Warehouse withoutTrashed()
+ */
+	class Warehouse extends \Eloquent {}
 }
 
