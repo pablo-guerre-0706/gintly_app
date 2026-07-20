@@ -182,6 +182,7 @@ namespace App\Models{
  * @property-read \App\Models\User|null $authorizedBy
  * @property-read \App\Models\Business|null $business
  * @property-read \App\Models\CashSession $cashSession
+ * @property-read \App\Models\Sale|null $sale
  * @property-read \App\Models\User|null $user
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|CashMovement newQuery()
@@ -400,6 +401,30 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property string $document_type
+ * @property string $prefix
+ * @property int $next_number
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence whereDocumentType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence whereNextNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence wherePrefix($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentSequence whereUpdatedAt($value)
+ */
+	class DocumentSequence extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int $purchase_order_id
  * @property int $warehouse_id
  * @property int $user_id
@@ -549,6 +574,100 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $branch_id
+ * @property int $customer_id
+ * @property int|null $cash_session_id
+ * @property int $issued_by
+ * @property string $folio
+ * @property \App\Enums\InvoicePaymentType $payment_type
+ * @property \App\Enums\InvoicePaymentStatus $payment_status
+ * @property \App\Enums\InvoiceStatus $status
+ * @property numeric $subtotal
+ * @property numeric $tax_amount
+ * @property numeric $discount_amount
+ * @property numeric $total
+ * @property numeric $paid_amount
+ * @property int|null $voided_by
+ * @property \Illuminate\Support\Carbon|null $voided_at
+ * @property string|null $void_reason
+ * @property \Illuminate\Support\Carbon $issued_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CashSession|null $cashSession
+ * @property-read \App\Models\Customer|null $customer
+ * @property-read \App\Models\User|null $issuedBy
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InvoicePayment> $payments
+ * @property-read int|null $payments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Sale> $sales
+ * @property-read int|null $sales_count
+ * @property-read \App\Models\User|null $voidedBy
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereCashSessionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereDiscountAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereFolio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereIssuedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereIssuedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice wherePaidAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice wherePaymentStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice wherePaymentType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereSubtotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereTaxAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereVoidReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereVoidedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Invoice whereVoidedBy($value)
+ */
+	class Invoice extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $invoice_id
+ * @property int|null $cash_session_id
+ * @property int $user_id
+ * @property \App\Enums\PaymentMethod $payment_method
+ * @property numeric $amount
+ * @property string|null $reference
+ * @property \Illuminate\Support\Carbon $paid_at
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CashSession|null $cashSession
+ * @property-read \App\Models\Invoice $invoice
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereCashSessionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereInvoiceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment wherePaidAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment wherePaymentMethod($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereReference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|InvoicePayment whereUserId($value)
+ */
+	class InvoicePayment extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int $product_id
  * @property int $warehouse_id
  * @property int $user_id
@@ -609,8 +728,14 @@ namespace App\Models{
  * @property-read \App\Models\Category|null $category
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Product> $ingredients
  * @property-read int|null $ingredients_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryMovement> $inventoryMovements
+ * @property-read int|null $inventory_movements_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PurchaseOrderItem> $purchaseOrderItems
+ * @property-read int|null $purchase_order_items_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $recipeItems
  * @property-read int|null $recipe_items_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SaleItem> $saleItems
+ * @property-read int|null $sale_items_count
  * @property-read \App\Models\UnitOfMeasure $unit
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $usedAsIngredientIn
  * @property-read int|null $used_as_ingredient_in_count
@@ -741,6 +866,85 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereReceivedQuantity($value)
  */
 	class PurchaseOrderItem extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $branch_id
+ * @property int $customer_id
+ * @property int $user_id
+ * @property string $code
+ * @property \App\Enums\SaleStatus $status
+ * @property string|null $table_reference
+ * @property numeric $subtotal
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon $opened_at
+ * @property \Illuminate\Support\Carbon|null $confirmed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Customer|null $customer
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Invoice> $invoices
+ * @property-read int|null $invoices_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SaleItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereConfirmedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereOpenedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereSubtotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereTableReference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Sale whereUserId($value)
+ */
+	class Sale extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $sale_id
+ * @property int $product_id
+ * @property array<array-key, mixed>|null $recipe_snapshot
+ * @property string $description
+ * @property numeric $quantity
+ * @property numeric $unit_price
+ * @property numeric $unit_cost
+ * @property numeric $discount_amount
+ * @property numeric $line_total
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\Sale $sale
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereDiscountAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereLineTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereRecipeSnapshot($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereSaleId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereUnitCost($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereUnitPrice($value)
+ */
+	class SaleItem extends \Eloquent {}
 }
 
 namespace App\Models{

@@ -45,6 +45,12 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE invoices ADD CONSTRAINT chk_invoice_total
             CHECK (total >= 0)');
+        DB::statement('ALTER TABLE invoices ADD CONSTRAINT chk_invoice_paid_non_negative
+            CHECK (paid_amount >= 0)');
+        DB::statement('ALTER TABLE invoices ADD CONSTRAINT chk_invoice_paid_not_exceed
+            CHECK (paid_amount <= total)');
+        DB::statement("ALTER TABLE invoices ADD CONSTRAINT chk_invoice_void_coherence
+            CHECK (status <> 'anulada' OR voided_by IS NOT NULL)");
     }
 
     /**

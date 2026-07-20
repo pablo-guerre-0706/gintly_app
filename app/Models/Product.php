@@ -61,11 +61,13 @@ class Product extends Model
         });
     }
 
-    /** TODO (MOD-03/MOD-07): contar inventory_movements y sale_items. Inerte por ahora. */
     public function hasTransactions(): bool
     {
-        return false;
+        return $this->inventoryMovements()->exists()
+            || $this->saleItems()->exists()
+            || $this->purchaseOrderItems()->exists();
     }
+
 
     // business() del trait
 
@@ -101,5 +103,20 @@ class Product extends Model
     public function usedAsIngredientIn(): HasMany
     {
         return $this->hasMany(ProductRecipe::class, 'ingredient_id');
+    }
+
+    public function inventoryMovements(): HasMany
+    { 
+        return $this->hasMany(InventoryMovement::class); 
+    }
+
+    public function saleItems(): HasMany
+    { 
+        return $this->hasMany(SaleItem::class); 
+    }
+
+    public function purchaseOrderItems(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
     }
 }

@@ -32,6 +32,17 @@ class BusinessObserver
             $generic->save();
         }
 
+        foreach (['invoice' => 'F-', 'credit_note' => 'NC-'] as $type => $prefix) {
+            $exists = \App\Models\DocumentSequence::query()
+                ->where('business_id', $business->id)->where('document_type', $type)->exists();
+            if (! $exists) {
+                $seq = new \App\Models\DocumentSequence(['document_type' => $type, 'prefix' => $prefix, 'next_number' => 1]);
+                $seq->business_id = $business->id;
+                $seq->save();
+            }
+        }
+
+
         // TODO (MOD-11): sembrar el catálogo base de anomaly_rules (6 reglas del BRD).
 
 

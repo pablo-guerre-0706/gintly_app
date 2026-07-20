@@ -19,6 +19,7 @@ return new class extends Migration
             // RESTRICT de invoice_sale (no se puede borrar), así que el histórico nunca se pierde.
             $table->foreignId('sale_id')->constrained('sales')->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('products')->restrictOnDelete();
+            $table->json('recipe_snapshot')->nullable();  // composición explotada y congelada (RF-02-05)
             $table->string('description', 160);      // nombre CONGELADO (foto histórica)
             $table->decimal('quantity', 14, 3);      // CHECK > 0 abajo
             $table->decimal('unit_price', 14, 2);    // precio CONGELADO al confirmar
@@ -31,6 +32,13 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_quantity
             CHECK (quantity > 0)');
+        // create_sale_items_table.php:
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_price_non_negative
+            CHECK (unit_price >= 0)');
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_discount_non_negative
+            CHECK (discount_amount >= 0)');
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_line_total_non_negative
+            CHECK (line_total >= 0)');
     }
 
     /**

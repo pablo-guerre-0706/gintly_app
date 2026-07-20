@@ -58,5 +58,8 @@ class CashMovement extends Model
         return $this->belongsTo(User::class, 'authorized_by');
     }
 
-    // RESERVADO — MOD-07: sale(): belongsTo(Sale). FK cableada en wire_available_deferred_fks.
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
 }
