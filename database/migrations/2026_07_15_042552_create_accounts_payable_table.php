@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -32,6 +33,13 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->timestamps();
         });
+
+        DB::statement('ALTER TABLE accounts_payable ADD CONSTRAINT chk_ap_total_positive
+            CHECK (total_amount >= 0)');
+        DB::statement('ALTER TABLE accounts_payable ADD CONSTRAINT chk_ap_paid_non_negative
+            CHECK (paid_amount >= 0)');
+        DB::statement('ALTER TABLE accounts_payable ADD CONSTRAINT chk_ap_paid_not_exceed
+            CHECK (paid_amount <= total_amount)');
     }
 
     /**

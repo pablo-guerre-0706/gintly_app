@@ -69,7 +69,10 @@ class InventoryMovement extends Model
         return $this->belongsTo(InventoryAdjustment::class);
     }
 
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
     // RESERVADO — se cablean en su módulo (apuntan a modelos aún inexistentes):
-    //   purchaseOrder(): belongsTo(PurchaseOrder) → MOD-04
     //   dispatch():      belongsTo(Dispatch)      → MOD-09
 }

@@ -28,9 +28,11 @@ return new class extends Migration
             $table->unique(['purchase_order_id', 'product_id']);     // un producto no se repite en la misma OC
         });
 
-        // Para no pedir cantidades cero o negativas
+        // Para no pedir ni recibir cantidades cero o negativas
         DB::statement('ALTER TABLE purchase_order_items ADD CONSTRAINT chk_poi_ordered_qty
             CHECK (ordered_quantity > 0)');
+        DB::statement('ALTER TABLE purchase_order_items ADD CONSTRAINT chk_poi_received_non_negative
+            CHECK (received_quantity >= 0)');
     }
 
     /**
