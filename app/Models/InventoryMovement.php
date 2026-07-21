@@ -73,6 +73,9 @@ class InventoryMovement extends Model
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
-    // RESERVADO — se cablean en su módulo (apuntan a modelos aún inexistentes):
-    //   dispatch():      belongsTo(Dispatch)      → MOD-09
+
+    public function dispatch(): BelongsTo
+    {
+        return $this->belongsTo(Dispatch::class);
+    }
 }

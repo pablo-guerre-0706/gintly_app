@@ -418,6 +418,82 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $branch_id
+ * @property int $invoice_id
+ * @property int $warehouse_id
+ * @property int $user_id
+ * @property string $code
+ * @property \App\Enums\DispatchStatus $status
+ * @property string|null $received_by
+ * @property \Illuminate\Support\Carbon $dispatched_at
+ * @property int|null $reverted_by
+ * @property \Illuminate\Support\Carbon|null $reverted_at
+ * @property string|null $revert_reason
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Invoice $invoice
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DispatchItem> $items
+ * @property-read int|null $items_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryMovement> $movements
+ * @property-read int|null $movements_count
+ * @property-read \App\Models\User|null $revertedBy
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereDispatchedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereInvoiceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereReceivedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereRevertReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereRevertedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereRevertedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Dispatch whereWarehouseId($value)
+ */
+	class Dispatch extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $dispatch_id
+ * @property int $sale_item_id
+ * @property int $product_id
+ * @property numeric $quantity
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Dispatch $dispatch
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\SaleItem $saleItem
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem whereDispatchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DispatchItem whereSaleItemId($value)
+ */
+	class DispatchItem extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property string $document_type
  * @property string $prefix
  * @property int $next_number
@@ -559,6 +635,7 @@ namespace App\Models{
  * @property string|null $reason
  * @property \Carbon\CarbonImmutable|null $created_at
  * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Dispatch|null $dispatch
  * @property-read \App\Models\InventoryAdjustment|null $inventoryAdjustment
  * @property-read \App\Models\Product|null $product
  * @property-read \App\Models\PurchaseOrder|null $purchaseOrder
@@ -615,6 +692,8 @@ namespace App\Models{
  * @property-read \App\Models\Business|null $business
  * @property-read \App\Models\CashSession|null $cashSession
  * @property-read \App\Models\Customer|null $customer
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Dispatch> $dispatches
+ * @property-read int|null $dispatches_count
  * @property-read \App\Models\User|null $issuedBy
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InvoicePayment> $payments
  * @property-read int|null $payments_count
@@ -973,11 +1052,15 @@ namespace App\Models{
  * @property array<array-key, mixed>|null $recipe_snapshot
  * @property string $description
  * @property numeric $quantity
+ * @property numeric $dispatched_quantity
  * @property numeric $unit_price
  * @property numeric $unit_cost
  * @property numeric $discount_amount
  * @property numeric $line_total
  * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DispatchItem> $dispatchItems
+ * @property-read int|null $dispatch_items_count
+ * @property-read string $pending_quantity
  * @property-read \App\Models\Product|null $product
  * @property-read \App\Models\Sale $sale
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem newModelQuery()
@@ -986,6 +1069,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereBusinessId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereDescription($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereDiscountAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereDispatchedQuantity($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereLineTotal($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereProductId($value)

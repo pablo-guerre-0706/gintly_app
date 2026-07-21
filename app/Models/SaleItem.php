@@ -41,7 +41,27 @@ class SaleItem extends Model
         });
     }
 
+    protected function pendingQuantity(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn (): string => bcsub((string) $this->quantity, (string) $this->dispatched_quantity, 3),
+        );
+    }
+
+
     // business() del trait
-    public function sale(): BelongsTo { return $this->belongsTo(Sale::class); }
-    public function product(): BelongsTo { return $this->belongsTo(Product::class); }
+    public function sale(): BelongsTo
+    { 
+        return $this->belongsTo(Sale::class);
+    }
+    
+    public function product(): BelongsTo
+    { 
+        return $this->belongsTo(Product::class);
+    }
+
+    public function dispatchItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DispatchItem::class);
+    }
 }

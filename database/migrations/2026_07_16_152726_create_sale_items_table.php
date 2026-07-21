@@ -22,6 +22,7 @@ return new class extends Migration
             $table->json('recipe_snapshot')->nullable();  // composición explotada y congelada (RF-02-05)
             $table->string('description', 160);      // nombre CONGELADO (foto histórica)
             $table->decimal('quantity', 14, 3);      // CHECK > 0 abajo
+            $table->decimal('dispatched_quantity', 14, 3)->default(0);   // acumulado retirado (RF-09-02)
             $table->decimal('unit_price', 14, 2);    // precio CONGELADO al confirmar
             $table->decimal('unit_cost', 14, 4);     // costo CONGELADO (margen/BI)
             $table->decimal('discount_amount', 14, 2)->default(0);
@@ -32,7 +33,11 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_quantity
             CHECK (quantity > 0)');
-        // create_sale_items_table.php:
+            // Candado de motor: NUNCA se retira más de lo facturado, es el anti-sobre-retiro.
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_dispatch_not_exceed
+            CHECK (dispatched_quantity <= quantity)');
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_dispatched_non_negative
+            CHECK (dispatched_quantity >= 0)');
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_price_non_negative
             CHECK (unit_price >= 0)');
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_discount_non_negative

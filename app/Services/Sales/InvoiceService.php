@@ -158,14 +158,16 @@ class InvoiceService
         return DB::transaction(function () use ($invoice, $voidedBy, $reason) {
             $warehouseId = $this->resolveWarehouse($invoice->branch_id);
 
-            // Libera lo reservado. NOTA (MOD-09): cuando exista el retiro, liberar SOLO
-            // el remanente NO despachado (lo ya entregado no vuelve por anulación).
+            // MOD 09: Se consulta la relación y se itera para calcular el remanente no despachado
             foreach ($invoice->sales()->with('items')->get() as $sale) {
                 foreach ($sale->items as $item) {
-                    $this->liberarReservaDeItem($item, $warehouseId);
+                    $pendiente = bcsub((string) $item->quantity, (string) $item->dispatched_quantity, 3);
+                    if (bccomp($pendiente, '0', 3) > 0) {
+                        $this->liberarReservaDeItemParcial($item, $warehouseId, $pendiente);
+                    }
                 }
             }
-
+        
             $invoice->status      = InvoiceStatus::Anulada;   // el guard permite estos campos
             $invoice->voided_by   = $voidedBy;
             $invoice->voided_at   = now();

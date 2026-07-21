@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -34,6 +35,9 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['business_id', 'code']); // folio del retiro, único por negocio
         });
+
+        DB::statement("ALTER TABLE dispatches ADD CONSTRAINT chk_dispatch_revert_coherence
+            CHECK (status <> 'revertido' OR (reverted_by IS NOT NULL AND reverted_at IS NOT NULL))");
     }
 
     /**
