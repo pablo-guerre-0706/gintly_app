@@ -133,6 +133,15 @@ class PurchaseService
             } else {
                 // Discrepancia: la CxP nace CONGELADA. Ni un gramo entra a inventario.
                 $this->generateOrUpdatePayable($receipt, AccountPayableStatus::Congelada);
+
+                $this->anomalies->registrarSilencioso(
+                    businessId: $receipt->business_id,
+                    code: \App\Enums\AnomalyRuleCode::Discrepancia3Way,
+                    sourceType: 'goods_receipt',
+                    sourceId: $receipt->id,
+                    expected: (string) $po->expected_total,
+                    actual: (string) $match['computed_total'],
+                );
             }
 
             return $receipt;

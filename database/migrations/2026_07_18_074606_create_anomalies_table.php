@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -40,7 +41,20 @@ return new class extends Migration
             // Índice compuesto: soporta la navegación y el lookup de idempotencia del cron híbrido
             $table->index(['source_type', 'source_id']);
         });
-    }
+
+        // Candado de idempotencia: máximo UNA anomalía ACTIVA por (source, regla).
+        // Los estados terminales (justificada, resuelta) liberan el candado → NULL en la columna.
+        DB::statement("ALTER TABLE anomalies
+            ADD COLUMN active_dedupe_key VARCHAR(160)
+                GENERATED ALWAYS AS (
+                    CASE WHEN status IN ('detectada','notificada','en_revision')
+                        THEN CONCAT(anomaly_rule_id, ':', COALESCE(source_type,''), ':', COALESCE(source_id,0))
+                    END
+                ) VIRTUAL,
+            ADD UNIQUE KEY uniq_active_anomaly (active_dedupe_key)");
+        DB::statement("ALTER TABLE anomalies ADD CONSTRAINT chk_anomaly_resolution_coherence
+            CHECK (status NOT IN ('justificada','resuelta') OR (resolved_by IS NOT NULL AND resolved_at IS NOT NULL))");
+        }
 
     /**
      * Reverse the migrations.

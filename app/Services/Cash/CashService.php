@@ -135,7 +135,14 @@ class CashService
             $session->save();
 
             if ($session->status === CashSessionStatus::Descuadrada) {
-                // TODO (MOD-11): AnomalyService->registrar('descuadre_caja', $session, $diff).
+                $this->anomalies->registrarSilencioso(
+                businessId: $session->business_id,
+                code: \App\Enums\AnomalyRuleCode::DescuadreCaja,
+                sourceType: 'cash_session',
+                sourceId: $session->id,
+                expected: (string) $session->expected_amount,
+                actual: (string) $session->counted_amount,
+                );
             }
 
             return $session;

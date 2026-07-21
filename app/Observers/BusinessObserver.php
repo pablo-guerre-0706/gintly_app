@@ -42,14 +42,8 @@ class BusinessObserver
             }
         }
 
-
         // TODO (MOD-11): sembrar el catálogo base de anomaly_rules (6 reglas del BRD).
-
-
-
-
-
-        // 2- Catalogo base de reglas de anomalias (MOD-11)
+        // app/Observers/BusinessObserver.php — dentro de created(), tras el Consumidor Final y las secuencias:
         $reglas = [
             ['code' => 'descuadre_caja',      'name' => 'Descuadre de caja',         'threshold_type' => 'monto',      'default_severity' => 'advertencia', 'threshold_value' => 50.00],
             ['code' => 'faltante_inventario', 'name' => 'Faltante de inventario',    'threshold_type' => 'porcentaje', 'default_severity' => 'advertencia', 'threshold_value' => 2.00],
@@ -59,11 +53,14 @@ class BusinessObserver
             ['code' => 'venta_sin_sesion',    'name' => 'Venta sin sesión de caja',  'threshold_type' => 'cantidad',   'default_severity' => 'critica',     'threshold_value' => 0.00],
         ];
 
-        /* foreach ($reglas as $r) {
-            AnomalyRule::firstOrCreate(
-                ['business_id' => $business->id, 'code' => $r['code']],
-                $r + ['is_active' => true]
-            );
-        } */
+        foreach ($reglas as $r) {
+            $exists = \App\Models\AnomalyRule::query()
+                ->where('business_id', $business->id)->where('code', $r['code'])->exists();
+            if (! $exists) {
+                $rule = new \App\Models\AnomalyRule($r);
+                $rule->business_id = $business->id;
+                $rule->save();
+            }
+        }
     }
 }

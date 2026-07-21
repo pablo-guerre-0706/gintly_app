@@ -195,9 +195,19 @@ class ReceivableService
             ->whereNotNull('due_date')
             ->whereDate('due_date', '<', now())
             ->where('balance', '>', 0)
-            ->update(['status' => AccountReceivableStatus::Vencida->value]);
-        // TODO (MOD-11): por cada marcada, AnomalyService->registrar('cuenta_vencida', $ar).
+            ->chunk(100, function ($cuentas) {
+                foreach ($cuentas as $ar) {
+                    $ar->update(['status' => AccountReceivableStatus::Vencida->value]);
+
+                    $this->anomalies->registrarSilencioso(
+                        businessId: $ar->business_id, code: \App\Enums\AnomalyRuleCode::CuentaVencida,
+                        sourceType: 'account_receivable', sourceId: $ar->id,
+                    );
+                }
+            });
     }
+
+
 
     // ─────── Helpers privados ───────
 
