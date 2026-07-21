@@ -35,6 +35,10 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE sales_return_items ADD CONSTRAINT chk_sales_return_item_quantity
             CHECK (quantity > 0)');
+        DB::statement('ALTER TABLE sales_return_items ADD CONSTRAINT chk_return_item_price_non_negative
+            CHECK (unit_price >= 0)');
+        DB::statement('ALTER TABLE sales_return_items ADD CONSTRAINT chk_return_item_line_total_non_negative
+            CHECK (line_total >= 0)');
     }
 
     /**

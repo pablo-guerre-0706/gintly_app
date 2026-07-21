@@ -16,14 +16,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
             // CASCADE: el detalle pertenece al pedido. Un pedido facturado queda protegido por el
-            // RESTRICT de invoice_sale (no se puede borrar), así que el histórico nunca se pierde.
+            // RESTRICT de invoice_sale (no se  borra), así que el histórico nunca se pierde.
             $table->foreignId('sale_id')->constrained('sales')->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('products')->restrictOnDelete();
             $table->json('recipe_snapshot')->nullable();  // composición explotada y congelada (RF-02-05)
             $table->string('description', 160);      // nombre CONGELADO (foto histórica)
             $table->decimal('quantity', 14, 3);      // CHECK > 0 abajo
             $table->decimal('dispatched_quantity', 14, 3)->default(0);   // acumulado retirado (RF-09-02)
-            $table->decimal('unit_price', 14, 2);    // precio CONGELADO al confirmar
+            $table->decimal('returned_quantity', 14, 3)->default(0);   // acumulado devuelto (ERR-10)
+             $table->decimal('unit_price', 14, 2);    // precio CONGELADO al confirmar
             $table->decimal('unit_cost', 14, 4);     // costo CONGELADO (margen/BI)
             $table->decimal('discount_amount', 14, 2)->default(0);
             $table->decimal('line_total', 14, 2);    // (quantity × unit_price) − discount_amount
@@ -38,6 +39,11 @@ return new class extends Migration
             CHECK (dispatched_quantity <= quantity)');
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_dispatched_non_negative
             CHECK (dispatched_quantity >= 0)');
+        // Anti-sobre-devolución de motor: nunca se devuelve más de lo entregado (no de lo facturado).
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_return_not_exceed
+            CHECK (returned_quantity <= dispatched_quantity)');
+        DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_returned_non_negative
+            CHECK (returned_quantity >= 0)');
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_price_non_negative
             CHECK (unit_price >= 0)');
         DB::statement('ALTER TABLE sale_items ADD CONSTRAINT chk_sale_item_discount_non_negative

@@ -339,6 +339,51 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $invoice_id
+ * @property int $sales_return_id
+ * @property int $customer_id
+ * @property int|null $cash_session_id
+ * @property int $issued_by
+ * @property string $folio
+ * @property \App\Enums\CreditNoteResolutionType $resolution_type
+ * @property numeric $total_amount
+ * @property numeric $tax_amount
+ * @property \App\Enums\CreditNoteStatus $status
+ * @property \Illuminate\Support\Carbon $issued_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CashSession|null $cashSession
+ * @property-read \App\Models\Customer|null $customer
+ * @property-read \App\Models\Invoice $invoice
+ * @property-read \App\Models\User|null $issuedBy
+ * @property-read \App\Models\SalesReturn $salesReturn
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereCashSessionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereFolio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereInvoiceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereIssuedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereIssuedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereResolutionType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereSalesReturnId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereTaxAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereTotalAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|CreditNote whereUpdatedAt($value)
+ */
+	class CreditNote extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property string $name
  * @property \App\Enums\DocumentType $document_type
  * @property string|null $document_number
@@ -691,6 +736,8 @@ namespace App\Models{
  * @property-read \App\Models\Branch|null $branch
  * @property-read \App\Models\Business|null $business
  * @property-read \App\Models\CashSession|null $cashSession
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CreditNote> $creditNotes
+ * @property-read int|null $credit_notes_count
  * @property-read \App\Models\Customer|null $customer
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Dispatch> $dispatches
  * @property-read int|null $dispatches_count
@@ -1053,6 +1100,7 @@ namespace App\Models{
  * @property string $description
  * @property numeric $quantity
  * @property numeric $dispatched_quantity
+ * @property numeric $returned_quantity
  * @property numeric $unit_price
  * @property numeric $unit_cost
  * @property numeric $discount_amount
@@ -1062,7 +1110,10 @@ namespace App\Models{
  * @property-read int|null $dispatch_items_count
  * @property-read string $pending_quantity
  * @property-read \App\Models\Product|null $product
+ * @property-read string $returnable_quantity
  * @property-read \App\Models\Sale $sale
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SalesReturnItem> $salesReturnItems
+ * @property-read int|null $sales_return_items_count
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem query()
@@ -1075,11 +1126,91 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereProductId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereQuantity($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereRecipeSnapshot($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereReturnedQuantity($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereSaleId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereUnitCost($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|SaleItem whereUnitPrice($value)
  */
 	class SaleItem extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $branch_id
+ * @property int $invoice_id
+ * @property int $customer_id
+ * @property int $user_id
+ * @property string $code
+ * @property \App\Enums\SalesReturnStatus $status
+ * @property numeric $total_returned
+ * @property \Illuminate\Support\Carbon $returned_at
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CreditNote|null $creditNote
+ * @property-read \App\Models\Customer|null $customer
+ * @property-read \App\Models\Invoice $invoice
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SalesReturnItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereInvoiceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereReturnedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereTotalReturned($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturn whereUserId($value)
+ */
+	class SalesReturn extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $sales_return_id
+ * @property int $product_id
+ * @property int|null $sale_item_id
+ * @property int $warehouse_id
+ * @property numeric $quantity
+ * @property numeric $unit_price
+ * @property \App\Enums\ReturnDestination $destination
+ * @property \App\Enums\ReturnReasonCode $reason_code
+ * @property numeric $line_total
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Product|null $product
+ * @property-read \App\Models\SaleItem|null $saleItem
+ * @property-read \App\Models\SalesReturn $salesReturn
+ * @property-read \App\Models\Warehouse|null $warehouse
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereDestination($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereLineTotal($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereReasonCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereSaleItemId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereSalesReturnId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereUnitPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|SalesReturnItem whereWarehouseId($value)
+ */
+	class SalesReturnItem extends \Eloquent {}
 }
 
 namespace App\Models{

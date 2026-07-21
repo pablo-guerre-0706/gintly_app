@@ -167,6 +167,22 @@ class ReceivableService
         });
     }
 
+    /** RF-10-03: reduce el balance de la CxC por una nota de crédito (sin borrar abonos, BR-07). */
+    public function reducirPorNotaCredito(\App\Models\AccountReceivable $ar, string $amount): void
+    {
+        DB::transaction(function () use ($ar, $amount) {
+            $ar->refresh();
+            // Reducir el total (balance generado baja). Nunca por debajo de lo ya pagado.
+            $nuevoTotal = bcsub((string) $ar->total_amount, $amount, 2);
+            if (bccomp($nuevoTotal, (string) $ar->paid_amount, 2) < 0) {
+                $nuevoTotal = (string) $ar->paid_amount;   // piso: no dejar balance negativo
+            }
+            $ar->total_amount = $nuevoTotal;
+            $this->syncStatuses($ar);   // reutiliza la sincronización CxC⇄factura de MOD-08
+            $ar->save();
+        });
+    }
+
     /**
      * RF-08-05: cron que marca 'vencida' toda CxC con due_date pasada y balance > 0.
      * Retorna cuántas marcó (para el log del job y la alerta de MOD-11).

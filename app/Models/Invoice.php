@@ -103,5 +103,8 @@ class Invoice extends Model
         return $this->hasMany(Dispatch::class);
     }
     
-    // RESERVADO — MOD-10: creditNotes(): hasMany(CreditNote).
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(CreditNote::class);
+    }
 }

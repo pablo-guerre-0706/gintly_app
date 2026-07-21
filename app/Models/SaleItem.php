@@ -48,6 +48,12 @@ class SaleItem extends Model
         );
     }
 
+    protected function returnableQuantity(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn (): string => bcsub((string) $this->dispatched_quantity, (string) $this->returned_quantity, 3),
+        );
+    }
 
     // business() del trait
     public function sale(): BelongsTo
@@ -63,5 +69,10 @@ class SaleItem extends Model
     public function dispatchItems(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(DispatchItem::class);
+    }
+
+    public function salesReturnItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SalesReturnItem::class);
     }
 }
