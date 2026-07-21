@@ -23,7 +23,6 @@ return new class extends Migration
 
             $table->decimal('total_amount', 14, 2);            // = invoice.total. CHECK > 0
             $table->decimal('paid_amount', 14, 2)->default(0); // suma de abonos aplicados
-            $table->decimal('balance', 14, 2);                 // total − paid (materializado). CHECK >= 0
             $table->enum('status', ['pendiente', 'parcial', 'pagada', 'vencida'])
                 ->default('pendiente')->index();
             $table->date('due_date')->nullable()->index();     // indexado: el cron de 'vencida' filtra por aquí
@@ -32,6 +31,9 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE accounts_receivables ADD CONSTRAINT chk_ar_total_positive
             CHECK (total_amount > 0)');
+        DB::statement("ALTER TABLE accounts_receivables
+            ADD COLUMN balance DECIMAL(14,2)
+            GENERATED ALWAYS AS (total_amount - paid_amount) STORED AFTER paid_amount");
         DB::statement('ALTER TABLE accounts_receivables ADD CONSTRAINT chk_ar_balance_non_negative
             CHECK (balance >= 0)');
     }

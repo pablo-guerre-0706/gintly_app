@@ -29,6 +29,21 @@ namespace App\Models{
 
 namespace App\Models{
 /**
+ * @property \App\Enums\AccountReceivableStatus $status
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\Customer|null $customer
+ * @property-read \App\Models\Invoice|null $invoice
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReceivablePayment> $payments
+ * @property-read int|null $payments_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AccountReceivable newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AccountReceivable newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AccountReceivable query()
+ */
+	class AccountReceivable extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
  * @property int $id
  * @property int $business_id
  * @property int|null $user_id
@@ -338,6 +353,8 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property int|null $generic_lock
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AccountReceivable> $accountsReceivable
+ * @property-read int|null $accounts_receivable_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CustomerAddress> $addresses
  * @property-read int|null $addresses_count
  * @property-read \App\Models\Business|null $business
@@ -593,6 +610,7 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon $issued_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\AccountReceivable|null $accountReceivable
  * @property-read \App\Models\Branch|null $branch
  * @property-read \App\Models\Business|null $business
  * @property-read \App\Models\CashSession|null $cashSession
@@ -866,6 +884,39 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PurchaseOrderItem whereReceivedQuantity($value)
  */
 	class PurchaseOrderItem extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $accounts_receivable_id
+ * @property int|null $cash_session_id
+ * @property int $user_id
+ * @property numeric $amount
+ * @property \App\Enums\PaymentMethod $payment_method
+ * @property string|null $reference
+ * @property \Illuminate\Support\Carbon $paid_at
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property-read \App\Models\AccountReceivable $accountReceivable
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\CashSession|null $cashSession
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereAccountsReceivableId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereCashSessionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment wherePaidAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment wherePaymentMethod($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereReference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereUserId($value)
+ */
+	class ReceivablePayment extends \Eloquent {}
 }
 
 namespace App\Models{

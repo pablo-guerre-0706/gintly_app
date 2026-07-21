@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
@@ -56,18 +57,46 @@ class Invoice extends Model
     }
 
     // business() del trait
-    public function branch(): BelongsTo { return $this->belongsTo(Branch::class); }
-    public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
-    public function cashSession(): BelongsTo { return $this->belongsTo(CashSession::class); }
-    public function issuedBy(): BelongsTo { return $this->belongsTo(User::class, 'issued_by'); }
-    public function voidedBy(): BelongsTo { return $this->belongsTo(User::class, 'voided_by'); }
-    public function payments(): HasMany { return $this->hasMany(InvoicePayment::class); }
+    public function branch(): BelongsTo
+    { 
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function customer(): BelongsTo 
+    { 
+        return $this->belongsTo(Customer::class);
+    }
+    
+    public function cashSession(): BelongsTo 
+    {
+        return $this->belongsTo(CashSession::class);
+    }
+    
+    public function issuedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'issued_by');
+    }
+    
+    public function voidedBy(): BelongsTo
+    { 
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+    
+    public function payments(): HasMany
+    
+    {
+        return $this->hasMany(InvoicePayment::class);
+    }
 
     public function sales(): BelongsToMany
     {
         return $this->belongsToMany(Sale::class, 'invoice_sale')->withPivot('business_id');
     }
 
-    // RESERVADO — MOD-08: accountReceivable(): hasOne(AccountReceivable).
+    public function accountReceivable(): HasOne
+    {
+        return $this->hasOne(AccountReceivable::class);
+    }
+
     // RESERVADO — MOD-10: creditNotes(): hasMany(CreditNote).
 }

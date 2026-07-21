@@ -60,10 +60,12 @@ class Customer extends Model
         });
     }
 
-    /** TODO (MOD-08): accounts_receivables con balance > 0. Inerte por ahora. */
     public function hasPendingReceivables(): bool
     {
-        return false;
+        return $this->accountsReceivable()
+            ->whereIn('status', ['pendiente', 'parcial', 'vencida'])
+            ->where('balance', '>', 0)
+            ->exists();
     }
 
     /** Excluye el genérico de los listados de clientes reales. */
@@ -79,8 +81,12 @@ class Customer extends Model
         return $this->hasMany(CustomerAddress::class);
     }
 
+    public function accountsReceivable(): HasMany
+    {
+        return $this->hasMany(AccountReceivable::class);
+    }
+
     // RESERVADO — se cablean en su módulo:
     //   sales(): hasMany(Sale)               → MOD-07
     //   invoices(): hasMany(Invoice)         → MOD-07
-    //   accountsReceivable(): hasMany(...)   → MOD-08
 }

@@ -25,6 +25,7 @@ class InvoiceService
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly CashService $cash,
+        private readonly \App\Services\Receivable\ReceivableService $receivable,   // ← nuevo
     ) {
     }
 
@@ -56,6 +57,15 @@ class InvoiceService
         // 2) Totales (operación pura, antes de escribir): subtotal, IVA, total.
         $discount = (string) ($data['discount_amount'] ?? '0.00');
         $totals   = $this->calcularTotales($sales, $branchId, $discount);
+
+        // Validacion pura de credito
+        if ($type === InvoicePaymentType::Credito) {
+            $this->receivable->assertCreditAvailable(
+                $sales->first()->customer,
+                $totals['total'],
+                (bool) ($data['owner_authorized'] ?? false),
+            );
+        }
 
         // 3) Integridad de cobro (validación PURA: si falla, NO se persiste nada — ERR-07).
         $paid = $this->sumarPagos($data['payments'] ?? []);
@@ -128,8 +138,9 @@ class InvoiceService
             }
 
             // 7) Crédito → generar CxC (DIFERIDO a MOD-08).
-            //    TODO (MOD-08): AccountsReceivableService->generar($invoice) + validar credit_limit.
-
+            if ($type === InvoicePaymentType::Credito) {
+                $this->receivable->generarDesdeFactura($invoice);
+            }
             return $invoice->load('payments', 'sales');
         });
     }
@@ -161,7 +172,7 @@ class InvoiceService
             $invoice->void_reason = $reason;
             $invoice->save();
 
-            // TODO (MOD-08): revertir CxC si era a crédito (RF-08-07).
+            $this->receivable->revertirPorAnulacion($invoice, $voidedBy);
             // TODO (MOD-10): reembolso de pagos en efectivo (resarcimiento).
             return $invoice;
         });
