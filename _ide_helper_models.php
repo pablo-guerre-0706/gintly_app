@@ -46,6 +46,120 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int $anomaly_rule_id
+ * @property int|null $reconciliation_run_id
+ * @property int|null $branch_id
+ * @property \App\Enums\AnomalySeverity $severity
+ * @property \App\Enums\AnomalyStatus $status
+ * @property numeric|null $expected_value
+ * @property numeric|null $actual_value
+ * @property numeric|null $difference
+ * @property string|null $source_type
+ * @property int|null $source_id
+ * @property int|null $resolved_by
+ * @property \Illuminate\Support\Carbon|null $resolved_at
+ * @property \Illuminate\Support\Carbon $detected_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $active_dedupe_key
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AnomalyEvent> $events
+ * @property-read int|null $events_count
+ * @property-read \App\Models\ReconciliationRun|null $reconciliationRun
+ * @property-read \App\Models\User|null $resolvedBy
+ * @property-read \App\Models\AnomalyRule $rule
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereActiveDedupeKey($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereActualValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereAnomalyRuleId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereDetectedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereDifference($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereExpectedValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereReconciliationRunId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereResolvedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereResolvedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereSeverity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereSourceId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereSourceType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Anomaly whereUpdatedAt($value)
+ */
+	class Anomaly extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $anomaly_id
+ * @property int|null $user_id
+ * @property string|null $from_status
+ * @property string $to_status
+ * @property string|null $comment
+ * @property \Illuminate\Support\Carbon $changed_at
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property-read \App\Models\Anomaly $anomaly
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereAnomalyId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereChangedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereComment($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereFromStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereToStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyEvent whereUserId($value)
+ */
+	class AnomalyEvent extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property \App\Enums\AnomalyRuleCode $code
+ * @property string $name
+ * @property numeric|null $threshold_value
+ * @property \App\Enums\ThresholdType $threshold_type
+ * @property \App\Enums\AnomalySeverity $default_severity
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Anomaly> $anomalies
+ * @property-read int|null $anomalies_count
+ * @property-read \App\Models\Business|null $business
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereDefaultSeverity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereThresholdType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereThresholdValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|AnomalyRule whereUpdatedAt($value)
+ */
+	class AnomalyRule extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int|null $user_id
  * @property string $action
  * @property string $auditable_type
@@ -178,6 +292,42 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Business withoutTrashed()
  */
 	class Business extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int|null $branch_id
+ * @property \App\Enums\GoalableKpiCode $kpi_code
+ * @property \App\Enums\KpiPeriodType $period_type
+ * @property \Illuminate\Support\Carbon $period_start
+ * @property \Illuminate\Support\Carbon $period_end
+ * @property numeric $target_value
+ * @property int $created_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $branch_key
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\User|null $createdBy
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereBranchKey($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereCreatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereKpiCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal wherePeriodEnd($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal wherePeriodStart($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal wherePeriodType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereTargetValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BusinessGoal whereUpdatedAt($value)
+ */
+	class BusinessGoal extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -812,6 +962,45 @@ namespace App\Models{
 /**
  * @property int $id
  * @property int $business_id
+ * @property int|null $branch_id
+ * @property string $kpi_code
+ * @property \App\Enums\KpiPeriodType $period_type
+ * @property \Illuminate\Support\Carbon $period_start
+ * @property \Illuminate\Support\Carbon $period_end
+ * @property numeric $value
+ * @property numeric|null $target_value
+ * @property numeric|null $achievement_pct
+ * @property array<array-key, mixed>|null $metadata
+ * @property \Illuminate\Support\Carbon $calculated_at
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property int|null $branch_key
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereAchievementPct($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereBranchKey($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereCalculatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereKpiCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereMetadata($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot wherePeriodEnd($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot wherePeriodStart($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot wherePeriodType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereTargetValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|KpiSnapshot whereValue($value)
+ */
+	class KpiSnapshot extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
  * @property int $product_id
  * @property int $warehouse_id
  * @property int $user_id
@@ -1043,6 +1232,73 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ReceivablePayment whereUserId($value)
  */
 	class ReceivablePayment extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int|null $branch_id
+ * @property int|null $triggered_by
+ * @property \App\Enums\ReconciliationRunType $run_type
+ * @property \App\Enums\ReconciliationScope $scope
+ * @property \App\Enums\ReconciliationStatus $status
+ * @property int $anomalies_found
+ * @property \Illuminate\Support\Carbon $started_at
+ * @property \Illuminate\Support\Carbon|null $finished_at
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Anomaly> $anomalies
+ * @property-read int|null $anomalies_count
+ * @property-read \App\Models\Branch|null $branch
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\User|null $triggeredBy
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereAnomaliesFound($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereBranchId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereFinishedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereRunType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereScope($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereStartedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReconciliationRun whereTriggeredBy($value)
+ */
+	class ReconciliationRun extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $business_id
+ * @property int $user_id
+ * @property string $name
+ * @property string $report_type
+ * @property array<array-key, mixed>|null $filters
+ * @property bool $is_scheduled
+ * @property string|null $schedule_cron
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Business|null $business
+ * @property-read \App\Models\User|null $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereBusinessId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereFilters($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereIsScheduled($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereReportType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereScheduleCron($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ReportDefinition whereUserId($value)
+ */
+	class ReportDefinition extends \Eloquent {}
 }
 
 namespace App\Models{

@@ -65,4 +65,8 @@ return [
         'family' => 'financiero',
         'source' => 'vw_kpi_cartera'
         ],
+
+        'margen'              => ['brd' => null, 'label' => 'Margen bruto',            'unit' => 'porcentaje', 'goalable' => true, 'family' => 'comercial', 'source' => null],
+        'ticket_promedio'     => ['brd' => null, 'label' => 'Ticket promedio',         'unit' => 'monto',      'goalable' => true, 'family' => 'comercial', 'source' => 'vw_kpi_ventas'],
+        'rotacion_inventario' => ['brd' => null, 'label' => 'Rotación de inventario',  'unit' => 'ratio',      'goalable' => true, 'family' => 'operativo', 'source' => null],
 ];
