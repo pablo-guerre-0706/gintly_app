@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\PhysicalCountStatus;
@@ -9,20 +11,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class PhysicalCount extends Model
+
+final class PhysicalCount extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
     protected $fillable = [
         'product_id',
         'warehouse_id',
-        'user_id',
-        'system_quantity',
         'counted_quantity',
-        // 'difference' excluido, la calcula el motor (columna generada, FIX auditoría #2).
-        'status',
         'notes',
-        'counted_at',
     ];
 
     protected function casts(): array
@@ -30,13 +29,11 @@ class PhysicalCount extends Model
         return [
             'system_quantity'  => 'decimal:3',
             'counted_quantity' => 'decimal:3',
-            'difference'       => 'decimal:3',   // read-only, el cast solo formatea lectura
+            'difference'       => 'decimal:3',
             'status'           => PhysicalCountStatus::class,
             'counted_at'       => 'datetime',
         ];
     }
-
-    // business() del trait
 
     public function product(): BelongsTo
     {

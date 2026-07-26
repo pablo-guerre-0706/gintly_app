@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\InventoryAdjustmentType;
@@ -9,16 +11,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class InventoryAdjustment extends Model
+
+final class InventoryAdjustment extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
     protected $fillable = [
         'warehouse_id',
-        'user_id',
-        'physical_count_id',   // nullable: el ajuste puede nacer de un conteo (RF-03-03) o ser directo
+        'physical_count_id',
         'type',
-        'reason',              // motivo obligatorio (RF-03-02)
+        'reason',
         'adjusted_at',
     ];
 
@@ -29,8 +32,6 @@ class InventoryAdjustment extends Model
             'adjusted_at' => 'datetime',
         ];
     }
-
-    // business() del trait
 
     public function warehouse(): BelongsTo
     {

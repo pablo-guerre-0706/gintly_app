@@ -1,19 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
+
+// Tipo físico de asiento en el kardex (inventory_movements.type). Solo movimiento fisico
 enum InventoryMovementType: string
 {
     case Entrada  = 'entrada';
     case Salida   = 'salida';
     case Ajuste   = 'ajuste';
     case Traspaso = 'traspaso';
-
-    /** +1 suma stock, -1 lo resta (ajuste/traspaso los decide el Service). */
-    public function isInbound(): bool
-    {
-        return $this === self::Entrada;
-    }
 
     public function label(): string
     {
@@ -23,5 +21,19 @@ enum InventoryMovementType: string
             self::Ajuste   => 'Ajuste',
             self::Traspaso => 'Traspaso',
         };
+    }
+
+    
+    public function isInbound(): bool
+    {
+        return $this === self::Entrada;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
     }
 }

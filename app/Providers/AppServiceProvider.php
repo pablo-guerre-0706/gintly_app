@@ -67,6 +67,12 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(Brand::class, BrandPolicy::class);
         Gate::policy(UnitOfMeasure::class, UnitOfMeasurePolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
+        Gate::policy(Warehouse::class, WarehousePolicy::class);
+        Gate::policy(StockLevel::class, StockLevelPolicy::class);
+        Gate::policy(PhysicalCount::class, PhysicalCountPolicy::class);
+        Gate::policy(StockTransfer::class, StockTransferPolicy::class);
+        Gate::policy(InventoryAdjustment::class, InventoryAdjustmentPolicy::class);
+        Gate::policy(InventoryMovement::class, InventoryMovementPolicy::class);
     }
 
     // Bloqueo por intentos fallidos mediante limitación de tasa.

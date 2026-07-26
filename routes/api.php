@@ -8,10 +8,16 @@ use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
+use App\Http\Controllers\Api\V1\InventoryMovementController;
+use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
+use App\Http\Controllers\Api\V1\StockLevelController;
+use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Models\Product;
 use App\Models\ProductRecipe;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +74,42 @@ Route::prefix('v1')->group(function (): void {
                 Route::put('/{line}', [ProductRecipeController::class, 'update']);
                 Route::delete('/{line}', [ProductRecipeController::class, 'destroy']);
             });
+        
+        // MOD-03 - Inventario logico y Bodega fisica
+        Route::apiResource('warehouses', WarehouseController::class)
+            ->parameters(['warehouses' => 'warehouse']);
+
+        // Stock. Solo lectura + edición de umbrales. Sin POST.
+        Route::get('stock', [StockLevelController::class, 'index']);
+        Route::get('stock/{product}/{warehouse}', [StockLevelController::class, 'show']);
+        Route::put('stock/{product}/{warehouse}/thresholds', [StockLevelController::class, 'updateThresholds']);
+
+        // Conteos físicos: registrar, ver, aplicar (ajustar), justificar.
+        Route::get('physical-counts', [PhysicalCountController::class, 'index']);
+        Route::post('physical-counts', [PhysicalCountController::class, 'store']);
+        Route::get('physical-counts/{physical_count}', [PhysicalCountController::class, 'show']);
+        Route::post('physical-counts/{physical_count}/apply', [PhysicalCountController::class, 'apply']);
+        Route::post('physical-counts/{physical_count}/justify', [PhysicalCountController::class, 'justify']);
+
+        // Traspasos: crear, ver, completar, cancelar.
+        Route::get('stock-transfers', [StockTransferController::class, 'index']);
+        Route::post('stock-transfers', [StockTransferController::class, 'store']);
+        Route::get('stock-transfers/{stock_transfer}', [StockTransferController::class, 'show']);
+        Route::post('stock-transfers/{stock_transfer}/complete', [StockTransferController::class, 'complete']);
+        Route::post('stock-transfers/{stock_transfer}/cancel', [StockTransferController::class, 'cancel']);
+
+        // Ajustes directos: crear, listar, ver.
+        Route::get('inventory-adjustments', [InventoryAdjustmentController::class, 'index']);
+        Route::post('inventory-adjustments', [InventoryAdjustmentController::class, 'store']);
+        Route::get('inventory-adjustments/{inventory_adjustment}', [InventoryAdjustmentController::class, 'show']);
+
+        // Kardex, solo lectura (H-30).
+        Route::get('inventory-movements', [InventoryMovementController::class, 'index']);
+
+        // Binding de modelos para parámetros no convencionales.
+        Route::model('physical_count', \App\Models\PhysicalCount::class);
+        Route::model('stock_transfer', \App\Models\StockTransfer::class);
+        Route::model('inventory_adjustment', \App\Models\InventoryAdjustment::class);
 
     });
 });

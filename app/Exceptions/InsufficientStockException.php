@@ -1,19 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
-class InsufficientStockException extends Exception
+
+// ERR-03 · HTTP 409. Una operación dejaría la existencia física por debajo de cero.
+// Materialización en dominio de chk_stock_qty_non_negative.
+final class InsufficientStockException extends RuntimeException
 {
-    public function __construct(string $sku = '', string $warehouse = '')
+    public static function make(int $productId, int $warehouseId, string $available, string $requested): self
     {
-        parent::__construct("Stock insuficiente para el producto [{$sku}] en la bodega [{$warehouse}].");
-    }
-
-    public function render(): JsonResponse
-    {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'INSUFFICIENT_STOCK'], 409);
+        return new self(sprintf(
+            'Stock insuficiente para el producto %d en la bodega %d: disponible %s, solicitado %s.',
+            $productId,
+            $warehouseId,
+            $available,
+            $requested
+        ));
     }
 }

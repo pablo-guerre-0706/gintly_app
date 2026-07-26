@@ -1,33 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\InventoryMovementType;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\Concerns\Immutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class InventoryMovement extends Model
+final class InventoryMovement extends Model
 {
-    use HasFactory, BelongsToBusiness, Immutable;
+    use BelongsToBusiness;
+    use HasFactory;
+    use Immutable;
 
-    // Kardex: solo INSERT. Sin updated_at.
-    const UPDATED_AT = null;
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'product_id',
         'warehouse_id',
-        'user_id',                  // nullable: ROL-SYS puede postear movimientos automáticos
+        'user_id',
         'type',
         'quantity',
-        'balance_after',            // saldo tras el asiento (foto del kardex)
+        'balance_after',
         'unit_cost',
         'stock_transfer_id',
         'inventory_adjustment_id',
-        'purchase_order_id',        // FK diferida (MOD-04) — columna plana por ahora
-        'dispatch_id',              // FK diferida (MOD-09) — columna plana por ahora
         'reason',
     ];
 
@@ -41,8 +43,6 @@ class InventoryMovement extends Model
             'created_at'    => 'immutable_datetime',
         ];
     }
-
-    // business() del trait; inmutabilidad del trait Immutable.
 
     public function product(): BelongsTo
     {
@@ -69,13 +69,11 @@ class InventoryMovement extends Model
         return $this->belongsTo(InventoryAdjustment::class);
     }
 
-    public function purchaseOrder(): BelongsTo
-    {
-        return $this->belongsTo(PurchaseOrder::class);
-    }
+    // purchaseOrder(): se activa al cerrar MOD-04 (parche P1).
+    // dispatch():      se activa al cerrar MOD-09 (parche P9).
 
-    public function dispatch(): BelongsTo
+    public function scopeOfType(Builder $query, InventoryMovementType $type): Builder
     {
-        return $this->belongsTo(Dispatch::class);
+        return $query->where('type', $type->value);
     }
 }

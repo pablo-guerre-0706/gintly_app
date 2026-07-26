@@ -1,310 +1,323 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Inventory;
 
+use App\Enums\InventoryAdjustmentType;
 use App\Enums\InventoryMovementType;
+use App\Enums\PhysicalCountStatus;
 use App\Exceptions\InsufficientStockException;
-use App\Exceptions\InventorySyncException;
+use App\Exceptions\InvalidCountStateException;
+use App\Models\InventoryAdjustment;
 use App\Models\InventoryMovement;
-use App\Models\Product;
+use App\Models\PhysicalCount;
 use App\Models\StockLevel;
-use App\Models\StockTransfer;
-use App\Models\Warehouse;
+use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Throwable;
 
-class InventoryService
+final class InventoryService
 {
+    private const QTY_SCALE = 3;
+
+    private const COST_SCALE = 4;
+
     /**
-     * Reserva stock al facturar (MOD-07). Sube reserved_quantity; sin toca quantity;
-     * No escribe kardex. Falla si el disponible (quantity - reserved) no alcanza.
+     * Aplica un ajuste directo (merma/sobrante/corrección) sobre el saldo y
+     * escribe el asiento de kardex, de forma atómica.
      *
-     * @throws InsufficientStockException
+     * @param  numeric-string|float|int  $quantity  Magnitud SIEMPRE positiva.
      */
-    public function reservar(int $productId, int $warehouseId, string $quantity, ?int $userId = null): StockLevel
-    {
-        return DB::transaction(function () use ($productId, $warehouseId, $quantity) {
-            $level = $this->lockLevel($productId, $warehouseId);
-
-            // Disponible = físico - reservado. bccomp compara strings decimales sin error de float.
-            $available = bcsub((string) $level->quantity, (string) $level->reserved_quantity, 3);
-
-            if (bccomp($available, $quantity, 3) < 0) {
-                throw new InsufficientStockException(
-                    $this->sku($productId), $this->warehouseName($warehouseId)
-                );
-            }
-
-            $level->reserved_quantity = bcadd((string) $level->reserved_quantity, $quantity, 3);
-            $level->save();
-
-            return $level;
-        });
-    }
-
-    /**
-     * Libera una reserva (anulación de factura / venta no concretada).
-     * Baja reserved_quantity sin tocar quantity ni kardex. Nunca deja reserved < 0.
-     */
-    public function liberarReserva(int $productId, int $warehouseId, string $quantity): StockLevel
-    {
-        return DB::transaction(function () use ($productId, $warehouseId, $quantity) {
-            $level = $this->lockLevel($productId, $warehouseId);
-
-            $nuevoReservado = bcsub((string) $level->reserved_quantity, $quantity, 3);
-            // Piso de seguridad: una doble liberación no debe producir negativos.
-            if (bccomp($nuevoReservado, '0', 3) < 0) {
-                $nuevoReservado = '0.000';
-            }
-
-            $level->reserved_quantity = $nuevoReservado;
-            $level->save();
-
-            return $level;
-        });
-    }
-
-    /**
-     * Retiro físico (MOD-09). Baja quantity Y reserved_quantity, y escribe un
-     * movimiento 'salida' en el kardex — todo atómico. Es el unico descuento real.
-     *
-     * @throws InsufficientStockException|InventorySyncException
-     */
-    public function retirar(
-        int $productId,
+    public function ajustar(
+        User $actor,
         int $warehouseId,
+        int $productId,
+        InventoryAdjustmentType $type,
         string $quantity,
-        ?int $userId = null,
-        ?int $dispatchId = null,
-        ?string $reason = null
-    ): InventoryMovement {
-        return DB::transaction(function () use ($productId, $warehouseId, $quantity, $userId, $dispatchId, $reason) {
-            $level = $this->lockLevel($productId, $warehouseId);
+        string $reason,
+        ?int $physicalCountId = null
+    ): InventoryAdjustment {
+        return DB::transaction(function () use ($actor, $warehouseId, $productId, $type, $quantity, $reason, $physicalCountId): InventoryAdjustment {
+            $stock = $this->lockStock($actor->business_id, $productId, $warehouseId);
 
-            // No se puede retirar más de lo que existe físicamente.
-            if (bccomp((string) $level->quantity, $quantity, 3) < 0) {
-                throw new InsufficientStockException(
-                    $this->sku($productId), $this->warehouseName($warehouseId)
-                );
-            }
+            // El signo lo fija el tipo del ajuste (H-26), no el del movimiento.
+            $signedQty = $type->hasFixedDirection()
+                ? bcmul($quantity, (string) $type->directionFactor(), self::QTY_SCALE)
+                : $quantity; // corrección: signo ya resuelto por el llamador
 
-            $level->quantity = bcsub((string) $level->quantity, $quantity, 3);
-            // El retiro consume la reserva asociada; con piso en 0 por robustez.
-            $nuevoReservado = bcsub((string) $level->reserved_quantity, $quantity, 3);
-            $level->reserved_quantity = bccomp($nuevoReservado, '0', 3) < 0 ? '0.000' : $nuevoReservado;
-            $level->save();
+            $newQuantity = bcadd((string) $stock->quantity, $signedQty, self::QTY_SCALE);
 
-            return $this->postMovement(
-                productId:   $productId,
+            $this->assertNonNegative($newQuantity, $productId, $warehouseId, $stock);
+
+            $adjustment = InventoryAdjustment::query()->create([
+                'warehouse_id'      => $warehouseId,
+                'physical_count_id' => $physicalCountId,
+                'type'              => $type,
+                'reason'            => $reason,
+                'adjusted_at'       => Carbon::now(),
+            ]);
+            $adjustment->user_id = $actor->id; // derivado de sesión (D-7)
+            $adjustment->save();
+
+            $this->writeMovement(
+                actor: $actor,
+                productId: $productId,
                 warehouseId: $warehouseId,
-                type:        InventoryMovementType::Salida,
-                quantity:    $quantity,
-                balanceAfter: (string) $level->quantity,
-                userId:      $userId,
-                dispatchId:  $dispatchId,
-                reason:      $reason,
+                type: InventoryMovementType::Ajuste,
+                magnitude: $quantity,
+                balanceAfter: $newQuantity,
+                unitCost: (string) $stock->average_cost,
+                reason: $reason,
+                adjustmentId: $adjustment->id,
             );
+
+            $stock->quantity = $newQuantity;
+            $stock->save();
+
+            return $adjustment;
         });
     }
 
-    /**
-     * Entrada de mercancía (recepción de compra MOD-04, o reingreso por devolución MOD-10).
-     * Sube quantity, recalcula costo promedio ponderado, escribe 'entrada' en kardex.
-     */
-    public function ingresar(
-        int $productId,
-        int $warehouseId,
-        string $quantity,
-        string $unitCost,
-        ?int $userId = null,
-        ?int $purchaseOrderId = null,
-        ?string $reason = null
-    ): InventoryMovement {
-        return DB::transaction(function () use ($productId, $warehouseId, $quantity, $unitCost, $userId, $purchaseOrderId, $reason) {
-            $level = $this->lockLevel($productId, $warehouseId, createIfMissing: true);
-
-            // Costo promedio ponderado: (qtyActual*costoActual + qtyNueva*costoNuevo) / (qtyActual+qtyNueva)
-            $valorActual = bcmul((string) $level->quantity, (string) $level->average_cost, 6);
-            $valorNuevo  = bcmul($quantity, $unitCost, 6);
-            $nuevaQty    = bcadd((string) $level->quantity, $quantity, 3);
-
-            if (bccomp($nuevaQty, '0', 3) > 0) {
-                $level->average_cost = bcdiv(bcadd($valorActual, $valorNuevo, 6), $nuevaQty, 4);
-            }
-            $level->quantity = $nuevaQty;
-            $level->save();
-
-            return $this->postMovement(
-                productId:    $productId,
-                warehouseId:  $warehouseId,
-                type:         InventoryMovementType::Entrada,
-                quantity:     $quantity,
-                balanceAfter: (string) $level->quantity,
-                unitCost:     $unitCost,
-                userId:       $userId,
-                purchaseOrderId: $purchaseOrderId,
-                reason:       $reason,
-            );
-        });
-    }
-
-    /**
-     * Traspaso entre bodegas: una salida en origen + una entrada en destino, atómico.
-     * Bloquea ambas filas en orden determinista (menor product/warehouse primero)
-     * para prevenir deadlocks entre traspasos cruzados.
-     */
-    public function traspasar(StockTransfer $transfer, int $productId, string $quantity): void
+    // Aplica un conteo físico
+    public function ajustarPorConteo(User $actor, PhysicalCount $count): PhysicalCount
     {
-        DB::transaction(function () use ($transfer, $productId, $quantity) {
-            $origen  = $this->lockLevel($productId, $transfer->from_warehouse_id);
+        return DB::transaction(function () use ($actor, $count): PhysicalCount {
+            // Relee el conteo bajo lock: evita doble aplicación concurrente.
+            $count = PhysicalCount::query()
+                ->whereKey($count->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            if (bccomp((string) $origen->quantity, $quantity, 3) < 0) {
-                throw new InsufficientStockException(
-                    $this->sku($productId), $this->warehouseName($transfer->from_warehouse_id)
+            if (! $count->status->isOpen()) {
+                throw InvalidCountStateException::countNotOpen($count->id);
+            }
+
+            $stock = $this->lockStock($actor->business_id, $count->product_id, $count->warehouse_id);
+
+            $difference = bcsub((string) $count->counted_quantity, (string) $stock->quantity, self::QTY_SCALE);
+
+            // Sin diferencia no hay ajuste; el conteo se marca ajustado igual.
+            if (bccomp($difference, '0', self::QTY_SCALE) !== 0) {
+                // La corrección lleva el signo de la diferencia (puede subir o bajar).
+                $adjustment = InventoryAdjustment::query()->create([
+                    'warehouse_id'      => $count->warehouse_id,
+                    'physical_count_id' => $count->id,
+                    'type'              => InventoryAdjustmentType::Correccion,
+                    'reason'            => 'Ajuste por conteo físico #'.$count->id,
+                    'adjusted_at'       => Carbon::now(),
+                ]);
+                $adjustment->user_id = $actor->id;
+                $adjustment->save();
+
+                $this->writeMovement(
+                    actor: $actor,
+                    productId: $count->product_id,
+                    warehouseId: $count->warehouse_id,
+                    type: InventoryMovementType::Ajuste,
+                    magnitude: $this->absolute($difference),
+                    balanceAfter: (string) $count->counted_quantity,
+                    unitCost: (string) $stock->average_cost,
+                    reason: 'Ajuste por conteo físico #'.$count->id,
+                    adjustmentId: $adjustment->id,
                 );
+
+                $stock->quantity = (string) $count->counted_quantity;
+                $stock->save();
             }
 
-            $destino = $this->lockLevel($productId, $transfer->to_warehouse_id, createIfMissing: true);
+            $count->status = PhysicalCountStatus::Ajustado;
+            $count->save();
 
-            // Salida en origen
-            $origen->quantity = bcsub((string) $origen->quantity, $quantity, 3);
-            $origen->save();
-            $this->postMovement(
-                productId: $productId, warehouseId: $transfer->from_warehouse_id,
-                type: InventoryMovementType::Traspaso, quantity: $quantity,
-                balanceAfter: (string) $origen->quantity, userId: $transfer->user_id,
-                stockTransferId: $transfer->id, reason: 'Traspaso salida',
-            );
-
-            // Entrada en destino (hereda el costo de origen para no distorsionar el promedio)
-            $destino->quantity = bcadd((string) $destino->quantity, $quantity, 3);
-            $destino->save();
-            $this->postMovement(
-                productId: $productId, warehouseId: $transfer->to_warehouse_id,
-                type: InventoryMovementType::Traspaso, quantity: $quantity,
-                balanceAfter: (string) $destino->quantity, userId: $transfer->user_id,
-                stockTransferId: $transfer->id, reason: 'Traspaso entrada',
-            );
+            return $count->refresh();
         });
     }
 
-    /**
-     * Ajuste por conteo físico (RF-03-03). Lleva el saldo del sistema al valor contado
-     * y escribe un movimiento 'ajuste' por la diferencia. adjustmentId enlaza la causa.
-     */
-    public function ajustarPorConteo(
-        int $productId,
-        int $warehouseId,
-        string $countedQuantity,
-        int $adjustmentId,
-        ?int $userId = null,
-        ?string $reason = null
-    ): InventoryMovement {
-        return DB::transaction(function () use ($productId, $warehouseId, $countedQuantity, $adjustmentId, $userId, $reason) {
-            $level = $this->lockLevel($productId, $warehouseId, createIfMissing: true);
-
-            $diferencia = bcsub($countedQuantity, (string) $level->quantity, 3);  // + sobrante / - faltante
-            $level->quantity = $countedQuantity;   // el conteo físico es la verdad (BR-03)
-            $level->save();
-
-            return $this->postMovement(
-                productId:    $productId,
-                warehouseId:  $warehouseId,
-                type:         InventoryMovementType::Ajuste,
-                quantity:     $this->abs($diferencia),
-                balanceAfter: (string) $level->quantity,
-                userId:       $userId,
-                adjustmentId: $adjustmentId,
-                reason:       $reason ?? 'Ajuste por conteo físico',
-            );
-        });
-    }
-
-    // ─────── Helpers privados ───────
-
-    /**
-     * Bloquea (o crea) la fila de saldo. lockForUpdate() dentro de la transacción
-     * serializa el acceso concurrente a esta fila: aquí muere la sobreventa (RF-03-05).
-     */
-    private function lockLevel(int $productId, int $warehouseId, bool $createIfMissing = false): StockLevel
+    // Marca un conteo como justificado sin tocar el saldo.
+    public function justificarConteo(User $actor, PhysicalCount $count, string $reason): PhysicalCount
     {
-        $query = StockLevel::query()
+        return DB::transaction(function () use ($count, $reason): PhysicalCount {
+            $count = PhysicalCount::query()
+                ->whereKey($count->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $count->status->isOpen()) {
+                throw InvalidCountStateException::countNotOpen($count->id);
+            }
+
+            $count->status = PhysicalCountStatus::Justificado;
+            // notes conserva la observación original del conteo; el motivo de la
+            // justificación se antepone para dejar la traza completa.
+            $count->notes = trim($reason.' | '.(string) $count->notes);
+            $count->save();
+
+            return $count->refresh();
+        });
+    }
+
+    // Salida física de stock por traspaso (lo consume StockTransferService).
+    public function descontarPorTraspaso(User $actor, int $warehouseId, int $productId, string $quantity, int $transferId): void
+    {
+        $stock = $this->lockStock($actor->business_id, $productId, $warehouseId);
+
+        $newQuantity = bcsub((string) $stock->quantity, $quantity, self::QTY_SCALE);
+
+        $this->assertNonNegative($newQuantity, $productId, $warehouseId, $stock);
+
+        $this->writeMovement(
+            actor: $actor,
+            productId: $productId,
+            warehouseId: $warehouseId,
+            type: InventoryMovementType::Traspaso,
+            magnitude: $quantity,
+            balanceAfter: $newQuantity,
+            unitCost: (string) $stock->average_cost,
+            reason: 'Salida por traspaso #'.$transferId,
+            transferId: $transferId,
+        );
+
+        $stock->quantity = $newQuantity;
+        $stock->save();
+    }
+
+    // Entrada física de stock por traspaso en la bodega destino.
+    public function ingresarPorTraspaso(User $actor, int $warehouseId, int $productId, string $quantity, string $unitCost, int $transferId): void
+    {
+        $stock = $this->lockOrCreateStock($actor->business_id, $productId, $warehouseId);
+
+        $newQuantity = bcadd((string) $stock->quantity, $quantity, self::QTY_SCALE);
+
+        // Costo promedio ponderado: (qtyPrev*costPrev + qtyIn*costIn) / qtyNew.
+        $newAvgCost = $this->weightedAverageCost(
+            (string) $stock->quantity,
+            (string) $stock->average_cost,
+            $quantity,
+            $unitCost,
+            $newQuantity
+        );
+
+        $this->writeMovement(
+            actor: $actor,
+            productId: $productId,
+            warehouseId: $warehouseId,
+            type: InventoryMovementType::Traspaso,
+            magnitude: $quantity,
+            balanceAfter: $newQuantity,
+            unitCost: $unitCost,
+            reason: 'Entrada por traspaso #'.$transferId,
+            transferId: $transferId,
+        );
+
+        $stock->quantity = $newQuantity;
+        $stock->average_cost = $newAvgCost;
+        $stock->save();
+    }
+
+    private function lockStock(int $businessId, int $productId, int $warehouseId): StockLevel
+    {
+        $stock = StockLevel::query()
+            ->where('business_id', $businessId)
             ->where('product_id', $productId)
             ->where('warehouse_id', $warehouseId)
-            ->lockForUpdate();
+            ->lockForUpdate()
+            ->first();
 
-        $level = $query->first();
-
-        if ($level === null) {
-            if (! $createIfMissing) {
-                throw new InsufficientStockException(
-                    $this->sku($productId), $this->warehouseName($warehouseId)
-                );
-            }
-            // firstOrCreate no respeta lockForUpdate; creamos explícito y el UNIQUE(product,warehouse) protege.
-            $level = StockLevel::create([
-                'product_id'        => $productId,
-                'warehouse_id'      => $warehouseId,
-                'quantity'          => '0.000',
-                'reserved_quantity' => '0.000',
-                'average_cost'      => '0.0000',
-            ]);
+        if ($stock === null) {
+            throw InsufficientStockException::make($productId, $warehouseId, '0.000', 'N/D');
         }
 
-        return $level;
+        return $stock;
     }
 
-    /**
-     * Escribe el asiento inmutable del kardex. Si esto falla tras mutar el saldo,
-     * DB::transaction revierte TODO (ERR-03B / InventorySyncException como red de seguridad).
-     */
-    private function postMovement(
+    // Como lockStock, pero crea el saldo en cero si no existe (entradas).
+    private function lockOrCreateStock(int $businessId, int $productId, int $warehouseId): StockLevel
+    {
+        $stock = StockLevel::query()
+            ->where('business_id', $businessId)
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($stock !== null) {
+            return $stock;
+        }
+
+        // Creación por asignación directa: business_id no está en fillable.
+        $stock = new StockLevel();
+        $stock->business_id = $businessId;
+        $stock->product_id = $productId;
+        $stock->warehouse_id = $warehouseId;
+        $stock->quantity = '0.000';
+        $stock->reserved_quantity = '0.000';
+        $stock->average_cost = '0.0000';
+        $stock->save();
+
+        // Re-lee bajo lock para serializar contra otra creación concurrente.
+        return StockLevel::query()->whereKey($stock->getKey())->lockForUpdate()->firstOrFail();
+    }
+
+    //Inserta el asiento inmutable de kardex. balance_after es la foto del saldo
+    //tras el movimiento. Solo un origen (chk_movement_single_origin).
+    private function writeMovement(
+        User $actor,
         int $productId,
         int $warehouseId,
         InventoryMovementType $type,
-        string $quantity,
+        string $magnitude,
         string $balanceAfter,
-        ?string $unitCost = null,
-        ?int $userId = null,
-        ?int $stockTransferId = null,
+        ?string $unitCost,
+        string $reason,
+        ?int $transferId = null,
         ?int $adjustmentId = null,
-        ?int $purchaseOrderId = null,
-        ?int $dispatchId = null,
-        ?string $reason = null,
     ): InventoryMovement {
-        try {
-            return InventoryMovement::create([
-                'product_id'              => $productId,
-                'warehouse_id'            => $warehouseId,
-                'user_id'                 => $userId,
-                'type'                    => $type,
-                'quantity'                => $quantity,
-                'balance_after'           => $balanceAfter,
-                'unit_cost'               => $unitCost,
-                'stock_transfer_id'       => $stockTransferId,
-                'inventory_adjustment_id' => $adjustmentId,
-                'purchase_order_id'       => $purchaseOrderId,
-                'dispatch_id'             => $dispatchId,
-                'reason'                  => $reason,
-            ]);
-        } catch (Throwable $e) {
-            // El rollback lo ejecuta DB::transaction; aquí solo traducimos a la excepción de dominio.
-            throw new InventorySyncException;
+        $movement = new InventoryMovement();
+        $movement->business_id = $actor->business_id;
+        $movement->product_id = $productId;
+        $movement->warehouse_id = $warehouseId;
+        $movement->user_id = $actor->id;
+        $movement->type = $type;
+        $movement->quantity = $magnitude;
+        $movement->balance_after = $balanceAfter;
+        $movement->unit_cost = $unitCost;
+        $movement->stock_transfer_id = $transferId;
+        $movement->inventory_adjustment_id = $adjustmentId;
+        $movement->reason = $reason;
+        $movement->save();
+
+        return $movement;
+    }
+
+    private function assertNonNegative(string $newQuantity, int $productId, int $warehouseId, StockLevel $stock): void
+    {
+        if (bccomp($newQuantity, '0', self::QTY_SCALE) < 0) {
+            throw InsufficientStockException::make(
+                $productId,
+                $warehouseId,
+                $stock->available,
+                $this->absolute(bcsub($newQuantity, (string) $stock->quantity, self::QTY_SCALE))
+            );
         }
     }
 
-    private function abs(string $decimal): string
+    private function weightedAverageCost(string $qtyPrev, string $costPrev, string $qtyIn, string $costIn, string $qtyNew): string
     {
-        return bccomp($decimal, '0', 3) < 0 ? bcmul($decimal, '-1', 3) : $decimal;
+        if (bccomp($qtyNew, '0', self::QTY_SCALE) === 0) {
+            return $costPrev;
+        }
+
+        $valuePrev = bcmul($qtyPrev, $costPrev, self::COST_SCALE);
+        $valueIn = bcmul($qtyIn, $costIn, self::COST_SCALE);
+        $total = bcadd($valuePrev, $valueIn, self::COST_SCALE);
+
+        return bcdiv($total, $qtyNew, self::COST_SCALE);
     }
 
-    private function sku(int $productId): string
+    private function absolute(string $value): string
     {
-        return (string) (Product::query()->whereKey($productId)->value('sku') ?? $productId);
-    }
-
-    private function warehouseName(int $warehouseId): string
-    {
-        return (string) (Warehouse::query()->whereKey($warehouseId)->value('name') ?? $warehouseId);
+        return bccomp($value, '0', self::QTY_SCALE) < 0
+            ? bcmul($value, '-1', self::QTY_SCALE)
+            : $value;
     }
 }

@@ -1,20 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Warehouse extends Model
+
+final class Warehouse extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
-        'branch_id',   // validar mismo tenant en FormRequest
+        'branch_id',
         'name',
         'is_default',
         'is_active',
@@ -28,8 +34,6 @@ class Warehouse extends Model
         ];
     }
 
-    // business() del trait
-
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
@@ -40,28 +44,22 @@ class Warehouse extends Model
         return $this->hasMany(StockLevel::class);
     }
 
-    public function movements(): HasMany
+    public function scopeActive(Builder $query): Builder
     {
-        return $this->hasMany(InventoryMovement::class);
+        return $query->where('is_active', true);
     }
 
-    public function physicalCounts(): HasMany
+    public function scopeDefault(Builder $query): Builder
     {
-        return $this->hasMany(PhysicalCount::class);
+        return $query->where('is_default', true);
     }
 
-    public function adjustments(): HasMany
+    // True si tiene saldos con existencia o reserva: bloquea el borrado físico.
+    public function hasStock(): bool
     {
-        return $this->hasMany(InventoryAdjustment::class);
-    }
-
-    public function outgoingTransfers(): HasMany
-    {
-        return $this->hasMany(StockTransfer::class, 'from_warehouse_id');
-    }
-
-    public function incomingTransfers(): HasMany
-    {
-        return $this->hasMany(StockTransfer::class, 'to_warehouse_id');
+        return $this->stockLevels()
+            ->where(fn (Builder $q) => $q->where('quantity', '>', 0)->orWhere('reserved_quantity', '>', 0))
+            ->exists();
     }
 }
+
