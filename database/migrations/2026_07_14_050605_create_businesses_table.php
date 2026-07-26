@@ -28,7 +28,6 @@ return new class extends Migration
             $table->index('deleted_at');
         });
     }
-
     /**
      * Reverse the migrations.
      */
