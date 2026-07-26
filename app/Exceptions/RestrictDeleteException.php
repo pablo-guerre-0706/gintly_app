@@ -1,20 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
-class RestrictDeleteException extends Exception
+
+// ERR-02B · HTTP 409. Un maestro con dependencias no admite borrado físico.
+final class RestrictDeleteException extends RuntimeException
 {
-    public function __construct(
-        string $message = 'No se puede eliminar: el registro tiene dependencias. Use la desactivación lógica.'
-    ) {
-        parent::__construct($message);
-    }
-
-    public function render(): JsonResponse
+    public static function make(string $entidad, string $dependencia): self
     {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'RESTRICT_DELETE'], 409);
+        return new self(
+            "No es posible eliminar {$entidad}: existen {$dependencia} que lo referencian."
+        );
     }
 }
+

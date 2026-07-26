@@ -5,8 +5,15 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
+use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ProductRecipeController;
+use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Models\Product;
+use App\Models\ProductRecipe;
 use Illuminate\Support\Facades\Route;
 
 
@@ -36,6 +43,32 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/business', [BusinessController::class, 'show']);
         Route::put('/business', [BusinessController::class, 'update']);
+
+
+        // MOD-02 · Catálogo y Datos Maestros //
+        // Los parámetros los genera apiResource, coinciden con los routeId() de los FormRequest.
+
+        Route::model('compound', Product::class);
+        Route::model('line', ProductRecipe::class);
+        
+        Route::apiResource('categories', CategoryController::class);
+        Route::apiResource('brands', BrandController::class);     
+
+        // units: parámetro {unit} explícito para casar con route('unit').
+        Route::apiResource('units', UnitController::class)->parameters(['units' => 'unit']);
+
+        Route::apiResource('products', ProductController::class);
+
+        // Receta como sub-recurso del compuesto. scopeBindings() obliga a que {line}
+        Route::prefix('products/{compound}/recipe')
+            ->scopeBindings()
+            ->group(function (): void {
+                Route::get('/', [ProductRecipeController::class, 'index']);
+                Route::post('/', [ProductRecipeController::class, 'store']);
+                Route::put('/{line}', [ProductRecipeController::class, 'update']);
+                Route::delete('/{line}', [ProductRecipeController::class, 'destroy']);
+            });
+
     });
 });
 

@@ -1,23 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\ProductType;
-use App\Exceptions\ImmutableSkuException;
 use App\Models\Concerns\BelongsToBusiness;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Product extends Model
+
+// Ítem de catálogo. type unifica simple/compound/service.
+final class Product extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
-        'category_id',      // validar tenant en FormRequest
+        'category_id',
         'brand_id',
         'unit_id',
         'sku',
@@ -34,7 +40,7 @@ class Product extends Model
     {
         return [
             'type'             => ProductType::class,
-            'sale_price'       => 'decimal:2',   // string: precisión monetaria
+            'sale_price'       => 'decimal:2',
             'cost'             => 'decimal:2',
             'tracks_inventory' => 'boolean',
             'is_taxable'       => 'boolean',
@@ -42,34 +48,15 @@ class Product extends Model
         ];
     }
 
+    // Coerción universal: un servicio nunca rastrea inventario, venga la
     protected static function booted(): void
     {
-        // RF-02-04 (FIX auditoría #3): un servicio NUNCA rastrea inventario.
-        // Comparación contra la INSTANCIA del enum, no contra el string.
         static::saving(function (Product $product): void {
             if ($product->type === ProductType::Service) {
                 $product->tracks_inventory = false;
             }
         });
-
-        // RF-02-04: SKU inmutable una vez el producto tenga transacciones.
-        // Hook activo; hasTransactions() se cablea en MOD-03/MOD-07.
-        static::updating(function (Product $product): void {
-            if ($product->isDirty('sku') && $product->hasTransactions()) {
-                throw new ImmutableSkuException;
-            }
-        });
     }
-
-    public function hasTransactions(): bool
-    {
-        return $this->inventoryMovements()->exists()
-            || $this->saleItems()->exists()
-            || $this->purchaseOrderItems()->exists();
-    }
-
-
-    // business() del trait
 
     public function category(): BelongsTo
     {
@@ -86,37 +73,50 @@ class Product extends Model
         return $this->belongsTo(UnitOfMeasure::class, 'unit_id');
     }
 
-    /** Líneas de receta donde ESTE producto es el compuesto. */
-    public function recipeItems(): HasMany
+    // Líneas de receta donde este producto es el compuesto (lo que se arma).
+    public function recipeLines(): HasMany
     {
         return $this->hasMany(ProductRecipe::class, 'compound_id');
     }
 
-    /** Insumos que lo componen (azúcar sobre la tabla puente). */
+    // Líneas donde este producto figura como insumo de otros compuestos.
+    public function usedInRecipes(): HasMany
+    {
+        return $this->hasMany(ProductRecipe::class, 'ingredient_id');
+    }
+
+    // Insumos de este compuesto, vía tabla puente product_recipes.
     public function ingredients(): BelongsToMany
     {
         return $this->belongsToMany(self::class, 'product_recipes', 'compound_id', 'ingredient_id')
             ->withPivot(['quantity', 'unit_id']);
     }
 
-    /** Recetas donde ESTE producto se usa como insumo. */
-    public function usedAsIngredientIn(): HasMany
+    public function scopeActive(Builder $query): Builder
     {
-        return $this->hasMany(ProductRecipe::class, 'ingredient_id');
+        return $query->where('is_active', true);
     }
 
-    public function inventoryMovements(): HasMany
-    { 
-        return $this->hasMany(InventoryMovement::class); 
-    }
-
-    public function saleItems(): HasMany
-    { 
-        return $this->hasMany(SaleItem::class); 
-    }
-
-    public function purchaseOrderItems(): HasMany
+    public function scopeOfType(Builder $query, ProductType $type): Builder
     {
-        return $this->hasMany(PurchaseOrderItem::class);
+        return $query->where('type', $type->value);
+    }
+
+    /**
+     * H-15 · Verdadero si el SKU ya no puede cambiar por existir transacciones.
+     *
+     * En MOD-02 ninguna de esas tablas transaccionales existe todavía, así que
+     * este método devuelve false. Los checks se activan (parche P4) al cerrar
+     * MOD-07, descomentando las tres comprobaciones. Se deja el andamiaje
+     * explícito para que el guardián del FormRequest ya lo invoque sin cambios.
+     */
+    public function hasTransactions(): bool
+    {
+        // Activar en P4 (cierre de MOD-07):
+        // return $this->inventoryMovements()->exists()
+        //     || $this->saleItems()->exists()
+        //     || $this->purchaseOrderItems()->exists();
+
+        return false;
     }
 }

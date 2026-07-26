@@ -1,19 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-use App\Exceptions\CyclicReferenceException;
-use App\Exceptions\RestrictDeleteException;
 use App\Models\Concerns\BelongsToBusiness;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Category extends Model
+
+final class Category extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'parent_id',
@@ -23,40 +27,10 @@ class Category extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+        ];
     }
-
-    protected static function booted(): void
-    {
-        // anti-ciclo. El padre no puede ser el propio nodo ni un descendiente.
-        static::saving(function (Category $category): void {
-            if ($category->parent_id === null) {
-                return;
-            }
-
-            $selfId   = $category->getKey();       // null si es nuevo → no hay ciclo posible
-            $ancestor = (int) $category->parent_id;
-            $guard    = 0;                          // cinturón anti-bucle infinito
-
-            while ($ancestor !== 0 && $guard++ < 1000) {
-                if ($selfId !== null && $ancestor === (int) $selfId) {
-                    throw new CyclicReferenceException('Una categoría no puede ser descendiente de sí misma.');
-                }
-                // Subimos por la cadena del padre propuesto. value() respeta el scope de tenant.
-                $ancestor = (int) static::query()->whereKey($ancestor)->value('parent_id');
-            }
-        });
-
-        // ERR-02B: bloqueo amigable del borrado fisico con dependencias (el soft-delete siempre pasa).
-        static::deleting(function (Category $category): void {
-            if ($category->isForceDeleting()
-                && ($category->children()->exists() || $category->products()->exists())) {
-                throw new RestrictDeleteException('La categoría tiene subcategorías o productos. Desactívela en su lugar.');
-            }
-        });
-    }
-
-    // business() proviene del trait
 
     public function parent(): BelongsTo
     {
@@ -71,5 +45,24 @@ class Category extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    // Categorías activas.
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    // Categorías raíz (sin padre): punto de entrada del modo árbol.
+    public function scopeRoots(Builder $query): Builder
+    {
+        return $query->whereNull('parent_id');
+    }
+
+    //True si la categoría tiene subcategorías o productos: bloquea el
+    //force-delete. El soft-delete siempre se permite.
+    public function hasDependents(): bool
+    {
+        return $this->children()->exists() || $this->products()->exists();
     }
 }
