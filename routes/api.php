@@ -2,19 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AccountPayableController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
+use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
+use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WarehouseController;
@@ -110,6 +114,38 @@ Route::prefix('v1')->group(function (): void {
         Route::model('physical_count', \App\Models\PhysicalCount::class);
         Route::model('stock_transfer', \App\Models\StockTransfer::class);
         Route::model('inventory_adjustment', \App\Models\InventoryAdjustment::class);
+
+        //MOD-04 - Proveedores, Compras y Recepcion
+        Route::apiResource('suppliers', SupplierController::class)
+            ->parameters(['suppliers' => 'supplier']);
+        Route::post('suppliers/{supplier}/approve', [SupplierController::class, 'approve']);
+        Route::post('suppliers/{supplier}/suspend', [SupplierController::class, 'suspend']);
+
+        // Órdenes de compra — CRUD parcial + transiciones.
+        Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::get('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'show']);
+        Route::put('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'update']);
+        Route::post('purchase-orders/{purchase_order}/issue', [PurchaseOrderController::class, 'issue']);
+        Route::post('purchase-orders/{purchase_order}/cancel', [PurchaseOrderController::class, 'cancel']);
+
+        // Recepciones — registrar (3-Way Match), ver, evidencia, resolver (ROL-01).
+        Route::get('goods-receipts', [GoodsReceiptController::class, 'index']);
+        Route::post('goods-receipts', [GoodsReceiptController::class, 'store']);
+        Route::get('goods-receipts/{goods_receipt}', [GoodsReceiptController::class, 'show']);
+        Route::get('goods-receipts/{goods_receipt}/items', [GoodsReceiptController::class, 'items']);
+        Route::post('goods-receipts/{goods_receipt}/resolve', [GoodsReceiptController::class, 'resolve']);
+
+        // Cuentas por pagar — listar, ver, pagar, descongelar (ROL-01).
+        Route::get('accounts-payable', [AccountPayableController::class, 'index']);
+        Route::get('accounts-payable/{account_payable}', [AccountPayableController::class, 'show']);
+        Route::post('accounts-payable/{account_payable}/pay', [AccountPayableController::class, 'pay']);
+        Route::post('accounts-payable/{account_payable}/unblock', [AccountPayableController::class, 'unblock']);
+
+        // Binding de modelos para parámetros no convencionales.
+        Route::model('purchase_order', \App\Models\PurchaseOrder::class);
+        Route::model('goods_receipt', \App\Models\GoodsReceipt::class);
+        Route::model('account_payable', \App\Models\AccountPayable::class);
 
     });
 });

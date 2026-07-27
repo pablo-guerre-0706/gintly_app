@@ -6,9 +6,15 @@ use App\Http\Middleware\SetPermissionsTeamId;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use App\Exceptions\InvalidPurchaseStateException;
+use App\Exceptions\PurchaseMatchException;
+use App\Exceptions\SupplierNotApprovedException;
+use App\Http\Resources\GoodsReceiptResource;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -35,5 +41,25 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (SupplierNotApprovedException $e, Request $request) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'SUPPLIER_NOT_APPROVED',
+            ], 422);
+        });
+
+        $exceptions->render(function (PurchaseMatchException $e, Request $request) {
+            // D-10 · 409 CON el recurso creado. La evidencia persistió; el cliente
+            // recibe el goods_receipt completo para que ROL-01 lo resuelva.
+            return response()->json([
+                'message'       => $e->getMessage(),
+                'code'          => 'PURCHASE_MATCH',
+                'goods_receipt' => (new GoodsReceiptResource($e->receipt->load(['items', 'accountPayable'])))->toArray($request),
+            ], 409);
+        });
+
+        $exceptions->render(function (InvalidPurchaseStateException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        });
+        
     })->create();

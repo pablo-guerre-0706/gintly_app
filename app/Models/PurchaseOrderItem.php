@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
@@ -7,11 +9,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class PurchaseOrderItem extends Model
+final class PurchaseOrderItem extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
-    // Línea de documento: sin columnas de tiempo.
     public $timestamps = false;
 
     protected $fillable = [
@@ -19,7 +21,7 @@ class PurchaseOrderItem extends Model
         'product_id',
         'ordered_quantity',
         'received_quantity',
-        'agreed_unit_cost',   // pilar del 3-Way Match (costo pactado)
+        'agreed_unit_cost',
         'line_total',
     ];
 
@@ -33,20 +35,6 @@ class PurchaseOrderItem extends Model
         ];
     }
 
-    protected static function booted(): void
-    {
-        // line_total siempre coherente: ordered_quantity * agreed_unit_cost (bcmath, sin float).
-        static::saving(function (PurchaseOrderItem $item): void {
-            $item->line_total = bcmul(
-                (string) $item->ordered_quantity,
-                (string) $item->agreed_unit_cost,
-                2
-            );
-        });
-    }
-
-    // business() del trait
-
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
@@ -55,5 +43,17 @@ class PurchaseOrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    // Cantidad pendiente de recibir = ordenada − acumulada recibida.
+    public function pendingQuantity(): string
+    {
+        return bcsub((string) $this->ordered_quantity, (string) $this->received_quantity, 3);
+    }
+
+    // True si la línea ya recibió todo lo ordenado (acumulado >= ordenado).
+    public function isFullyReceived(): bool
+    {
+        return bccomp((string) $this->received_quantity, (string) $this->ordered_quantity, 3) >= 0;
     }
 }

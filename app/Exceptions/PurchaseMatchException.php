@@ -1,20 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use App\Models\GoodsReceipt;
+use RuntimeException;
 
-class PurchaseMatchException extends Exception
+
+// HTTP 409. El 3-Way Match halló discrepancia.
+final class PurchaseMatchException extends RuntimeException
 {
     public function __construct(
-        string $message = 'Discrepancia en 3-Way Match: ingreso detenido y CxP congelada. Requiere resolución de ROL-01.'
+        public readonly GoodsReceipt $receipt,
+        string $message = 'La recepción presenta discrepancias en el cruce de tres vías.'
     ) {
         parent::__construct($message);
-    }
-
-    public function render(): JsonResponse
-    {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'PURCHASE_MATCH'], 409);
     }
 }

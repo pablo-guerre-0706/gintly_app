@@ -320,4 +320,45 @@ final class InventoryService
             ? bcmul($value, '-1', self::QTY_SCALE)
             : $value;
     }
+
+    // MOD-04. Ingreso a inventario por recepción de compra conforme.
+    public function ingresarPorCompra(
+        User $actor,
+        int $warehouseId,
+        int $productId,
+        string $quantity,
+        string $unitCost,
+        int $purchaseOrderId
+    ): InventoryMovement {
+        $stock = $this->lockOrCreateStock($actor->business_id, $productId, $warehouseId);
+
+        $newQuantity = bcadd((string) $stock->quantity, $quantity, self::QTY_SCALE);
+
+        $newAvgCost = $this->weightedAverageCost(
+            (string) $stock->quantity,
+            (string) $stock->average_cost,
+            $quantity,
+            $unitCost,
+            $newQuantity
+        );
+
+        $movement = new InventoryMovement();
+        $movement->business_id = $actor->business_id;
+        $movement->product_id = $productId;
+        $movement->warehouse_id = $warehouseId;
+        $movement->user_id = $actor->id;
+        $movement->type = InventoryMovementType::Entrada;
+        $movement->quantity = $quantity;
+        $movement->balance_after = $newQuantity;
+        $movement->unit_cost = $unitCost;
+        $movement->purchase_order_id = $purchaseOrderId;
+        $movement->reason = 'Entrada por recepción de compra (orden #'.$purchaseOrderId.')';
+        $movement->save();
+
+        $stock->quantity = $newQuantity;
+        $stock->average_cost = $newAvgCost;
+        $stock->save();
+
+        return $movement;
+    }
 }

@@ -1,20 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
-class SupplierNotApprovedException extends Exception
+
+// ERR-04B · HTTP 422. Se intentó crear o emitir una orden hacia un proveedor no aprobado.
+final class SupplierNotApprovedException extends RuntimeException
 {
-    public function __construct(
-        string $message = 'El proveedor no está aprobado: no admite órdenes de compra.'
-    ) {
-        parent::__construct($message);
-    }
-
-    public function render(): JsonResponse
+    public static function make(int $supplierId): self
     {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'SUPPLIER_NOT_APPROVED'], 422);
+        return new self("El proveedor {$supplierId} no está aprobado y no puede recibir órdenes de compra.");
     }
 }

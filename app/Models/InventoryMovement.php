@@ -30,6 +30,7 @@ final class InventoryMovement extends Model
         'unit_cost',
         'stock_transfer_id',
         'inventory_adjustment_id',
+        'purchase_order_id',
         'reason',
     ];
 
@@ -69,9 +70,13 @@ final class InventoryMovement extends Model
         return $this->belongsTo(InventoryAdjustment::class);
     }
 
-    // purchaseOrder(): se activa al cerrar MOD-04 (parche P1).
-    // dispatch():      se activa al cerrar MOD-09 (parche P9).
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 
+    // dispatch(): se activa al cerrar MOD-09 (parche P9).
+    
     public function scopeOfType(Builder $query, InventoryMovementType $type): Builder
     {
         return $query->where('type', $type->value);

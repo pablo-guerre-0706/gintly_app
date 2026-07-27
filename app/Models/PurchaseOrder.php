@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\PurchaseOrderStatus;
@@ -10,17 +12,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class PurchaseOrder extends Model
+final class PurchaseOrder extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'branch_id',
         'supplier_id',
-        'user_id',
         'code',
         'status',
-        'expected_total',   // recalculado por el Service desde los ítems (vacío #7)
+        'expected_total',
         'ordered_at',
         'notes',
     ];
@@ -34,16 +37,14 @@ class PurchaseOrder extends Model
         ];
     }
 
-    // business() del trait
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
-    }
-
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class);
     }
 
     public function user(): BelongsTo
@@ -66,8 +67,8 @@ class PurchaseOrder extends Model
         return $this->hasMany(AccountPayable::class);
     }
 
-    public function movements(): HasMany
+    public function canReceive(): bool
     {
-        return $this->hasMany(InventoryMovement::class);
+        return $this->status->canReceive();
     }
 }

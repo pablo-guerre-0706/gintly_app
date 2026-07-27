@@ -1,17 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
+use App\Models\Concerns\Immutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class GoodsReceiptItem extends Model
-{
-    use HasFactory, BelongsToBusiness;
 
-    public $timestamps = false;   // línea de documento (evidencia de recepción)
+final class GoodsReceiptItem extends Model
+{
+    use BelongsToBusiness;
+    use HasFactory;
+    use Immutable;
+
+    public $timestamps = false;
 
     protected $fillable = [
         'goods_receipt_id',
@@ -32,8 +38,6 @@ class GoodsReceiptItem extends Model
             'matched'            => 'boolean',
         ];
     }
-
-    // business() del trait
 
     public function goodsReceipt(): BelongsTo
     {

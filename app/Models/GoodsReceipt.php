@@ -1,22 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\GoodsReceiptMatchStatus;
 use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class GoodsReceipt extends Model
+
+final class GoodsReceipt extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
     protected $fillable = [
         'purchase_order_id',
         'warehouse_id',
-        'user_id',
         'supplier_invoice_number',
         'supplier_invoice_total',
         'match_status',
@@ -32,8 +35,6 @@ class GoodsReceipt extends Model
             'received_at'            => 'datetime',
         ];
     }
-
-    // business() del trait
 
     public function purchaseOrder(): BelongsTo
     {
@@ -53,5 +54,10 @@ class GoodsReceipt extends Model
     public function items(): HasMany
     {
         return $this->hasMany(GoodsReceiptItem::class);
+    }
+
+    public function accountPayable(): BelongsTo
+    {
+        return $this->belongsTo(AccountPayable::class, 'id', 'goods_receipt_id');
     }
 }

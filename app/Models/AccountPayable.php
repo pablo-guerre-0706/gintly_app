@@ -1,17 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\AccountPayableStatus;
 use App\Models\Concerns\BelongsToBusiness;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class AccountPayable extends Model
+
+final class AccountPayable extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
     protected $fillable = [
         'supplier_id',
@@ -21,7 +25,6 @@ class AccountPayable extends Model
         'paid_amount',
         'status',
         'due_date',
-        'unblocked_by',   // se puebla SOLO al desbloquear (ROL-01, vía Service)
     ];
 
     protected function casts(): array
@@ -33,16 +36,6 @@ class AccountPayable extends Model
             'due_date'     => 'date',
         ];
     }
-
-    /** Saldo pendiente de pago al proveedor = total - pagado (bcmath). */
-    protected function balance(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): string => bcsub((string) $this->total_amount, (string) $this->paid_amount, 2),
-        );
-    }
-
-    // business() del trait
 
     public function supplier(): BelongsTo
     {
@@ -62,5 +55,34 @@ class AccountPayable extends Model
     public function unblockedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'unblocked_by');
+    }
+
+    // Saldo real = total − abonado. bcmath escala 2. Nunca float.
+    public function getBalanceAttribute(): string
+    {
+        return bcsub((string) $this->total_amount, (string) $this->paid_amount, 2);
+    }
+
+    public function isBlocked(): bool
+    {
+        return $this->status->isBlocked();
+    }
+
+    // True si venció: due_date en el pasado y aún queda saldo.
+    public function isOverdue(): bool
+    {
+        if ($this->due_date === null || $this->status->isSettled()) {
+            return false;
+        }
+
+        return $this->due_date->isPast() && bccomp($this->balance, '0', 2) > 0;
+    }
+
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->whereNotNull('due_date')
+            ->whereDate('due_date', '<', now())
+            ->whereColumn('paid_amount', '<', 'total_amount')
+            ->where('status', '!=', AccountPayableStatus::Pagada->value);
     }
 }
