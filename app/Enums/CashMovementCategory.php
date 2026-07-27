@@ -1,7 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
+/**
+ * Categoría del movimiento de caja (cash_movements.category).
+ */
 enum CashMovementCategory: string
 {
     case Venta            = 'venta';
@@ -9,26 +14,46 @@ enum CashMovementCategory: string
     case Retiro           = 'retiro';
     case Ajuste           = 'ajuste';
     case FondoInicial     = 'fondo_inicial';
-    case CobroCredito     = 'cobro_credito';   // requerido por MOD-08
+    case CobroCredito     = 'cobro_credito';
 
-    /** El fondo inicial ya está en opening_amount: se excluye del esperado (evita doble conteo). */
-    public function countsInExpected(): bool
+    public function label(): string
     {
-        return $this !== self::FondoInicial;
+        return match ($this) {
+            self::Venta            => 'Venta',
+            self::EgresoAutorizado => 'Egreso autorizado',
+            self::Retiro           => 'Retiro',
+            self::Ajuste           => 'Ajuste',
+            self::FondoInicial     => 'Fondo inicial',
+            self::CobroCredito     => 'Cobro de crédito',
+        };
     }
 
+    // Type obligatorio para esta categoría.
+    public function forcedType(): ?CashMovementType
+    {
+        return match ($this) {
+            self::Venta, self::CobroCredito, self::FondoInicial => CashMovementType::Ingreso,
+            self::EgresoAutorizado, self::Retiro               => CashMovementType::Egreso,
+            self::Ajuste                                        => null,
+        };
+    }
+
+    // Solo el egreso autorizado exige registro del autorizante (ROL-02).
     public function requiresAuthorization(): bool
     {
         return $this === self::EgresoAutorizado;
     }
 
-    /** Tipo forzado por la categoría (null = ajuste, admite ambos). Coherencia de dominio (#5). */
-    public function forcedType(): ?CashMovementType
+    public function countsInExpected(): bool
     {
-        return match ($this) {
-            self::Venta, self::FondoInicial, self::CobroCredito => CashMovementType::Ingreso,
-            self::EgresoAutorizado, self::Retiro                => CashMovementType::Egreso,
-            self::Ajuste                                        => null,
-        };
+        return $this !== self::FondoInicial;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
     }
 }

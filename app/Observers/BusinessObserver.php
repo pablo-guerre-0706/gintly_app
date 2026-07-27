@@ -1,66 +1,147 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Enums\DocumentType;
+use App\Models\AnomalyRule;
 use App\Models\Business;
 use App\Models\Customer;
-use App\Models\AnomalyRule;
+use App\Models\DocumentSequence;
+use Illuminate\Support\Facades\DB;
 
-class BusinessObserver
+
+final class BusinessObserver
 {
-    /**
-     * Se dispara automáticamente DESPUÉS de que un negocio
-     * se guarda en la base de datos.
-     */
+    // Se dispara automaticamente despues que un negocio se guarda en la BD.
     public function created(Business $business): void
     {
-        // MOD-05: cliente genérico "Consumidor Final" (uno por negocio, protegido).
-        $exists = Customer::query()
-            ->where('business_id', $business->id)
-            ->where('is_generic', true)
-            ->exists();
+        DB::transaction(function () use ($business): void {
+            $this->seedGenericCustomer($business);
+            $this->seedDocumentSequences($business);
+            $this->seedAnomalyRules($business);
+        });
+    }
 
-        if (! $exists) {
-            $generic = new Customer([
+    // Cliente genérico "Consumidor Final": uno por negocio, protegido.
+    private function seedGenericCustomer(Business $business): void
+    {
+        Customer::query()->firstOrCreate(
+            [
+                'business_id' => $business->id,
+                'is_generic'  => true,
+            ],
+            [
                 'name'          => 'Consumidor Final',
                 'document_type' => DocumentType::Generico,
+                'document_number' => null,
                 'is_active'     => true,
-            ]);
-            $generic->business_id = $business->id;  // atributos protegidos: asignación directa
-            $generic->is_generic  = true;
-            $generic->save();
+            ]
+        );
+    }
+
+    // Secuencia de documentos por defecto para el negocio
+    private function seedDocumentSequences(Business $business): void
+    {
+        if (! class_exists(DocumentSequence::class)) {
+            return;
         }
 
-        foreach (['invoice' => 'F-', 'credit_note' => 'NC-'] as $type => $prefix) {
-            $exists = \App\Models\DocumentSequence::query()
-                ->where('business_id', $business->id)->where('document_type', $type)->exists();
-            if (! $exists) {
-                $seq = new \App\Models\DocumentSequence(['document_type' => $type, 'prefix' => $prefix, 'next_number' => 1]);
-                $seq->business_id = $business->id;
-                $seq->save();
-            }
-        }
-
-        // TODO (MOD-11): sembrar el catálogo base de anomaly_rules (6 reglas del BRD).
-        // app/Observers/BusinessObserver.php — dentro de created(), tras el Consumidor Final y las secuencias:
-        $reglas = [
-            ['code' => 'descuadre_caja',      'name' => 'Descuadre de caja',         'threshold_type' => 'monto',      'default_severity' => 'advertencia', 'threshold_value' => 50.00],
-            ['code' => 'faltante_inventario', 'name' => 'Faltante de inventario',    'threshold_type' => 'porcentaje', 'default_severity' => 'advertencia', 'threshold_value' => 2.00],
-            ['code' => 'discrepancia_3way',   'name' => 'Discrepancia 3-way match',  'threshold_type' => 'monto',      'default_severity' => 'critica',     'threshold_value' => 0.00],
-            ['code' => 'cuenta_vencida',      'name' => 'Cuenta por cobrar vencida', 'threshold_type' => 'tiempo',     'default_severity' => 'advertencia', 'threshold_value' => null],
-            ['code' => 'omision_registro',    'name' => 'Omisión de registro',       'threshold_type' => 'cantidad',   'default_severity' => 'advertencia', 'threshold_value' => null],
-            ['code' => 'venta_sin_sesion',    'name' => 'Venta sin sesión de caja',  'threshold_type' => 'cantidad',   'default_severity' => 'critica',     'threshold_value' => 0.00],
+        $sequences = [
+            'invoice'     => 'F-',
+            'credit_note' => 'NC-',
         ];
 
-        foreach ($reglas as $r) {
-            $exists = \App\Models\AnomalyRule::query()
-                ->where('business_id', $business->id)->where('code', $r['code'])->exists();
-            if (! $exists) {
-                $rule = new \App\Models\AnomalyRule($r);
-                $rule->business_id = $business->id;
-                $rule->save();
-            }
+        foreach ($sequences as $documentType => $prefix) {
+            DocumentSequence::query()->firstOrCreate(
+                [
+                    'business_id'   => $business->id,
+                    'document_type' => $documentType,
+                ],
+                [
+                    'prefix'      => $prefix,
+                    'next_number' => 1,
+                ]
+            );
         }
+    }
+
+    /**
+     * Catálogo base de 6 reglas de anomalía.
+     * @return void
+     */
+    private function seedAnomalyRules(Business $business): void
+    {
+        if (! class_exists(AnomalyRule::class)) {
+            return;
+        }
+
+        foreach ($this->anomalyRuleCatalog() as $rule) {
+            AnomalyRule::query()->firstOrCreate(
+                [
+                    'business_id' => $business->id,
+                    'code'        => $rule['code'],
+                ],
+                [
+                    'name'             => $rule['name'],
+                    'threshold_type'   => $rule['threshold_type'],
+                    'default_severity' => $rule['default_severity'],
+                    'threshold_value'  => $rule['threshold_value'],
+                ]
+            );
+        }
+    }
+
+    /**
+     * Catálogo canónico de reglas de anomalía.
+     * @return array<int, array{code: string, name: string, threshold_type: string, default_severity: string, threshold_value: float|null}>
+     */
+    private function anomalyRuleCatalog(): array
+    {
+        return [
+            [
+                'code'             => 'descuadre_caja',
+                'name'             => 'Descuadre de caja',
+                'threshold_type'   => 'monto',
+                'default_severity' => 'advertencia',
+                'threshold_value'  => 50.00,
+            ],
+            [
+                'code'             => 'faltante_inventario',
+                'name'             => 'Faltante de inventario',
+                'threshold_type'   => 'porcentaje',
+                'default_severity' => 'advertencia',
+                'threshold_value'  => 2.00,
+            ],
+            [
+                'code'             => 'discrepancia_3way',
+                'name'             => 'Discrepancia 3-way match',
+                'threshold_type'   => 'monto',
+                'default_severity' => 'critica',
+                'threshold_value'  => 0.00,
+            ],
+            [
+                'code'             => 'cuenta_vencida',
+                'name'             => 'Cuenta por cobrar vencida',
+                'threshold_type'   => 'tiempo',
+                'default_severity' => 'advertencia',
+                'threshold_value'  => null,
+            ],
+            [
+                'code'             => 'omision_registro',
+                'name'             => 'Omisión de registro',
+                'threshold_type'   => 'cantidad',
+                'default_severity' => 'advertencia',
+                'threshold_value'  => null,
+            ],
+            [
+                'code'             => 'venta_sin_sesion',
+                'name'             => 'Venta sin sesión de caja',
+                'threshold_type'   => 'cantidad',
+                'default_severity' => 'critica',
+                'threshold_value'  => 0.00,
+            ],
+        ];
     }
 }

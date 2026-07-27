@@ -80,6 +80,9 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(PurchaseOrder::class, PurchaseOrderPolicy::class);
         Gate::policy(GoodsReceipt::class, GoodsReceiptPolicy::class);
         Gate::policy(AccountPayable::class, AccountPayablePolicy::class);
+        // MOD-05
+        Gate::policy(Customer::class, CustomerPolicy::class);
+        Gate::policy(CustomerAddress::class, CustomerAddressPolicy::class);
     }
 
     // Bloqueo por intentos fallidos mediante limitación de tasa.

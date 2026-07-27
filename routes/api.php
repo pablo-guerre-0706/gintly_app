@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\CustomerAddressController;
+use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
@@ -146,6 +148,24 @@ Route::prefix('v1')->group(function (): void {
         Route::model('purchase_order', \App\Models\PurchaseOrder::class);
         Route::model('goods_receipt', \App\Models\GoodsReceipt::class);
         Route::model('account_payable', \App\Models\AccountPayable::class);
+
+        // MOD-05 - Clientes
+        Route::apiResource('customers', CustomerController::class)
+            ->parameters(['customers' => 'customer']);
+
+        // Direcciones — sub-recurso del cliente con scopeBindings (doble binding H-47).
+        Route::prefix('customers/{customer}/addresses')
+            ->scopeBindings()
+            ->group(function (): void {
+                Route::get('/', [CustomerAddressController::class, 'index']);
+                Route::post('/', [CustomerAddressController::class, 'store']);
+                Route::put('/{address}', [CustomerAddressController::class, 'update']);
+                Route::delete('/{address}', [CustomerAddressController::class, 'destroy']);
+            });
+
+        // Binding de modelos.
+        Route::model('customer', \App\Models\Customer::class);
+        Route::model('address', \App\Models\CustomerAddress::class);
 
     });
 });

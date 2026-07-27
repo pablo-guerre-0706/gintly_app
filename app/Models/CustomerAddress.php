@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
@@ -7,12 +9,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CustomerAddress extends Model
+
+// Dirección de cliente.
+final class CustomerAddress extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
     protected $fillable = [
-        'customer_id',   // validar mismo tenant en FormRequest
+        'customer_id',
         'label',
         'address_line',
         'reference',
@@ -21,13 +26,14 @@ class CustomerAddress extends Model
 
     protected function casts(): array
     {
-        return ['is_default' => 'boolean'];
+        return [
+            'is_default' => 'boolean',
+        ];
     }
-
-    // business() del trait
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 }
+

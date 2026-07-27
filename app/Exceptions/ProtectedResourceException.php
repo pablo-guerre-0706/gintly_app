@@ -1,19 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
-class ProtectedResourceException extends Exception
+
+// PROTECTED_RESOURCE · HTTP 403. Se intentó modificar o eliminar un recurso protegido del sistema.
+final class ProtectedResourceException extends RuntimeException
 {
-    public function __construct(string $message = 'Este recurso está protegido y no puede modificarse ni eliminarse.')
+    public static function customer(): self
     {
-        parent::__construct($message);
-    }
-
-    public function render(): JsonResponse
-    {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'PROTECTED_RESOURCE'], 403);
+        return new self('El "Consumidor Final" es un cliente protegido del sistema y no puede modificarse ni eliminarse.');
     }
 }

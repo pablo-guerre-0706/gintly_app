@@ -1,19 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
-class CustomerHasReceivablesException extends Exception
+// CUSTOMER_HAS_RECEIVABLES · HTTP 422. Intentó dar de baja un cliente con cuentas por cobrar pendientes.
+final class CustomerHasReceivablesException extends RuntimeException
 {
-    public function __construct(string $message = 'El cliente tiene cuentas por cobrar pendientes: no puede desactivarse.')
+    public static function make(int $customerId): self
     {
-        parent::__construct($message);
-    }
-
-    public function render(): JsonResponse
-    {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'CUSTOMER_HAS_RECEIVABLES'], 422);
+        return new self("El cliente {$customerId} tiene cuentas por cobrar pendientes y no puede darse de baja.");
     }
 }
+

@@ -3,6 +3,12 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\SetPermissionsTeamId;
+use App\Exceptions\CustomerHasReceivablesException;
+use App\Exceptions\InvalidPurchaseStateException;
+use App\Exceptions\ProtectedResourceException;
+use App\Exceptions\PurchaseMatchException;
+use App\Exceptions\SupplierNotApprovedException;
+use App\Http\Resources\GoodsReceiptResource;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -10,10 +16,7 @@ use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
-use App\Exceptions\InvalidPurchaseStateException;
-use App\Exceptions\PurchaseMatchException;
-use App\Exceptions\SupplierNotApprovedException;
-use App\Http\Resources\GoodsReceiptResource;
+
 
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -60,6 +63,20 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (InvalidPurchaseStateException $e, Request $request) {
             return response()->json(['message' => $e->getMessage()], 409);
+        });
+
+        $exceptions->render(function (ProtectedResourceException $e, Request $request) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'PROTECTED_RESOURCE',
+            ], 403);
+        });
+
+        $exceptions->render(function (CustomerHasReceivablesException $e, Request $request) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'CUSTOMER_HAS_RECEIVABLES',
+            ], 422);
         });
         
     })->create();

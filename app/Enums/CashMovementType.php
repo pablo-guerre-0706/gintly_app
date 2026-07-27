@@ -1,15 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
+/**
+ * Dirección del movimiento de caja (cash_movements.type).
+ */
 enum CashMovementType: string
 {
     case Ingreso = 'ingreso';
     case Egreso  = 'egreso';
 
-    /** +1 suma a la gaveta, -1 resta. Usado en el cálculo del esperado. */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Ingreso => 'Ingreso',
+            self::Egreso  => 'Egreso',
+        };
+    }
+
+    // Factor con signo para acumular en el esperado: +1 ingreso, −1 egreso.
     public function signedFactor(): int
     {
-        return $this === self::Ingreso ? 1 : -1;
+        return match ($this) {
+            self::Ingreso => 1,
+            self::Egreso  => -1,
+        };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
     }
 }
