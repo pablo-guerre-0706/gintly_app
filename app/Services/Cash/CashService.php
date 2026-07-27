@@ -166,6 +166,32 @@ final class CashService
     }
 
     /**
+     * H-65 / P3 · Registra el movimiento de caja 'venta' generado por el cobro
+     * en efectivo de una factura. Reutiliza registrarMovimiento con la categoría
+     * y tipo forzados, y adjunta el sale_id (P3). Exige sesión abierta bajo lock.
+     */
+    public function registrarMovimientoVenta(User $actor, int $cashSessionId, string $amount, int $saleId): \App\Models\CashMovement
+    {
+        return DB::transaction(function () use ($actor, $cashSessionId, $amount, $saleId): \App\Models\CashMovement {
+            $session = $this->lockOpenSession($actor->business_id, $cashSessionId);
+
+            $movement = new \App\Models\CashMovement([
+                'cash_session_id' => $session->id,
+                'type'            => CashMovementType::Ingreso,
+                'category'        => CashMovementCategory::Venta,
+                'payment_method'  => PaymentMethod::Efectivo,
+                'amount'          => $amount,
+                'sale_id'         => $saleId,
+                'description'     => 'Venta facturada',
+            ]);
+            $movement->user_id = $actor->id;
+            $movement->save();
+
+            return $movement->refresh();
+        });
+    }
+
+    /**
      * Bloqueo pesimista de la sesión abierta. Es la barrera anti-carrera de
      * RF-06-02: un movimiento no puede colarse mientras otro proceso cierra.
      */

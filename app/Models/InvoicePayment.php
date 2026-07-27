@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\PaymentMethod;
@@ -9,15 +11,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class InvoicePayment extends Model
+/**
+ * Pago de factura. Append-only (Immutable): un cobro no se edita ni se borra.
+ */
+final class InvoicePayment extends Model
 {
-    use HasFactory, BelongsToBusiness, Immutable;
+    use BelongsToBusiness;
+    use HasFactory;
+    use Immutable;
 
-    const UPDATED_AT = null;   // solo INSERT
+    public const UPDATED_AT = null;
 
     protected $fillable = [
-        'invoice_id', 'cash_session_id', 'user_id',
-        'payment_method', 'amount', 'reference', 'paid_at',
+        'invoice_id',
+        'cash_session_id',
+        'user_id',
+        'payment_method',
+        'amount',
+        'reference',
+        'paid_at',
     ];
 
     protected function casts(): array
@@ -30,8 +42,18 @@ class InvoicePayment extends Model
         ];
     }
 
-    // business() del trait; inmutabilidad del trait Immutable.
-    public function invoice(): BelongsTo { return $this->belongsTo(Invoice::class); }
-    public function cashSession(): BelongsTo { return $this->belongsTo(CashSession::class); }
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSession::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

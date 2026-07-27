@@ -361,4 +361,61 @@ final class InventoryService
 
         return $movement;
     }
+
+    /**
+     * P-nueva · Reserva de stock por facturación. Incrementa reserved_quantity sin tocar
+     * quantity ni el kardex: facturar compromete, no descuenta. El descuento físico es el retiro.
+     *
+     * Bajo lock. Rechaza si el disponible (quantity − reserved) no alcanza:
+     * chk_stock_available_non_negative (reserved <= quantity) es el backstop.
+     */
+    public function reservar(int $businessId, int $productId, int $warehouseId, string $quantity): void
+    {
+        $stock = StockLevel::query()
+            ->where('business_id', $businessId)
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->lockForUpdate()
+            ->first();
+
+        $available = $stock !== null
+            ? bcsub((string) $stock->quantity, (string) $stock->reserved_quantity, self::QTY_SCALE)
+            : '0.000';
+
+        if ($stock === null || bccomp($available, $quantity, self::QTY_SCALE) < 0) {
+            throw InsufficientStockException::make($productId, $warehouseId, $available, $quantity);
+        }
+
+        $stock->reserved_quantity = bcadd((string) $stock->reserved_quantity, $quantity, self::QTY_SCALE);
+        $stock->save();
+    }
+
+    /**
+     * Libera una reserva previamente comprometida (anulación de factura).
+     * Decrementa reserved_quantity bajo lock, sin bajar de cero.
+     */
+    public function liberarReserva(int $businessId, int $productId, int $warehouseId, string $quantity): void
+    {
+        $stock = StockLevel::query()
+            ->where('business_id', $businessId)
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($stock === null) {
+            return; // sin saldo, no hay reserva que liberar
+        }
+
+        $newReserved = bcsub((string) $stock->reserved_quantity, $quantity, self::QTY_SCALE);
+
+        // Nunca por debajo de cero: una liberación mayor que lo reservado se
+        // trunca a cero (defensa ante datos inconsistentes).
+        if (bccomp($newReserved, '0', self::QTY_SCALE) < 0) {
+            $newReserved = '0.000';
+        }
+
+        $stock->reserved_quantity = $newReserved;
+        $stock->save();
+    }
 }

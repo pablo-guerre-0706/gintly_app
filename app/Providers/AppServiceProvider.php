@@ -87,6 +87,9 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(CashRegister::class, CashRegisterPolicy::class);
         Gate::policy(CashSession::class, CashSessionPolicy::class);
         Gate::policy(CashMovement::class, CashMovementPolicy::class);
+        //MOD-07
+        Gate::policy(Sale::class, SalePolicy::class);
+        Gate::policy(Invoice::class, InvoicePolicy::class);
     }
 
     // Bloqueo por intentos fallidos mediante limitación de tasa.

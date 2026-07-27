@@ -102,21 +102,25 @@ final class Product extends Model
         return $query->where('type', $type->value);
     }
 
-    /**
-     * H-15 · Verdadero si el SKU ya no puede cambiar por existir transacciones.
-     *
-     * En MOD-02 ninguna de esas tablas transaccionales existe todavía, así que
-     * este método devuelve false. Los checks se activan (parche P4) al cerrar
-     * MOD-07, descomentando las tres comprobaciones. Se deja el andamiaje
-     * explícito para que el guardián del FormRequest ya lo invoque sin cambios.
-     */
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function saleItems(): HasMany
+    {
+        return $this->hasMany(SaleItem::class);
+    }
+
+    public function purchaseOrderItems(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+    
     public function hasTransactions(): bool
     {
-        // Activar en P4 (cierre de MOD-07):
-        // return $this->inventoryMovements()->exists()
-        //     || $this->saleItems()->exists()
-        //     || $this->purchaseOrderItems()->exists();
-
-        return false;
+        return $this->inventoryMovements()->exists()
+            || $this->saleItems()->exists()
+            || $this->purchaseOrderItems()->exists();
     }
 }

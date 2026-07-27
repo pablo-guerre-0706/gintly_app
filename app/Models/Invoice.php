@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\InvoicePaymentStatus;
@@ -7,22 +9,50 @@ use App\Enums\InvoicePaymentType;
 use App\Enums\InvoiceStatus;
 use App\Exceptions\ImmutableInvoiceException;
 use App\Models\Concerns\BelongsToBusiness;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Invoice extends Model
+/**
+ * Factura: núcleo fiscal INMUTABLE PARCIAL (D-29, H-66).
+ */
+final class Invoice extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
+
+    /**
+     * Campos del núcleo fiscal: una vez emitida la factura, no cambian jamás.
+     *
+     * @var array<int, string>
+     */
+    private const FROZEN_FIELDS = [
+        'folio',
+        'subtotal',
+        'tax_amount',
+        'discount_amount',
+        'total',
+        'issued_at',
+        'customer_id',
+        'branch_id',
+        'payment_type',
+        'issued_by',
+    ];
 
     protected $fillable = [
-        'branch_id', 'customer_id', 'cash_session_id', 'issued_by',
-        'payment_type', 'subtotal', 'tax_amount', 'discount_amount',
-        'total', 'paid_amount', 'payment_status', 'issued_at',
-        // folio, status y campos de anulación: asignación directa por el InvoiceService.
+        'branch_id',
+        'customer_id',
+        'cash_session_id',
+        'folio',
+        'payment_type',
+        'subtotal',
+        'tax_amount',
+        'discount_amount',
+        'total',
+        'issued_at',
     ];
 
     protected function casts(): array
@@ -41,70 +71,79 @@ class Invoice extends Model
         ];
     }
 
+    /**
+     * Guarda de inmutabilidad parcial: bloquea la modificación de cualquier
+     * campo congelado sobre una factura ya existente (H-66). Los campos mutables
+     * (paid_amount, payment_status, status, voided_*) pasan sin objeción.
+     */
     protected static function booted(): void
     {
-        // ERR-07B: el núcleo fiscal es inmutable. Se permite mutar SOLO paid_amount,
-        // payment_status y la transición de anulación (status + voided_*).
         static::updating(function (Invoice $invoice): void {
-            $frozen = ['folio', 'subtotal', 'tax_amount', 'discount_amount', 'total',
-                       'issued_at', 'customer_id', 'branch_id', 'payment_type', 'issued_by'];
-            foreach ($frozen as $field) {
+            foreach (self::FROZEN_FIELDS as $field) {
                 if ($invoice->isDirty($field)) {
-                    throw new ImmutableInvoiceException("El campo '{$field}' de una factura emitida es inmutable.");
+                    throw ImmutableInvoiceException::field($field);
                 }
             }
         });
     }
 
-    // business() del trait
     public function branch(): BelongsTo
-    { 
+    {
         return $this->belongsTo(Branch::class);
     }
 
-    public function customer(): BelongsTo 
-    { 
+    public function customer(): BelongsTo
+    {
         return $this->belongsTo(Customer::class);
     }
-    
-    public function cashSession(): BelongsTo 
+
+    public function cashSession(): BelongsTo
     {
         return $this->belongsTo(CashSession::class);
     }
-    
+
     public function issuedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'issued_by');
     }
-    
+
     public function voidedBy(): BelongsTo
-    { 
-        return $this->belongsTo(User::class, 'voided_by');
-    }
-    
-    public function payments(): HasMany
-    
     {
-        return $this->hasMany(InvoicePayment::class);
+        return $this->belongsTo(User::class, 'voided_by');
     }
 
     public function sales(): BelongsToMany
     {
-        return $this->belongsToMany(Sale::class, 'invoice_sale')->withPivot('business_id');
+        return $this->belongsToMany(Sale::class, 'invoice_sale');
     }
 
-    public function accountReceivable(): HasOne
+    public function payments(): HasMany
     {
-        return $this->hasOne(AccountReceivable::class);
+        return $this->hasMany(InvoicePayment::class);
     }
 
-    public function dispatches(): HasMany
+    // accountReceivable(): se activa al cerrar MOD-08 (parche P7).
+
+    public function scopeEmitida(Builder $query): Builder
     {
-        return $this->hasMany(Dispatch::class);
+        return $query->where('status', InvoiceStatus::Emitida->value);
     }
-    
-    public function creditNotes(): HasMany
+
+    public function isVoided(): bool
     {
-        return $this->hasMany(CreditNote::class);
+        return $this->status->isVoided();
+    }
+
+    public function canVoid(): bool
+    {
+        return $this->status->canVoid();
+    }
+
+    /**
+     * Saldo pendiente de cobro = total − pagado. bcmath e2.
+     */
+    public function outstandingBalance(): string
+    {
+        return bcsub((string) $this->total, (string) $this->paid_amount, 2);
     }
 }

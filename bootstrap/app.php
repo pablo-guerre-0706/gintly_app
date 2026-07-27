@@ -6,7 +6,11 @@ use App\Http\Middleware\SetPermissionsTeamId;
 use App\Exceptions\CashAuthorizationException;
 use App\Exceptions\CashSessionConflictException;
 use App\Exceptions\CustomerHasReceivablesException;
+use App\Exceptions\ImmutableInvoiceException;
 use App\Exceptions\InvalidPurchaseStateException;
+use App\Exceptions\IncompletePaymentException;
+use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidInvoiceStateException;
 use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\ProtectedResourceException;
 use App\Exceptions\PurchaseMatchException;
@@ -108,5 +112,24 @@ return Application::configure(basePath: dirname(__DIR__))
                 'cash_session' => (new CashSessionResource($e->session))->toArray($request),
             ], 422);
         });
+
+        $exceptions->render(function (ImmutableInvoiceException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage(), 'code' => 'IMMUTABLE_INVOICE'], 403);
+        });
+
+        $exceptions->render(function (IncompletePaymentException $e, Request $request) {
+            // D-27 · Rollback estricto: NADA se persistió. Solo la señal 422.
+            return response()->json(['message' => $e->getMessage(), 'code' => 'INCOMPLETE_PAYMENT'], 422);
+        });
+
+        $exceptions->render(function (InvalidInvoiceStateException $e, Request $request) {
+            // Folio en conflicto es 409; el resto de estados inválidos, 422.
+            $status = str_contains($e->getMessage(), 'folio') ? 409 : 422;
+
+            return response()->json(['message' => $e->getMessage()], $status);
+        });
+
+        // InsufficientStockException ya está mapeada en MOD-03 a 409 (INSUFFICIENT_STOCK).
+        // Al reservar, su lanzamiento revierte toda la facturación (D-27).   
       
     })->create();

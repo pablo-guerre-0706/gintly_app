@@ -1,20 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Enums\DocumentSequenceType;
 use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class DocumentSequence extends Model
+/**
+ * Contador de folios secuenciales por negocio y tipo. Reutilizada para NC en MOD-10.
+ */
+final class DocumentSequence extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
+    use HasFactory;
 
-    protected $fillable = ['document_type', 'prefix', 'next_number'];
+    protected $fillable = [
+        'document_type',
+        'prefix',
+        'next_number',
+    ];
 
     protected function casts(): array
     {
-        return ['next_number' => 'integer'];
+        return [
+            'document_type' => DocumentSequenceType::class,
+            'next_number'   => 'integer',
+        ];
     }
-    // business() del trait. document_type queda como string (constreñido por el ENUM de motor).
 }
+

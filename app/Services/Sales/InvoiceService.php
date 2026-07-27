@@ -1,307 +1,385 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Sales;
 
+use App\Enums\CashMovementCategory;
+use App\Enums\CashMovementType;
+use App\Enums\DocumentSequenceType;
 use App\Enums\InvoicePaymentStatus;
 use App\Enums\InvoicePaymentType;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
-use App\Enums\ProductType;
 use App\Enums\SaleStatus;
-use App\Enums\CashMovementCategory;
-use App\Enums\CashMovementType;
 use App\Exceptions\IncompletePaymentException;
-use App\Models\DocumentSequence;
+use App\Exceptions\InvalidInvoiceStateException;
+use App\Models\Business;
 use App\Models\Invoice;
+use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\Warehouse;
+use App\Models\User;
 use App\Services\Cash\CashService;
 use App\Services\Inventory\InventoryService;
-use DomainException;
+use App\Support\FolioGenerator;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
-class InvoiceService
+/**
+ * RF-07 · Orquestación transaccional de la facturación: el punto de mayor
+ * densidad del sistema. Coordina, ATÓMICAMENTE (D-27, rollback estricto):
+ *   1. Validación de homogeneidad de ventas (mismo cliente y sucursal).
+ *   2. Cálculo de subtotal, IVA (solo líneas gravables) y total (H-68).
+ *   3. Verificación de pago completo en contado (H-64, ERR-07).
+ *   4. Folio fiscal bajo lock (H-63).
+ *   5. Reserva de stock: simples e insumos de compuestos vía recipe_snapshot
+ *      congelado (H-59, H-60, D-26/D-28). NO toca el kardex.
+ *   6. invoice_payments + cash_movement 'venta' si hay efectivo (H-65).
+ *   7. Marca las ventas como facturadas.
+ * Cualquier fallo revierte todo (a diferencia de MOD-04/06): la factura es
+ * todo-o-nada real.
+ */
+final class InvoiceService
 {
+    private const QTY_SCALE = 3;
+
+    private const MONEY_SCALE = 2;
+
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly CashService $cash,
-        private readonly \App\Services\Receivable\ReceivableService $receivable,   // ← nuevo
+        private readonly FolioGenerator $folios,
     ) {
     }
 
     /**
-     * Emite una factura a partir de ventas confirmadas. Orquesta TODO el núcleo del sistema:
-     * folio secuencial, IVA, reserva de stock, cobro y su reflejo en caja — atómico.
-     *
-     * @throws IncompletePaymentException
+     * @param  array<int, int>  $saleIds
+     * @param  array<int, array{method: string, amount: string, reference: ?string}>  $payments
      */
-    public function facturar(array $data): Invoice
-    {
-        // 1) Cargar y validar las ventas (mismo tenant/sucursal/cliente, confirmadas).
-        $sales = \App\Models\Sale::query()
-            ->with('items.product')
-            ->whereIn('id', $data['sale_ids'])
-            ->get();
+    public function facturar(
+        User $actor,
+        array $saleIds,
+        InvoicePaymentType $paymentType,
+        ?int $cashSessionId,
+        string $discountAmount,
+        array $payments
+    ): Invoice {
+        return DB::transaction(function () use (
+            $actor, $saleIds, $paymentType, $cashSessionId, $discountAmount, $payments
+        ): Invoice {
+            // --- 1. Ventas bajo lock, homogéneas y confirmadas ---
+            $sales = Sale::query()
+                ->where('business_id', $actor->business_id)
+                ->whereIn('id', $saleIds)
+                ->lockForUpdate()
+                ->get();
 
-        $this->assertSalesInvoiceable($sales, $data);
+            $this->assertHomogeneous($sales);
 
-        $customerId = $sales->first()->customer_id;
-        $branchId   = $sales->first()->branch_id;
-        $type       = InvoicePaymentType::from($data['payment_type']);
+            $customerId = (int) $sales->first()->customer_id;
+            $branchId = (int) $sales->first()->branch_id;
 
-        // A crédito no se factura al genérico (RF-08-01, validable ya).
-        if ($type === InvoicePaymentType::Credito && $sales->first()->customer->is_generic) {
-            throw new DomainException('No se puede emitir venta a crédito al Consumidor Final.');
-        }
+            if ($paymentType === InvoicePaymentType::Credito) {
+                $this->assertNotGenericCustomer($customerId, $actor->business_id);
+                // P8 (MOD-08): $this->receivables->assertCreditAvailable(...) irá aquí.
+            }
 
-        // 2) Totales (operación pura, antes de escribir): subtotal, IVA, total.
-        $discount = (string) ($data['discount_amount'] ?? '0.00');
-        $totals   = $this->calcularTotales($sales, $branchId, $discount);
+            // --- 2. Totales: subtotal, IVA (solo gravable), total (H-68) ---
+            $business = Business::query()->whereKey($actor->business_id)->firstOrFail();
+            $totals = $this->computeTotals($sales, (string) $business->tax_rate, $discountAmount);
 
-        // Validacion pura de credito
-        if ($type === InvoicePaymentType::Credito) {
-            $this->receivable->assertCreditAvailable(
-                $sales->first()->customer,
-                $totals['total'],
-                (bool) ($data['owner_authorized'] ?? false),
-            );
-        }
+            // --- 3. Contado exige pago completo (H-64, ERR-07). Rollback si no ---
+            $paidAmount = $this->sumPayments($payments);
 
-        // 3) Integridad de cobro (validación PURA: si falla, NO se persiste nada — ERR-07).
-        $paid = $this->sumarPagos($data['payments'] ?? []);
-        if ($type->requiresFullPayment() && bccomp($paid, $totals['total'], 2) !== 0) {
-            throw new IncompletePaymentException;   // rechazo limpio, sin efectos
-        }
+            if ($paymentType->requiresFullPayment()
+                && bccomp($paidAmount, $totals['total'], self::MONEY_SCALE) !== 0
+            ) {
+                // D-27 · La excepción dentro de la tx revierte TODO.
+                throw IncompletePaymentException::make($paidAmount, $totals['total']);
+            }
 
-        // 4) Persistencia atómica.
-        return DB::transaction(function () use ($sales, $data, $type, $customerId, $branchId, $totals, $paid) {
-            $folio = $this->generarFolio($sales->first()->business_id);   // lock sobre la secuencia
+            // --- 4. Folio fiscal bajo lock (H-63) ---
+            try {
+                $folio = $this->folios->next($actor->business_id, DocumentSequenceType::Invoice);
+            } catch (QueryException $e) {
+                if (($e->errorInfo[1] ?? null) === 1062) {
+                    throw InvalidInvoiceStateException::folioConflict();
+                }
+                throw $e;
+            }
 
-            $invoice = Invoice::create([
+            // --- 5. Crear la factura ---
+            $invoice = new Invoice([
                 'branch_id'       => $branchId,
                 'customer_id'     => $customerId,
-                'cash_session_id' => $data['cash_session_id'] ?? null,
-                'issued_by'       => $data['user_id'],
-                'payment_type'    => $type,
+                'cash_session_id' => $cashSessionId,
+                'folio'           => $folio,
+                'payment_type'    => $paymentType,
                 'subtotal'        => $totals['subtotal'],
                 'tax_amount'      => $totals['tax'],
-                'discount_amount' => $totals['discount'],
+                'discount_amount' => $discountAmount,
                 'total'           => $totals['total'],
-                'paid_amount'     => $paid,
-                'payment_status'  => $this->derivarPaymentStatus($paid, $totals['total']),
-                'issued_at'       => now(),
+                'issued_at'       => Carbon::now(),
             ]);
-            $invoice->folio  = $folio;                 // asignación directa (fuera de fillable)
+            $invoice->issued_by = $actor->id;
             $invoice->status = InvoiceStatus::Emitida;
+            $invoice->paid_amount = $paidAmount;
+            $invoice->payment_status = InvoicePaymentStatus::fromAmounts($paidAmount, $totals['total']);
             $invoice->save();
 
-            // Puente N:M + cierre de las ventas (ya no se pueden re-facturar).
-            foreach ($sales as $sale) {
-                $invoice->sales()->attach($sale->id, ['business_id' => $invoice->business_id]);
-                $sale->status = SaleStatus::Facturada;
-                $sale->save();
-            }
+            // Puente N:M con las ventas.
+            $invoice->sales()->attach($sales->pluck('id')->all());
 
-            // 5) Reserva de stock (RF-03-04): la facturación COMPROMETE, no descuenta.
-            $warehouseId = $this->resolveWarehouse($branchId);
-            foreach ($sales as $sale) {
-                foreach ($sale->items as $item) {
-                    $this->reservarStockDeItem($item, $warehouseId, $invoice->issued_by);
-                }
-            }
+            // --- 6. Reserva de stock (H-60): simples e insumos de compuestos ---
+            $this->reserveStock($actor->business_id, $branchId, $sales);
 
-            // 6) Cobros: registro fiscal (invoice_payments) + reflejo en la gaveta si es efectivo.
-            foreach ($data['payments'] ?? [] as $p) {
-                $method = PaymentMethod::from($p['method']);
-                $invoice->payments()->create([
-                    'cash_session_id' => $data['cash_session_id'] ?? null,
-                    'user_id'         => $invoice->issued_by,
-                    'payment_method'  => $method,
-                    'amount'          => (string) $p['amount'],
-                    'reference'       => $p['reference'] ?? null,
-                    'paid_at'         => now(),
-                ]);
+            // --- 7. Pagos + movimiento de caja de efectivo (H-65) ---
+            $this->registerPayments($actor, $invoice, $cashSessionId, $payments, $sales->first());
 
-                // Solo el efectivo entra a la gaveta física (concilia con el arqueo, MOD-11).
-                if ($method->affectsCashDrawer() && ! empty($data['cash_session_id'])) {
-                    $this->cash->registrarMovimiento(
-                        sessionId:     $data['cash_session_id'],
-                        type:          CashMovementType::Ingreso,
-                        category:      CashMovementCategory::Venta,
-                        paymentMethod: $method,
-                        amount:        (string) $p['amount'],
-                        userId:        $invoice->issued_by,
-                        saleId:        $sales->first()->id,
-                        description:   'Cobro factura '.$invoice->folio,
-                    );
-                }
-            }
+            // --- 8. Marcar ventas como facturadas ---
+            Sale::query()->whereIn('id', $sales->pluck('id'))->update(['status' => SaleStatus::Facturada->value]);
 
-            // 7) Crédito → generar CxC (DIFERIDO a MOD-08).
-            if ($type === InvoicePaymentType::Credito) {
-                $this->receivable->generarDesdeFactura($invoice);
-            }
-            return $invoice->load('payments', 'sales');
+            return $invoice->refresh()->load(['sales', 'payments']);
         });
     }
 
     /**
-     * Anulación (RF-07-01): potestad ROL-01 (Policy diferida). Libera las reservas y marca
-     * 'anulada' conservando folio y pista de auditoría. NUNCA borra físicamente (BR-04).
+     * RF-07 · Anulación por ROL-01 (H-67). Libera las reservas de stock, marca
+     * 'anulada' conservando folio y auditoría. La reversión de CxC (MOD-08) y el
+     * reembolso (MOD-10) se orquestan en esos módulos.
      */
-    public function anular(Invoice $invoice, int $voidedBy, string $reason): Invoice
+    public function anular(User $actor, Invoice $invoice, string $voidReason): Invoice
     {
-        if ($invoice->status !== InvoiceStatus::Emitida) {
-            throw new DomainException('Solo una factura emitida puede anularse.');
-        }
+        return DB::transaction(function () use ($actor, $invoice, $voidReason): Invoice {
+            $invoice = Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
 
-        return DB::transaction(function () use ($invoice, $voidedBy, $reason) {
-            $warehouseId = $this->resolveWarehouse($invoice->branch_id);
-
-            // MOD 09: Se consulta la relación y se itera para calcular el remanente no despachado
-            foreach ($invoice->sales()->with('items')->get() as $sale) {
-                foreach ($sale->items as $item) {
-                    $pendiente = bcsub((string) $item->quantity, (string) $item->dispatched_quantity, 3);
-                    if (bccomp($pendiente, '0', 3) > 0) {
-                        $this->liberarReservaDeItemParcial($item, $warehouseId, $pendiente);
-                    }
-                }
+            if (! $invoice->status->canVoid()) {
+                throw InvalidInvoiceStateException::invoiceNotVoidable($invoice->id);
             }
-        
-            $invoice->status      = InvoiceStatus::Anulada;   // el guard permite estos campos
-            $invoice->voided_by   = $voidedBy;
-            $invoice->voided_at   = now();
-            $invoice->void_reason = $reason;
+
+            // Liberar reservas de todas las líneas de las ventas asociadas.
+            $sales = $invoice->sales()->with('items')->get();
+            $this->releaseStock($invoice->business_id, $invoice->branch_id, $sales);
+
+            $invoice->status = InvoiceStatus::Anulada;
+            $invoice->voided_by = $actor->id;
+            $invoice->voided_at = Carbon::now();
+            $invoice->void_reason = $voidReason;
             $invoice->save();
 
-            $this->receivable->revertirPorAnulacion($invoice, $voidedBy);
-            // TODO (MOD-10): reembolso de pagos en efectivo (resarcimiento).
-            return $invoice;
+            // P8 (MOD-08): $this->receivables->revertirPorAnulacion($invoice) irá aquí.
+
+            return $invoice->refresh();
         });
     }
 
-    // ─────── Helpers privados ───────
-
-    private function assertSalesInvoiceable($sales, array $data): void
+    /**
+     * Todas las ventas deben compartir cliente y sucursal (H-64).
+     *
+     * @param  \Illuminate\Support\Collection<int, Sale>  $sales
+     */
+    private function assertHomogeneous($sales): void
     {
         if ($sales->isEmpty()) {
-            throw new DomainException('No hay ventas para facturar.');
+            throw InvalidInvoiceStateException::salesNotHomogeneous();
         }
-        if ($sales->pluck('customer_id')->unique()->count() > 1
-            || $sales->pluck('branch_id')->unique()->count() > 1) {
-            throw new DomainException('Todas las ventas deben ser del mismo cliente y sucursal.');
-        }
+
         foreach ($sales as $sale) {
             if ($sale->status !== SaleStatus::Confirmada) {
-                throw new DomainException("La venta {$sale->code} no está confirmada.");
+                throw InvalidInvoiceStateException::saleNotConfirmed($sale->id);
             }
+        }
+
+        $customers = $sales->pluck('customer_id')->unique();
+        $branches = $sales->pluck('branch_id')->unique();
+
+        if ($customers->count() > 1 || $branches->count() > 1) {
+            throw InvalidInvoiceStateException::salesNotHomogeneous();
         }
     }
 
-    /** IVA = base gravable (ítems is_taxable) × business.tax_rate. total = subtotal + IVA − descuento. */
-    private function calcularTotales($sales, int $branchId, string $discount): array
+    private function assertNotGenericCustomer(int $customerId, int $businessId): void
     {
-        $subtotal    = '0.00';
+        $isGeneric = \App\Models\Customer::query()
+            ->where('business_id', $businessId)
+            ->whereKey($customerId)
+            ->value('is_generic');
+
+        if ($isGeneric) {
+            throw InvalidInvoiceStateException::creditToGeneric();
+        }
+    }
+
+    /**
+     * IVA = Σ(line_total de líneas gravables) × tax_rate. total = subtotal +
+     * IVA − descuento de factura (H-68). Todo bcmath e2.
+     *
+     * @param  \Illuminate\Support\Collection<int, Sale>  $sales
+     * @return array{subtotal: string, tax: string, total: string}
+     */
+    private function computeTotals($sales, string $taxRate, string $discountAmount): array
+    {
+        $subtotal = '0.00';
         $taxableBase = '0.00';
 
         foreach ($sales as $sale) {
-            foreach ($sale->items as $item) {
-                $subtotal = bcadd($subtotal, (string) $item->line_total, 2);
-                if ($item->product->is_taxable) {
-                    $taxableBase = bcadd($taxableBase, (string) $item->line_total, 2);
+            foreach ($sale->items()->get(['line_total', 'is_taxable']) as $item) {
+                $subtotal = bcadd($subtotal, (string) $item->line_total, self::MONEY_SCALE);
+
+                if ($item->is_taxable) {
+                    $taxableBase = bcadd($taxableBase, (string) $item->line_total, self::MONEY_SCALE);
                 }
             }
         }
 
-        $taxRate = (string) $sales->first()->business->tax_rate;   // IVA por negocio
-        $tax     = bcmul($taxableBase, $taxRate, 2);
-        $total   = bcsub(bcadd($subtotal, $tax, 2), $discount, 2);
+        // tax_rate es fracción (0.15 = 15 %). IVA a escala 2.
+        $tax = bcmul($taxableBase, $taxRate, self::MONEY_SCALE);
 
-        return ['subtotal' => $subtotal, 'tax' => $tax, 'discount' => $discount, 'total' => $total];
+        $total = bcsub(bcadd($subtotal, $tax, self::MONEY_SCALE), $discountAmount, self::MONEY_SCALE);
+        if (bccomp($total, '0', self::MONEY_SCALE) < 0) {
+            $total = '0.00';
+        }
+
+        return ['subtotal' => $subtotal, 'tax' => $tax, 'total' => $total];
     }
 
-    private function sumarPagos(array $payments): string
+    /**
+     * @param  array<int, array{method: string, amount: string, reference: ?string}>  $payments
+     */
+    private function sumPayments(array $payments): string
     {
         $sum = '0.00';
-        foreach ($payments as $p) {
-            $sum = bcadd($sum, (string) $p['amount'], 2);
+
+        foreach ($payments as $payment) {
+            $sum = bcadd($sum, (string) $payment['amount'], self::MONEY_SCALE);
         }
+
         return $sum;
     }
 
-    private function derivarPaymentStatus(string $paid, string $total): InvoicePaymentStatus
+    /**
+     * Reserva de stock por línea. Simples: reservan su propia cantidad. Compuestos:
+     * reservan cada insumo del recipe_snapshot × cantidad de la línea (H-59).
+     * Usa la bodega por defecto de la sucursal.
+     *
+     * @param  \Illuminate\Support\Collection<int, Sale>  $sales
+     */
+    private function reserveStock(int $businessId, int $branchId, $sales): void
     {
-        if (bccomp($paid, $total, 2) >= 0) return InvoicePaymentStatus::Pagada;
-        if (bccomp($paid, '0', 2) > 0)     return InvoicePaymentStatus::Parcial;
-        return InvoicePaymentStatus::Pendiente;
+        $warehouseId = $this->defaultWarehouseId($businessId, $branchId);
+
+        foreach ($sales as $sale) {
+            foreach ($sale->items()->get() as $item) {
+                $this->reserveItem($businessId, $warehouseId, $item);
+            }
+        }
     }
 
-    /** Folio secuencial atómico: bloquea SOLO la fila de la secuencia (no la tabla de facturas). */
-    private function generarFolio(int $businessId): string
+    private function reserveItem(int $businessId, int $warehouseId, SaleItem $item): void
     {
-        $seq = DocumentSequence::query()
+        if ($item->isCompound()) {
+            // Compuesto: reservar cada insumo del snapshot × cantidad vendida.
+            foreach ((array) $item->recipe_snapshot as $line) {
+                $needed = bcmul((string) $item->quantity, (string) $line['quantity'], self::QTY_SCALE);
+                $this->inventory->reservar($businessId, (int) $line['ingredient_id'], $warehouseId, $needed);
+            }
+
+            return;
+        }
+
+        // Simple: reservar su propia cantidad. Los servicios (sin inventario) se
+        // omiten: no tienen stock que comprometer.
+        if ($this->productTracksInventory($businessId, $item->product_id)) {
+            $this->inventory->reservar($businessId, (int) $item->product_id, $warehouseId, (string) $item->quantity);
+        }
+    }
+
+    /**
+     * Libera las reservas de todas las líneas (anulación).
+     *
+     * @param  \Illuminate\Support\Collection<int, Sale>  $sales
+     */
+    private function releaseStock(int $businessId, int $branchId, $sales): void
+    {
+        $warehouseId = $this->defaultWarehouseId($businessId, $branchId);
+
+        foreach ($sales as $sale) {
+            foreach ($sale->items as $item) {
+                if ($item->isCompound()) {
+                    foreach ((array) $item->recipe_snapshot as $line) {
+                        $needed = bcmul((string) $item->quantity, (string) $line['quantity'], self::QTY_SCALE);
+                        $this->inventory->liberarReserva($businessId, (int) $line['ingredient_id'], $warehouseId, $needed);
+                    }
+
+                    continue;
+                }
+
+                if ($this->productTracksInventory($businessId, $item->product_id)) {
+                    $this->inventory->liberarReserva($businessId, (int) $item->product_id, $warehouseId, (string) $item->quantity);
+                }
+            }
+        }
+    }
+
+    /**
+     * Registra los pagos (invoice_payments) y, por cada pago en efectivo, el
+     * cash_movement 'venta' vía CashService (H-65).
+     *
+     * @param  array<int, array{method: string, amount: string, reference: ?string}>  $payments
+     */
+    private function registerPayments(User $actor, Invoice $invoice, ?int $cashSessionId, array $payments, Sale $firstSale): void
+    {
+        foreach ($payments as $payment) {
+            $method = PaymentMethod::from($payment['method']);
+
+            $invoice->payments()->create([
+                'cash_session_id' => $cashSessionId,
+                'user_id'         => $actor->id,
+                'payment_method'  => $method,
+                'amount'          => $payment['amount'],
+                'reference'       => $payment['reference'] ?? null,
+                'paid_at'         => Carbon::now(),
+            ]);
+
+            // Solo el efectivo genera movimiento de caja (H-65). El CashService
+            // exige y bloquea la sesión abierta; el cash_movement lleva sale_id (P3).
+            if ($method === PaymentMethod::Efectivo && $cashSessionId !== null) {
+                $this->cash->registrarMovimientoVenta(
+                    actor: $actor,
+                    cashSessionId: $cashSessionId,
+                    amount: $payment['amount'],
+                    saleId: $firstSale->id,
+                );
+            }
+        }
+    }
+
+    private function defaultWarehouseId(int $businessId, int $branchId): int
+    {
+        $warehouse = \App\Models\Warehouse::query()
             ->where('business_id', $businessId)
-            ->where('document_type', 'invoice')
-            ->lockForUpdate()
-            ->firstOrFail();   // sembrada por el BusinessObserver
-
-        $number = $seq->next_number;
-        $seq->next_number = $number + 1;
-        $seq->save();
-
-        return $seq->prefix.str_pad((string) $number, 8, '0', STR_PAD_LEFT);   // ej. F-00000042
-    }
-
-    /** Reserva según naturaleza: simple directo, compuesto por su receta congelada, servicio nada. */
-    private function reservarStockDeItem(SaleItem $item, int $warehouseId, int $userId): void
-    {
-        $product = $item->product;
-
-        if ($product->type === ProductType::Service) {
-            return;
-        }
-        if ($product->type === ProductType::Simple) {
-            if ($product->tracks_inventory) {
-                $this->inventory->reservar($product->id, $warehouseId, (string) $item->quantity, $userId);
-            }
-            return;
-        }
-        // Compuesto: reserva cada insumo del snapshot × cantidad vendida.
-        foreach (($item->recipe_snapshot ?? []) as $line) {
-            $needed = bcmul((string) $line['quantity'], (string) $item->quantity, 3);
-            $this->inventory->reservar((int) $line['ingredient_id'], $warehouseId, $needed, $userId);
-        }
-    }
-
-    /** Espejo exacto de la reserva, para la anulación. */
-    private function liberarReservaDeItem(SaleItem $item, int $warehouseId): void
-    {
-        $product = $item->product;
-        if ($product->type === ProductType::Service) return;
-
-        if ($product->type === ProductType::Simple) {
-            if ($product->tracks_inventory) {
-                $this->inventory->liberarReserva($product->id, $warehouseId, (string) $item->quantity);
-            }
-            return;
-        }
-        foreach (($item->recipe_snapshot ?? []) as $line) {
-            $needed = bcmul((string) $line['quantity'], (string) $item->quantity, 3);
-            $this->inventory->liberarReserva((int) $line['ingredient_id'], $warehouseId, $needed);
-        }
-    }
-
-    /** La reserva sale de la bodega POR DEFECTO de la sucursal (candado default_lock, MOD-03). */
-    private function resolveWarehouse(int $branchId): int
-    {
-        $warehouse = Warehouse::query()
             ->where('branch_id', $branchId)
             ->where('is_default', true)
             ->first();
 
+        // Sin bodega default explícita, se toma la primera activa de la sucursal.
         if ($warehouse === null) {
-            throw new DomainException('La sucursal no tiene bodega por defecto asignada.');
+            $warehouse = \App\Models\Warehouse::query()
+                ->where('business_id', $businessId)
+                ->where('branch_id', $branchId)
+                ->where('is_active', true)
+                ->firstOrFail();
         }
-        return $warehouse->id;
+
+        return (int) $warehouse->id;
+    }
+
+    private function productTracksInventory(int $businessId, int $productId): bool
+    {
+        return (bool) \App\Models\Product::query()
+            ->where('business_id', $businessId)
+            ->whereKey($productId)
+            ->value('tracks_inventory');
     }
 }

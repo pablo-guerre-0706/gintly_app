@@ -29,6 +29,7 @@ final class CashMovement extends Model
         'category',
         'payment_method',
         'amount',
+        'sale_id',
         'authorized_by',
         'description',
     ];
@@ -59,7 +60,10 @@ final class CashMovement extends Model
         return $this->belongsTo(User::class, 'authorized_by');
     }
 
-    // sale(): se activa al cerrar MOD-07 (parche P3).
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
 
     public function scopeCash(Builder $query): Builder
     {

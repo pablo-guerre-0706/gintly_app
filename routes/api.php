@@ -17,10 +17,12 @@ use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
+use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
+use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SupplierController;
@@ -189,6 +191,32 @@ Route::prefix('v1')->group(function (): void {
         Route::model('cash_register', \App\Models\CashRegister::class);
         Route::model('cash_session', \App\Models\CashSession::class);        
 
+        // MOD-07 - Ventas, Facturacion e Inmutabilidad
+
+        Route::get('sales', [SaleController::class, 'index']);
+        Route::post('sales', [SaleController::class, 'store']);
+        Route::get('sales/{sale}', [SaleController::class, 'show']);
+        Route::post('sales/{sale}/confirm', [SaleController::class, 'confirm']);
+
+        // Ítems de venta — sub-recurso con scopeBindings (doble binding).
+        Route::prefix('sales/{sale}/items')
+            ->scopeBindings()
+            ->group(function (): void {
+                Route::post('/', [SaleController::class, 'addItem']);
+                Route::delete('/{item}', [SaleController::class, 'removeItem']);
+            });
+
+        // Facturas — emitir, ver, pagos, anular. PUT devuelve 403 (inmutable).
+        Route::get('invoices', [InvoiceController::class, 'index']);
+        Route::post('invoices', [InvoiceController::class, 'store']);
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
+        Route::get('invoices/{invoice}/payments', [InvoiceController::class, 'payments']);
+        Route::put('invoices/{invoice}', [InvoiceController::class, 'update']);   // → 403 IMMUTABLE_INVOICE
+        Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void']);
+
+        Route::model('sale', \App\Models\Sale::class);
+        Route::model('item', \App\Models\SaleItem::class);
+        Route::model('invoice', \App\Models\Invoice::class);
     });
 });
 
