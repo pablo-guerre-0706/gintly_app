@@ -3,11 +3,16 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\SetPermissionsTeamId;
+use App\Exceptions\CashAuthorizationException;
+use App\Exceptions\CashSessionConflictException;
 use App\Exceptions\CustomerHasReceivablesException;
 use App\Exceptions\InvalidPurchaseStateException;
+use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\ProtectedResourceException;
 use App\Exceptions\PurchaseMatchException;
 use App\Exceptions\SupplierNotApprovedException;
+use App\Exceptions\UnreconciledCashClosingException;
+use App\Http\Resources\CashSessionResource;
 use App\Http\Resources\GoodsReceiptResource;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -78,5 +83,30 @@ return Application::configure(basePath: dirname(__DIR__))
                 'code'    => 'CUSTOMER_HAS_RECEIVABLES',
             ], 422);
         });
-        
+
+        $exceptions->render(function (NoActiveCashSessionException $e, Request $request) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'NO_ACTIVE_CASH_SESSION',
+            ], 409);
+        });
+
+        $exceptions->render(function (CashSessionConflictException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        });
+
+        $exceptions->render(function (CashAuthorizationException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        });
+
+        $exceptions->render(function (UnreconciledCashClosingException $e, Request $request) {
+            // D-20 · 422 CON la sesión persistida. Ya está cerrada (descuadrada), así
+            // que el Resource revela expected_amount y difference: es la evidencia.
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'UNRECONCILED_CASH_CLOSING',
+                'cash_session' => (new CashSessionResource($e->session))->toArray($request),
+            ], 422);
+        });
+      
     })->create();

@@ -16,4 +16,14 @@ class NoActiveCashSessionException extends Exception
     {
         return response()->json(['message' => $this->getMessage(), 'error' => 'NO_ACTIVE_CASH_SESSION'], 409);
     }
+
+    public static function forMovement(int $sessionId): self
+    {
+        return new self("No hay una sesión de caja abierta (sesión {$sessionId}) para registrar el movimiento.");
+    }
+
+    public static function forClosing(int $sessionId): self
+    {
+        return new self("La sesión de caja {$sessionId} no está abierta y no puede cerrarse.");
+    }
 }

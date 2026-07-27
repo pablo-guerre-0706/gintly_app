@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\CashMovementCategory;
@@ -7,16 +9,18 @@ use App\Enums\CashMovementType;
 use App\Enums\PaymentMethod;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\Concerns\Immutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CashMovement extends Model
+final class CashMovement extends Model
 {
-    use HasFactory, BelongsToBusiness, Immutable;
+    use BelongsToBusiness;
+    use HasFactory;
+    use Immutable;
 
-    // Movimiento de caja: solo INSERT. Sin updated_at.
-    const UPDATED_AT = null;
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'cash_session_id',
@@ -25,7 +29,6 @@ class CashMovement extends Model
         'category',
         'payment_method',
         'amount',
-        'sale_id',          // FK diferida (MOD-07) — columna plana por ahora
         'authorized_by',
         'description',
     ];
@@ -40,8 +43,6 @@ class CashMovement extends Model
             'created_at'     => 'immutable_datetime',
         ];
     }
-
-    // business() del trait; inmutabilidad del trait Immutable.
 
     public function cashSession(): BelongsTo
     {
@@ -58,8 +59,10 @@ class CashMovement extends Model
         return $this->belongsTo(User::class, 'authorized_by');
     }
 
-    public function sale(): BelongsTo
+    // sale(): se activa al cerrar MOD-07 (parche P3).
+
+    public function scopeCash(Builder $query): Builder
     {
-        return $this->belongsTo(Sale::class);
+        return $query->where('payment_method', PaymentMethod::Efectivo->value);
     }
 }

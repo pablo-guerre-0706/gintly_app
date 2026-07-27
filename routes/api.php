@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\CashMovementController;
+use App\Http\Controllers\Api\V1\CashRegisterController;
+use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CustomerController;
@@ -166,6 +169,25 @@ Route::prefix('v1')->group(function (): void {
         // Binding de modelos.
         Route::model('customer', \App\Models\Customer::class);
         Route::model('address', \App\Models\CustomerAddress::class);
+
+        // MOD-06 - Gestion de Caja
+        // Cajas — CRUD.
+        Route::apiResource('cash-registers', CashRegisterController::class)
+            ->parameters(['cash-registers' => 'cash_register']);
+
+        // Sesiones — abrir, listar, ver, cerrar, movimientos.
+        Route::get('cash-sessions', [CashSessionController::class, 'index']);
+        Route::post('cash-sessions/open', [CashSessionController::class, 'open']);
+        Route::get('cash-sessions/{cash_session}', [CashSessionController::class, 'show']);
+        Route::post('cash-sessions/{cash_session}/close', [CashSessionController::class, 'close']);
+        Route::get('cash-sessions/{cash_session}/movements', [CashSessionController::class, 'movements']);
+
+        // Movimientos — listar (append-only), registrar manual.
+        Route::get('cash-movements', [CashMovementController::class, 'index']);
+        Route::post('cash-movements', [CashMovementController::class, 'store']);
+
+        Route::model('cash_register', \App\Models\CashRegister::class);
+        Route::model('cash_session', \App\Models\CashSession::class);        
 
     });
 });

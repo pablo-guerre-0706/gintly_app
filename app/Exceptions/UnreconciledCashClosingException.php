@@ -1,23 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
+use App\Models\CashSession;
+use RuntimeException;
 
-class UnreconciledCashClosingException extends Exception
+/**
+ * UNRECONCILED_CASH_CLOSING · HTTP 422. El arqueo arrojó diferencia ≠ 0. 
+ */
+final class UnreconciledCashClosingException extends RuntimeException
 {
-    public function __construct(private readonly string $difference = '0.00')
-    {
-        parent::__construct('Cierre con descuadre: la sesión quedó marcada como descuadrada y requiere validación administrativa.');
-    }
-
-    public function render(): JsonResponse
-    {
-        return response()->json([
-            'message'    => $this->getMessage(),
-            'error'      => 'UNRECONCILED_CASH_CLOSING',
-            'difference' => $this->difference,
-        ], 422);
+    public function __construct(
+        public readonly CashSession $session,
+        string $message = 'El cierre de caja presenta una diferencia respecto al efectivo esperado.'
+    ) {
+        parent::__construct($message);
     }
 }
