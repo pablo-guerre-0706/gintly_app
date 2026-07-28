@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\InventoryMovementType;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\Concerns\Immutable;
+use App\Models\Dispatch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,7 @@ final class InventoryMovement extends Model
         'stock_transfer_id',
         'inventory_adjustment_id',
         'purchase_order_id',
+        'dispatch_id',
         'reason',
     ];
 
@@ -75,7 +77,10 @@ final class InventoryMovement extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    // dispatch(): se activa al cerrar MOD-09 (parche P9).
+    public function dispatch(): BelongsTo
+    {
+        return $this->belongsTo(Dispatch::class);
+    }
     
     public function scopeOfType(Builder $query, InventoryMovementType $type): Builder
     {

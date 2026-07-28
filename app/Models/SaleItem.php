@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
+use App\Models\DispatchItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 
 final class SaleItem extends Model
@@ -67,6 +69,11 @@ final class SaleItem extends Model
         return bcsub((string) ($this->dispatched_quantity ?? '0'), (string) ($this->returned_quantity ?? '0'), 3);
     }
 
+    public function dispatchItems(): HasMany
+    {
+        return $this->hasMany(DispatchItem::class);
+    }
+
     /**
      * True si la línea corresponde a un producto compuesto (tiene receta
      * congelada). Rige la reserva y el retiro de insumos.
@@ -75,4 +82,7 @@ final class SaleItem extends Model
     {
         return ! empty($this->recipe_snapshot);
     }
+
+
+
 }

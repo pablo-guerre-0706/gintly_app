@@ -1,19 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
 
-class DispatchOnVoidedInvoiceException extends Exception
+final class DispatchOnVoidedInvoiceException extends RuntimeException
 {
-    public function __construct(string $message = 'No se puede retirar mercancía contra una factura anulada.')
+    public function __construct(public readonly int $invoiceId)
     {
-        parent::__construct($message);
+        parent::__construct('No se puede retirar mercancía de una factura anulada.');
     }
 
-    public function render(): JsonResponse
+    public function render(Request $request): JsonResponse
     {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'DISPATCH_ON_VOIDED_INVOICE'], 409);
+        return response()->json([
+            'code'       => 'DISPATCH_ON_VOIDED_INVOICE',
+            'message'    => $this->getMessage(),
+            'invoice_id' => $this->invoiceId,
+        ], 409);
     }
 }

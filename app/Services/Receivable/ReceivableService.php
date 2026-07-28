@@ -101,7 +101,7 @@ class ReceivableService
 
             // Tope: nunca abonar más que el saldo (ERR-08 sobre-abono). Backstop legible antes del motor.
             if (bccomp($amount, (string) $ar->balance, 2) > 0) {
-                throw new OverpaymentException("El abono ({$amount}) excede el saldo pendiente ({$ar->balance}).");
+                throw new OverpaymentException((string) $ar->balance, $amount);
             }
 
             // Abono en efectivo → exige caja activa (ERR-08B). Reusa la excepción de MOD-06.

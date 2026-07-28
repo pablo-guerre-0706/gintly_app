@@ -1,30 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        // RESTRICT por coherencia con los otros orígenes del kardex
-        // un movimiento de inventario nunca pierde su documento de origen.
-        Schema::table('inventory_movements', function (Blueprint $table) {
-            $table->foreign('dispatch_id')
+        // La columna dispatch_id ya existe desde MOD-03 (reservada). Aquí SOLO se cablea la FK.
+        $alreadyWired = collect(DB::select(
+            "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inventory_movements'
+               AND COLUMN_NAME = 'dispatch_id' AND REFERENCED_TABLE_NAME = 'dispatches'"
+        ))->isNotEmpty();
+
+        if ($alreadyWired || ! Schema::hasColumn('inventory_movements', 'dispatch_id')) {
+            return; // Idempotencia.
+        }
+
+        Schema::table('inventory_movements', function (Blueprint $table): void {
+            $table->foreign('dispatch_id', 'fk_movements_dispatch')
                 ->references('id')->on('dispatches')
-                ->restrictOnDelete();
+                ->restrictOnDelete(); // Origen del asiento: no se borra un dispatch con kardex.
         });
     }
 
     public function down(): void
     {
-        // Reversible: suelta la FK, conserva la columna (vuelve al estado "plana sin constraint").
-        Schema::table('inventory_movements', function (Blueprint $table) {
-            $table->dropForeign(['dispatch_id']);
+        Schema::table('inventory_movements', function (Blueprint $table): void {
+            $table->dropForeign('fk_movements_dispatch');
         });
     }
 };

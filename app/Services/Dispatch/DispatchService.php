@@ -1,215 +1,209 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Dispatch;
 
+use App\Enums\DeliveryState;
 use App\Enums\DispatchStatus;
-use App\Enums\InvoiceStatus;
-use App\Enums\ProductType;
 use App\Exceptions\DispatchExceedsBalanceException;
 use App\Exceptions\DispatchOnVoidedInvoiceException;
+use App\Exceptions\InvalidDispatchStateException;
 use App\Models\Dispatch;
+use App\Models\DispatchItem;
 use App\Models\Invoice;
 use App\Models\SaleItem;
+use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\Inventory\InventoryService;
-use DomainException;
+use App\Support\SequenceGenerator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
-class DispatchService
+final class DispatchService
 {
-    public function __construct(private readonly InventoryService $inventory)
-    {
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly SequenceGenerator $sequences,
+    ) {
     }
 
-    /**
-     * Registra un retiro (RF-09-01): total o parcial. Por cada línea:
-     *  - valida saldo pendiente (ERR-09) bajo lock,
-     *  - descuenta físico real vía InventoryService::retirar() (consume reserva + kardex),
-     *  - sube dispatched_quantity (el CHECK de motor es la red anti-sobre-retiro).
-     * Todo atómico. Bloquea si la factura está anulada (ERR-09B).
-     *
-     * @throws DispatchExceedsBalanceException|DispatchOnVoidedInvoiceException
-     */
-    public function registrarRetiro(int $invoiceId, array $lines, int $userId, ?string $receivedBy = null, ?string $notes = null): Dispatch
+    // =====================================================================
+    // RF-09-01 · Registro de retiro (total o parcial)
+    // =====================================================================
+    /** @param array{invoice_id:int, received_by?:string|null, notes?:string|null, lines:array<int,array{sale_item_id:int, quantity:string}>} $data */
+    public function registrar(User $actor, array $data): Dispatch
     {
-        return DB::transaction(function () use ($invoiceId, $lines, $userId, $receivedBy, $notes) {
-            // Bloqueo de la factura: leemos su estado bajo lock (ERR-09B).
-            $invoice = Invoice::query()->whereKey($invoiceId)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($data, $actor): Dispatch {
+            // Bloquea la factura: ninguna anulación concurrente puede colarse (ERR-09B).
+            $invoice = Invoice::query()->whereKey($data['invoice_id'])->lockForUpdate()->firstOrFail();
 
-            if ($invoice->status === InvoiceStatus::Anulada) {
-                throw new DispatchOnVoidedInvoiceException;
+            if ($invoice->status->value === 'anulada') {
+                throw new DispatchOnVoidedInvoiceException($invoice->id);
             }
 
-            $warehouseId = $this->resolveWarehouse($invoice->branch_id);
+            $warehouse      = $this->bodegaOrigen($invoice);
+            $invoiceSaleIds = $invoice->sales()->pluck('sales.id'); // Pivote invoice_sale (MOD-07).
 
-            $dispatch = Dispatch::create([
-                'branch_id'     => $invoice->branch_id,
-                'invoice_id'    => $invoice->id,
-                'warehouse_id'  => $warehouseId,
-                'user_id'       => $userId,
-                'code'          => 'RET-'.now()->format('Ymd').'-'.strtoupper(Str::random(4)),
-                'received_by'   => $receivedBy,
-                'dispatched_at' => now(),
-                // status → 'registrado'
-            ]);
+            $dispatch = new Dispatch();
+            $dispatch->branch_id     = $invoice->branch_id;
+            $dispatch->invoice_id    = $invoice->id;
+            $dispatch->warehouse_id  = $warehouse->id;
+            $dispatch->received_by   = $data['received_by'] ?? null;
+            $dispatch->notes         = $data['notes'] ?? null;
+            $dispatch->user_id       = $actor->id;                             // Responsable (no-repudio).
+            $dispatch->code          = $this->sequences->next($actor->business_id, 'dispatch', 'D-'); // Folio interno.
 
-            foreach ($lines as $line) {
-                $this->processLine($dispatch, (int) $line['sale_item_id'], (string) $line['quantity'], $warehouseId, $userId);
+            $dispatch->status        = DispatchStatus::Registrado;
+            $dispatch->dispatched_at = now();
+            $dispatch->save();
+
+            foreach ($data['lines'] as $line) {
+                $saleItem = SaleItem::query()->whereKey($line['sale_item_id'])->lockForUpdate()->firstOrFail();
+                $qty      = (string) $line['quantity'];
+
+                // Coherencia: la línea pertenece a la factura del retiro.
+                if (! $invoiceSaleIds->contains($saleItem->sale_id)) {
+                    throw InvalidDispatchStateException::lineNotOnInvoice($saleItem->id);
+                }
+
+                // Servicios no despachan (RF-09-03).
+                if ($saleItem->product->type->value === 'service') {
+                    throw InvalidDispatchStateException::serviceNotDispatchable($saleItem->id);
+                }
+
+                // Saldo pendiente de la línea = facturado − retirado acumulado.
+                $pending = bcsub((string) $saleItem->quantity, (string) $saleItem->dispatched_quantity, 3);
+                if (bccomp($qty, $pending, 3) > 0) {
+                    throw new DispatchExceedsBalanceException($saleItem->id, $pending, $qty);
+                }
+
+                // Descuento físico real + consumo de reserva + kardex (compuestos explotan insumos).
+                $this->inventory->retirar($saleItem, $qty, $warehouse, $dispatch);
+
+                // Acumulado materializado (fuera de fillable). chk_sale_item_dispatch_not_exceed respalda.
+                $saleItem->dispatched_quantity = bcadd((string) $saleItem->dispatched_quantity, $qty, 3);
+                $saleItem->save();
+
+                DispatchItem::create([
+                    'dispatch_id'  => $dispatch->id,
+                    'sale_item_id' => $saleItem->id,
+                    'product_id'   => $saleItem->product_id,
+                    'quantity'     => $qty,
+                ]);
             }
 
-            return $dispatch->load('items');
+            return $dispatch->fresh(['items', 'warehouse']);
         });
     }
 
-    /**
-     * Reversión de un retiro registrado por error (RF-09-04): potestad ROL-02 (Policy diferida).
-     * Reingresa el stock a la bodega de origen, RE-RESERVA (la mercancía vuelve a estar
-     * comprometida por la factura viva) y baja dispatched_quantity. Marca 'revertido' (no borra).
-     */
-    public function revertir(Dispatch $dispatch, int $reverterId, string $reason): Dispatch
+    // =====================================================================
+    // RF-09-04 · Reversión de retiro (ROL-02)
+    // =====================================================================
+    public function revertir(Dispatch $dispatch, string $revertReason): Dispatch
     {
-        if ($dispatch->status !== DispatchStatus::Registrado) {
-            throw new DomainException('Solo un retiro registrado puede revertirse.');
-        }
+        return DB::transaction(function () use ($dispatch, $revertReason): Dispatch {
+            $dispatch = Dispatch::query()->whereKey($dispatch->getKey())
+                ->with('items')->lockForUpdate()->firstOrFail();
 
-        return DB::transaction(function () use ($dispatch, $reverterId, $reason) {
-            foreach ($dispatch->items()->with('saleItem.product')->get() as $item) {
+            if (! $dispatch->canRevert()) {
+                throw InvalidDispatchStateException::alreadyReverted();
+            }
+
+            $warehouse = Warehouse::query()->whereKey($dispatch->warehouse_id)->firstOrFail();
+
+            foreach ($dispatch->items as $item) {
                 $saleItem = SaleItem::query()->whereKey($item->sale_item_id)->lockForUpdate()->firstOrFail();
-                $product  = $saleItem->product;
 
-                if ($product->type !== ProductType::Service && $product->tracks_inventory) {
-                    // Reingresa lo que había salido (a costo congelado del ítem) → entrada en kardex.
-                    $this->reingresarSegunNaturaleza($item, $saleItem, $dispatch->warehouse_id, $dispatch->user_id);
-                    // Re-reserva: la factura sigue viva, la mercancía vuelve a estar comprometida.
-                    $this->rereservarSegunNaturaleza($item, $saleItem, $dispatch->warehouse_id, $dispatch->user_id);
-                }
+                // Reingresa a bodega origen + RE-RESERVA (factura viva) + kardex entrada.
+                $this->inventory->reingresar($saleItem, (string) $item->quantity, $warehouse, $dispatch);
 
-                // Baja el acumulado despachado (el CHECK >= 0 protege contra doble reversión).
-                $saleItem->dispatched_quantity = bcsub((string) $saleItem->dispatched_quantity, (string) $item->quantity, 3);
+                // Devuelve la cantidad al saldo pendiente.
+                $saleItem->dispatched_quantity = bcsub(
+                    (string) $saleItem->dispatched_quantity,
+                    (string) $item->quantity,
+                    3
+                );
                 $saleItem->save();
             }
 
-            $dispatch->status      = DispatchStatus::Revertido;
-            $dispatch->reverted_by = $reverterId;
-            $dispatch->reverted_at = now();
-            $dispatch->revert_reason = $reason;
+            // No se borra: se marca revertido con trazabilidad (chk_dispatch_revert_coherence respalda).
+            $dispatch->status        = DispatchStatus::Revertido;
+            $dispatch->reverted_by   = Auth::id();
+            $dispatch->reverted_at   = now();
+            $dispatch->revert_reason = $revertReason;
             $dispatch->save();
 
-            return $dispatch->load('items');
+            return $dispatch->fresh(['items']);
         });
     }
 
-    // ─────────────────────────── Helpers privados ───────────────────────────
-
-    /** Procesa una línea de retiro: valida saldo, descuenta físico, acumula despachado. */
-    private function processLine(Dispatch $dispatch, int $saleItemId, string $quantity, int $warehouseId, int $userId): void
+    // =====================================================================
+    // RF-09-02 · Saldo pendiente de entrega consolidado (solo lectura)
+    // =====================================================================
+    /** @return array{invoice_id:int, delivery_state:DeliveryState, lines:Collection<int, array<string,mixed>>} */
+    public function estadoEntrega(Invoice $invoice): array
     {
-        if (bccomp($quantity, '0', 3) <= 0) {
-            throw new DomainException('La cantidad a retirar debe ser mayor que cero.');
-        }
+        $saleIds = $invoice->sales()->pluck('sales.id');
+        $items   = SaleItem::query()
+            ->whereIn('sale_id', $saleIds)
+            ->with('product:id,type')
+            ->get();
 
-        // lockForUpdate sobre la línea de venta: serializa retiros concurrentes de la misma línea.
-        $saleItem = SaleItem::query()->whereKey($saleItemId)->lockForUpdate()->firstOrFail();
-        $product  = $saleItem->product;
+        $lines = $items->map(function (SaleItem $item): array {
+            $pending = bcsub((string) $item->quantity, (string) $item->dispatched_quantity, 3);
 
-        // Servicios no se retiran ni descuentan inventario (RF-09-03).
-        if ($product->type === ProductType::Service) {
-            throw new DomainException('Un servicio no genera retiro de mercancía.');
-        }
+            return [
+                'sale_item_id'        => $item->id,
+                'product_id'          => $item->product_id,
+                'description'         => $item->description,
+                'invoiced_quantity'   => (string) $item->quantity,
+                'dispatched_quantity' => (string) $item->dispatched_quantity,
+                'pending_quantity'    => $pending,
+            ];
+        });
 
-        // Saldo pendiente de ESTA línea (RF-09-02).
-        $pending = bcsub((string) $saleItem->quantity, (string) $saleItem->dispatched_quantity, 3);
-        if (bccomp($quantity, $pending, 3) > 0) {
-            throw new DispatchExceedsBalanceException($pending, $quantity);   // ERR-09
-        }
+        // El estado se deriva SOLO de las líneas entregables (excluye servicios).
+        $deliverable = $items->reject(fn (SaleItem $i): bool => $i->product->type->value === 'service');
 
-        // Descuento físico real (solo si controla inventario).
-        if ($product->tracks_inventory) {
-            $this->retirarSegunNaturaleza($dispatch, $saleItem, $quantity, $warehouseId, $userId);
-        }
-
-        // Registra la línea del despacho (evidencia).
-        $dispatch->items()->create([
-            'sale_item_id' => $saleItem->id,
-            'product_id'   => $product->id,
-            'quantity'     => $quantity,
-        ]);
-
-        // Acumula lo despachado. chk_sale_item_dispatch_not_exceed es la red final.
-        $saleItem->dispatched_quantity = bcadd((string) $saleItem->dispatched_quantity, $quantity, 3);
-        $saleItem->save();
+        return [
+            'invoice_id'     => $invoice->id,
+            'delivery_state' => $this->derivarEstado($deliverable),
+            'lines'          => $lines,
+        ];
     }
 
-    /** Simple: retira el propio producto. Compuesto: retira cada insumo del snapshot × cantidad. */
-    private function retirarSegunNaturaleza(Dispatch $dispatch, SaleItem $saleItem, string $quantity, int $warehouseId, int $userId): void
-    {
-        if ($saleItem->product->type === ProductType::Simple) {
-            $this->inventory->retirar(
-                productId:   $saleItem->product_id,
-                warehouseId: $warehouseId,
-                quantity:    $quantity,
-                userId:      $userId,
-                dispatchId:  $dispatch->id,
-                reason:      'Retiro de mercancía',
-            );
-            return;
-        }
+    // ---------------- Helpers ----------------
 
-        // Compuesto: descuenta insumos según el recipe_snapshot congelado (coherente con la reserva).
-        foreach (($saleItem->recipe_snapshot ?? []) as $line) {
-            $needed = bcmul((string) $line['quantity'], $quantity, 3);
-            $this->inventory->retirar(
-                productId:   (int) $line['ingredient_id'],
-                warehouseId: $warehouseId,
-                quantity:    $needed,
-                userId:      $userId,
-                dispatchId:  $dispatch->id,
-                reason:      'Retiro de insumo (compuesto)',
-            );
-        }
-    }
-
-    private function reingresarSegunNaturaleza(\App\Models\DispatchItem $item, SaleItem $saleItem, int $warehouseId, int $userId): void
+    private function bodegaOrigen(Invoice $invoice): Warehouse
     {
-        if ($saleItem->product->type === ProductType::Simple) {
-            $this->inventory->ingresar(
-                productId: $saleItem->product_id, warehouseId: $warehouseId,
-                quantity: (string) $item->quantity, unitCost: (string) $saleItem->unit_cost,
-                userId: $userId, reason: 'Reversión de retiro',
-            );
-            return;
-        }
-        foreach (($saleItem->recipe_snapshot ?? []) as $line) {
-            $needed = bcmul((string) $line['quantity'], (string) $item->quantity, 3);
-            $this->inventory->ingresar(
-                productId: (int) $line['ingredient_id'], warehouseId: $warehouseId,
-                quantity: $needed, unitCost: '0.0000',  // insumo reingresa a su costo promedio vigente
-                userId: $userId, reason: 'Reversión de retiro (insumo)',
-            );
-        }
-    }
-
-    private function rereservarSegunNaturaleza(\App\Models\DispatchItem $item, SaleItem $saleItem, int $warehouseId, int $userId): void
-    {
-        if ($saleItem->product->type === ProductType::Simple) {
-            $this->inventory->reservar($saleItem->product_id, $warehouseId, (string) $item->quantity, $userId);
-            return;
-        }
-        foreach (($saleItem->recipe_snapshot ?? []) as $line) {
-            $needed = bcmul((string) $line['quantity'], (string) $item->quantity, 3);
-            $this->inventory->reservar((int) $line['ingredient_id'], $warehouseId, $needed, $userId);
-        }
-    }
-
-    /** El retiro sale de la bodega POR DEFECTO de la sucursal (candado default_lock, MOD-03). */
-    private function resolveWarehouse(int $branchId): int
-    {
-        $warehouse = \App\Models\Warehouse::query()
-            ->where('branch_id', $branchId)->where('is_default', true)->first();
+        $warehouse = Warehouse::query()
+            ->where('branch_id', $invoice->branch_id)
+            ->where('is_default', true)
+            ->first();
 
         if ($warehouse === null) {
-            throw new DomainException('La sucursal no tiene bodega por defecto asignada.');
+            throw InvalidDispatchStateException::noDefaultWarehouse($invoice->branch_id);
         }
-        return $warehouse->id;
+
+        return $warehouse;
+    }
+
+    /** @param Collection<int, SaleItem> $deliverable */
+    private function derivarEstado(Collection $deliverable): DeliveryState
+    {
+        if ($deliverable->isEmpty()) {
+            return DeliveryState::Completado; // Sin bienes entregables: nada que despachar.
+        }
+
+        $anyDispatched = $deliverable->contains(
+            fn (SaleItem $i): bool => bccomp((string) $i->dispatched_quantity, '0.000', 3) > 0
+        );
+        $allDispatched = $deliverable->every(
+            fn (SaleItem $i): bool => bccomp((string) $i->dispatched_quantity, (string) $i->quantity, 3) >= 0
+        );
+
+        return DeliveryState::derive($anyDispatched, $allDispatched);
     }
 }

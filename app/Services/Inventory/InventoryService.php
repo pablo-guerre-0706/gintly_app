@@ -9,13 +9,20 @@ use App\Enums\InventoryMovementType;
 use App\Enums\PhysicalCountStatus;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidCountStateException;
+use App\Models\Dispatch;
 use App\Models\InventoryAdjustment;
 use App\Models\InventoryMovement;
 use App\Models\PhysicalCount;
+use App\Models\SaleItem;
+use App\Models\Warehouse;
 use App\Models\StockLevel;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
+
+
 
 final class InventoryService
 {
@@ -418,4 +425,122 @@ final class InventoryService
         $stock->reserved_quantity = $newReserved;
         $stock->save();
     }
+
+    /**
+     * RF-09-01 · Retiro físico de una línea de venta.
+     * Baja quantity Y reserved_quantity en el MISMO UPDATE (consume la reserva) y asienta kardex 'salida'
+     * vinculado al dispatch. Compuestos descuentan sus insumos según recipe_snapshot congelado.
+     * Debe invocarse dentro de la transacción de DispatchService::registrar.
+     */
+    public function retirar(SaleItem $saleItem, string $quantity, Warehouse $warehouse, Dispatch $dispatch): void
+    {
+        foreach ($this->explosionInsumos($saleItem, $quantity) as $productId => $qty) {
+            $this->descontarFisicoYReserva((int) $productId, (string) $qty, $warehouse, $dispatch);
+        }
+    }
+
+    /**
+     * RF-09-04 · Reingreso por reversión de una línea.
+     * Sube quantity (valorado al costo promedio VIGENTE, decisión Fase 1) Y re-reserva (factura viva),
+     * asienta kardex 'entrada' vinculado al dispatch. Compuestos reingresan sus insumos.
+     */
+    public function reingresar(SaleItem $saleItem, string $quantity, Warehouse $warehouse, Dispatch $dispatch): void
+    {
+        foreach ($this->explosionInsumos($saleItem, $quantity) as $productId => $qty) {
+            $this->reingresarFisicoYReserva((int) $productId, (string) $qty, $warehouse, $dispatch);
+        }
+    }
+
+    /**
+     * Explota una línea a { product_id => cantidad } (escala 3, bcmath).
+     * Simple ⇒ el propio producto; Compuesto ⇒ sus insumos según snapshot congelado.
+     * @return array<int, string>
+     */
+    private function explosionInsumos(SaleItem $saleItem, string $quantity): array
+    {
+        if (! $saleItem->isCompound()) {
+            return [$saleItem->product_id => $quantity];
+    }
+
+        $out = [];
+        foreach ((array) $saleItem->recipe_snapshot as $ing) {
+            // Claves congeladas por SaleService::freezeRecipe (insumo + cantidad por unidad de compuesto).
+            $ingredientId = (int) ($ing['ingredient_id'] ?? $ing['product_id']);
+            $perUnit      = (string) $ing['quantity'];
+            $out[$ingredientId] = bcadd($out[$ingredientId] ?? '0.000', bcmul($quantity, $perUnit, 3), 3);
+        }
+
+        return $out;
+    }
+
+    private function descontarFisicoYReserva(int $productId, string $qty, Warehouse $warehouse, Dispatch $dispatch): void
+    {
+        $stock = StockLevel::query()
+            ->where('business_id', $dispatch->business_id)
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouse->id)
+            ->lockForUpdate()
+            ->first();
+
+        // Red de seguridad: no debería fallar si se reservó al facturar (INSUFFICIENT_STOCK 409).
+        if ($stock === null || bccomp((string) $stock->quantity, $qty, 3) < 0) {
+            throw InsufficientStockException::make(
+                $productId, 
+                $warehouse->id,
+                (string) ($stock->quantity ?? '0.000'),
+                $qty
+            );
+        }
+
+        // Ambos bajan a la vez: el CHECK reserved <= quantity evalúa el estado FINAL coherente.
+        $newQuantity = bcsub((string) $stock->quantity, $qty, 3);
+        $stock->quantity          = $newQuantity;
+        $stock->reserved_quantity = bcsub((string) $stock->reserved_quantity, $qty, 3);
+        $stock->save();
+
+        $this->asentarKardexDispatch('salida', $productId, $warehouse, $qty, $newQuantity, (string) $stock->average_cost, $dispatch);
+    }
+
+    private function reingresarFisicoYReserva(int $productId, string $qty, Warehouse $warehouse, Dispatch $dispatch): void
+    {
+        $stock = StockLevel::query()
+            ->where('business_id', $dispatch->business_id)
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouse->id)
+            ->lockForUpdate()
+            ->first();
+
+        // El saldo existe (la línea se retiró de aquí). Fase 1: reingreso al costo promedio vigente.
+        $newQuantity = bcadd((string) $stock->quantity, $qty, 3);
+        $stock->quantity          = $newQuantity;                                       // Sube existencia.
+        $stock->reserved_quantity = bcadd((string) $stock->reserved_quantity, $qty, 3); // RE-RESERVA.
+        $stock->save();
+
+        $this->asentarKardexDispatch('entrada', $productId, $warehouse, $qty, $newQuantity, (string) $stock->average_cost, $dispatch);
+    }
+
+    /** Inserta un asiento con dispatch_id como ÚNICO origen (chk_movement_single_origin). */
+    private function asentarKardexDispatch(
+        string $type,
+        int $productId,
+        Warehouse $warehouse,
+        string $qty,
+        string $balanceAfter,
+        string $unitCost,
+        Dispatch $dispatch
+    ): void {
+        InventoryMovement::create([
+            'product_id'    => $productId,
+            'warehouse_id'  => $warehouse->id,
+            'user_id'       => Auth::id(),
+            'type'          => $type,          // El cast a InventoryMovementType convierte el string.
+            'quantity'      => $qty,
+            'balance_after' => $balanceAfter,
+            'unit_cost'     => $unitCost,
+            'dispatch_id'   => $dispatch->id,  // Único origen presente.
+            'reason'        => $type === 'salida'
+                ? "Retiro {$dispatch->code}"
+                : "Reversión de retiro {$dispatch->code}",
+        ]);
+    }    
 }

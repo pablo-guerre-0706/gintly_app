@@ -1,26 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
 
-class DispatchExceedsBalanceException extends Exception
+final class DispatchExceedsBalanceException extends RuntimeException
 {
     public function __construct(
-        private readonly string $pending = '0.000',
-        private readonly string $requested = '0.000',
+        public readonly int $saleItemId,
+        public readonly string $pending,
+        public readonly string $requested,
     ) {
-        parent::__construct('El retiro excede el saldo pendiente de entrega de la línea.');
+        parent::__construct('La cantidad a retirar excede el saldo pendiente de la línea.');
     }
 
-    public function render(): JsonResponse
+    public function render(Request $request): JsonResponse
     {
         return response()->json([
-            'message'   => $this->getMessage(),
-            'error'     => 'DISPATCH_EXCEEDS_BALANCE',
-            'pending'   => $this->pending,
-            'requested' => $this->requested,
+            'code'         => 'DISPATCH_EXCEEDS_BALANCE',
+            'message'      => $this->getMessage(),
+            'sale_item_id' => $this->saleItemId,
+            'pending'      => $this->pending,   // Saldo real (ERR-09).
+            'requested'    => $this->requested,
         ], 422);
     }
 }

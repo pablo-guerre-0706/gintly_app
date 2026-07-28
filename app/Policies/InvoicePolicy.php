@@ -57,4 +57,11 @@ final class InvoicePolicy
             ? Response::allow()
             : Response::deny('Solo el propietario puede anular una factura.');
     }
+
+    // --- MOD-09: saldo pendiente de entrega (ROL-03+, RF-09-02) ---
+    public function viewDeliveryStatus(User $user, Invoice $invoice): bool
+    {
+        return $this->sharesBusinessWith($user, $invoice)
+            && $this->hasAtLeast($user, RoleName::Operator);
+    }
 }

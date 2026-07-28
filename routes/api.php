@@ -14,10 +14,12 @@ use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
@@ -217,6 +219,19 @@ Route::prefix('v1')->group(function (): void {
         Route::model('sale', \App\Models\Sale::class);
         Route::model('item', \App\Models\SaleItem::class);
         Route::model('invoice', \App\Models\Invoice::class);
+
+        // MOD-09 · Entregas y Retiros
+        Route::prefix('dispatches')->group(function (): void {
+            Route::get('/', [DispatchController::class, 'index'])->name('dispatches.index');
+            Route::post('/', [DispatchController::class, 'store'])->name('dispatches.store');
+            Route::get('/{dispatch}', [DispatchController::class, 'show'])->name('dispatches.show');
+            Route::get('/{dispatch}/items', [DispatchController::class, 'items'])->name('dispatches.items');
+            Route::post('/{dispatch}/revert', [DispatchController::class, 'revert'])->name('dispatches.revert');
+        });
+
+        // MOD-09 · Saldo pendiente de entrega (sub-recurso de invoices)
+        Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
+            ->name('invoices.delivery-status');
     });
 });
 

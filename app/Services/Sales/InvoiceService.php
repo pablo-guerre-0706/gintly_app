@@ -15,6 +15,8 @@ use App\Enums\SaleStatus;
 use App\Exceptions\IncompletePaymentException;
 use App\Exceptions\InvalidInvoiceStateException;
 use App\Models\Business;
+use App\Models\CashSession;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -76,7 +78,7 @@ final class InvoiceService
         $total = $salesForTotals->sum('total'); // Suma los totales de las ventas
         $data = []; // Evita que falle por no existir la variable $data
 
-        if ($paymentType === InvoicePaymentType::credito) {
+        if ($paymentType === InvoicePaymentType::Credito) {
             $this->receivables->assertCreditAvailable(
                 $customer,
                 $total,
@@ -99,10 +101,19 @@ final class InvoiceService
             $customerId = (int) $sales->first()->customer_id;
             $branchId = (int) $sales->first()->branch_id;
 
+            $totalAmount = '0.000';
+            foreach ($sales as $sale) {
+                $totalAmount = bcadd($totalAmount, (string) $sale->total_amount, 3);
+            }
+
             if ($paymentType === InvoicePaymentType::Credito) {
                 $this->assertNotGenericCustomer($customerId, $actor->business_id);
                 
-                $this->receivables->assertCreditAvailable($customerId, $totalAmount); 
+                $customer = Customer::query()
+                    ->where('business_id', $actor->business_id)
+                    ->findOrFail($customerId);
+
+                $this->receivables->assertCreditAvailable($customer, $totalAmount); 
             }
 
             // --- 2. Totales: subtotal, IVA (solo gravable), total (H-68) ---
@@ -161,7 +172,7 @@ final class InvoiceService
             Sale::query()->whereIn('id', $sales->pluck('id'))->update(['status' => SaleStatus::Facturada->value]);
 
             // genera la CxC atómicamente (RF-08-01).
-            if ($invoice->payment_type === InvoicePaymentType::credito) {
+            if ($invoice->payment_type === InvoicePaymentType::Credito) {
                 $this->receivables->generarDesdeFactura($invoice);
             }
 
@@ -330,26 +341,28 @@ final class InvoiceService
      */
     private function releaseStock(int $businessId, int $branchId, $sales): void
     {
-        $warehouseId = $this->defaultWarehouseId($businessId, $branchId);
+        $warehouseOrigen = $this->defaultWarehouseId($businessId, $branchId);
 
         foreach ($sales as $sale) {
             foreach ($sale->items as $item) {
-                if ($item->isCompound()) {
-                    foreach ((array) $item->recipe_snapshot as $line) {
-                        $needed = bcmul((string) $item->quantity, (string) $line['quantity'], self::QTY_SCALE);
-                        $this->inventory->liberarReserva($businessId, (int) $line['ingredient_id'], $warehouseId, $needed);
+                $remnant = bcsub((string) $item->quantity, (string) $item->dispatched_quantity, 3);
+                if (bccomp($remnant, '0.000', 3) > 0) {
+                    if ($item->isCompound()) {
+                        foreach ((array) $item->recipe_snapshot as $line) {
+                            $needed = bcmul($remnant, (string) $line['quantity'], 3);
+                            $this->inventory->liberarReserva($businessId, (int) $line['ingredient_id'], $warehouseOrigen, $needed);
+                        }
+                        
+                        continue;
                     }
 
-                    continue;
-                }
-
-                if ($this->productTracksInventory($businessId, $item->product_id)) {
-                    $this->inventory->liberarReserva($businessId, (int) $item->product_id, $warehouseId, (string) $item->quantity);
+                    if ($this->productTracksInventory($businessId, $item->product_id)) {
+                        $this->inventory->liberarReserva($businessId, (int) $item->product_id, $warehouseOrigen, (string) $item->quantity);
+                    }
                 }
             }
         }
     }
-
     /**
      * Registra los pagos (invoice_payments) y, por cada pago en efectivo, el
      * cash_movement 'venta' vía CashService (H-65).
