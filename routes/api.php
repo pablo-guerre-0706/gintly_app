@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AccountPayableController;
+use App\Http\Controllers\Api\V1\AccountReceivableController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\CustomerCreditController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
@@ -217,6 +219,33 @@ Route::prefix('v1')->group(function (): void {
         Route::model('sale', \App\Models\Sale::class);
         Route::model('item', \App\Models\SaleItem::class);
         Route::model('invoice', \App\Models\Invoice::class);
+
+
+        // ... dentro de Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+
+        // MOD-08 · Cuentas por Cobrar
+        Route::prefix('accounts-receivable')->group(function (): void {
+            Route::get('/', [AccountReceivableController::class, 'index'])
+                ->name('accounts-receivable.index');
+
+            Route::get('/{accountReceivable}', [AccountReceivableController::class, 'show'])
+                ->name('accounts-receivable.show');
+
+            Route::get('/{accountReceivable}/payments', [AccountReceivableController::class, 'payments'])
+                ->name('accounts-receivable.payments.index');
+
+            Route::post('/{accountReceivable}/payments', [AccountReceivableController::class, 'storePayment'])
+                ->name('accounts-receivable.payments.store');
+        });
+
+        // MOD-08 · Crédito del cliente (sub-recurso de customers)
+        Route::prefix('customers/{customer}')->group(function (): void {
+            Route::get('credit-status', [CustomerCreditController::class, 'status'])
+                ->name('customers.credit-status');
+
+            Route::post('credit-check', [CustomerCreditController::class, 'check'])
+                ->name('customers.credit-check');
+        });
     });
 });
 

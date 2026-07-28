@@ -18,6 +18,7 @@ use App\Models\CashSession;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 
@@ -262,6 +263,39 @@ final class CashService
         if ($role === null || ! $role->atLeast(RoleName::Admin)) {
             throw CashAuthorizationException::notAdmin($authorizedBy);
         }
+    }
+
+    /**
+    * Paso 5 del abono (RF-08-03): movimiento de caja del cobro en efectivo.
+    * Bloquea la sesión, exige que esté ABIERTA y asienta un ingreso categoría 'cobro_credito'.
+    * DEBE invocarse DENTRO de la transacción del abono (ReceivableService::abonar) para que,
+    * si la caja está cerrada, todo el abono se revierta (atomicidad de 5 pasos).
+    */
+    public function registrarCobroCredito(int $cashSessionId, string $amount, ?string $reference = null): CashMovement
+    {
+        // Global scope de BelongsToBusiness ⇒ la sesión debe pertenecer al tenant vigente.
+        $session = CashSession::query()
+            ->whereKey($cashSessionId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($session === null || $session->status->value !== 'abierta') {
+            throw NoActiveCashSessionException::forCreditPayment(); // 409 (ERR-08B).
+        }
+
+        return CashMovement::create([
+            'cash_session_id' => $session->id,
+            'user_id'         => Auth::id(),   // Responsable = quien cobra (no-repudio).
+            'type'            => 'ingreso',    // El cast a CashMovementType convierte el string.
+            'category'        => 'cobro_credito',
+            'payment_method'  => 'efectivo',   // Solo efectivo genera movimiento de caja.
+            'amount'          => $amount,
+            'sale_id'         => null,         // No proviene de una venta; es cobro de CxC.
+            'authorized_by'   => null,         // Un ingreso no requiere autorizante.
+            'description'     => $reference !== null
+                ? "Cobro de crédito · Ref: {$reference}"
+                : 'Cobro de crédito',
+        ]);
     }
 
     /**

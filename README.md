@@ -93,7 +93,7 @@ composer install
 
 ```bash
 # Duplicar la plantilla de variables de entorno
-copy .env.example .env
+cp .env.example .env
 
 # Generar la clave de la aplicación
 php artisan key:generate

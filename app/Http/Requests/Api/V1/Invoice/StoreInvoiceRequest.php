@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Invoice;
 
 use App\Enums\InvoicePaymentType;
 use App\Enums\PaymentMethod;
+use App\Enums\RoleName;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\Invoice;
 use Illuminate\Validation\Rule;
@@ -56,6 +57,10 @@ final class StoreInvoiceRequest extends BaseTenantRequest
             ],
 
             'discount_amount' => ['sometimes', 'numeric', 'decimal:0,2', 'min:0'],
+
+            'owner_authorized' => ['sometimes', 'boolean'],
+
+            'payments'   => ['sometimes', 'array'],
 
             // payments obligatorio en contado; opcional (típicamente ausente) en crédito.
             'payments'   => ['sometimes', 'array'],
@@ -174,5 +179,14 @@ final class StoreInvoiceRequest extends BaseTenantRequest
             ->whereKey($firstSaleId)
             ->whereHas('customer', fn ($q) => $q->where('is_generic', true))
             ->exists();
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // MOD-08 (P8): Solo un usuario ROL-01 (Owner) puede autorizar exceder el cupo.
+        $ownerAuthorized = $this->boolean('owner_authorized')
+            && $this->user()?->hasRole(RoleName::Owner->value);
+
+        $this->merge(['owner_authorized' => $ownerAuthorized]);
     }
 }

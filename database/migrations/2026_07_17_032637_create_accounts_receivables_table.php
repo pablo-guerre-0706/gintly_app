@@ -1,46 +1,74 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Enums\AccountReceivableStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('accounts_receivables', function (Blueprint $table) {
+        // Guarda de idempotencia: reejecutar la migración no debe fallar ni duplicar.
+        if (Schema::hasTable('accounts_receivables')) {
+            return;
+        }
+
+        Schema::create('accounts_receivables', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
-            $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete(); // deudor
 
-            $table->foreignId('invoice_id')->constrained('invoices')->restrictOnDelete();
-            // FK y UNIQUE separados: no dependo del orden del encadenamiento fluido, es 100% predecible.
-            $table->unique('invoice_id');
+            $table->foreignId('business_id')
+                ->constrained('businesses')
+                ->cascadeOnDelete();          // El negocio es dueño; si desaparece, cae su cartera.
 
-            $table->decimal('total_amount', 14, 2);            // = invoice.total. CHECK > 0
-            $table->decimal('paid_amount', 14, 2)->default(0); // suma de abonos aplicados
-            $table->enum('status', ['pendiente', 'parcial', 'pagada', 'vencida'])
-                ->default('pendiente')->index();
-            $table->date('due_date')->nullable()->index();     // indexado: el cron de 'vencida' filtra por aquí
+            $table->foreignId('customer_id')
+                ->constrained('customers')
+                ->restrictOnDelete();         // No se borra un cliente con CxC (respalda ERR-05B).
+
+            $table->foreignId('invoice_id')
+                ->constrained('invoices')
+                ->restrictOnDelete();         // La factura es el ancla fiscal de la deuda.
+
+            $table->decimal('total_amount', 14, 2);              // bcmath escala 2.
+            $table->decimal('paid_amount', 14, 2)->default(0);   // bcmath escala 2.
+
+            // SALDO derivado por el MOTOR (columna generada STORED). Jamás editable ni fillable.
+            $table->decimal('balance', 14, 2)
+                ->storedAs('total_amount - paid_amount');
+
+            $table->enum('status', AccountReceivableStatus::values())
+                ->default(AccountReceivableStatus::Pendiente->value); // Nunca nace 'vencida'.
+
+            $table->date('due_date')->nullable();                // Emisión + 30 días (RF-08-01).
+
             $table->timestamps();
+
+            // Una factura ⇒ exactamente una CxC (garantía de motor, RF-08-01).
+            $table->unique('invoice_id', 'uniq_ar_invoice');
+
+            $table->index('status', 'idx_ar_status');
+            $table->index('due_date', 'idx_ar_due_date');
+            // Índice compuesto para la consulta de exposición por cliente (RF-08-02/06).
+            $table->index(['business_id', 'customer_id'], 'idx_ar_business_customer');
         });
 
-        DB::statement('ALTER TABLE accounts_receivables ADD CONSTRAINT chk_ar_total_positive
-            CHECK (total_amount > 0)');
-        DB::statement("ALTER TABLE accounts_receivables
-            ADD COLUMN balance DECIMAL(14,2)
-            GENERATED ALWAYS AS (total_amount - paid_amount) STORED AFTER paid_amount");
-        DB::statement('ALTER TABLE accounts_receivables ADD CONSTRAINT chk_ar_balance_non_negative
-            CHECK (balance >= 0)');
+        // total ≥ 0: la POSITIVIDAD AL NACER la garantiza el Service (la factura de origen es > 0).
+        // '>= 0' es necesario para saldar por anulación (total := paid) sin falsear paid_amount (RF-08-07).
+        DB::statement(
+            'ALTER TABLE `accounts_receivables` '
+            . 'ADD CONSTRAINT `chk_ar_total_positive` CHECK (`total_amount` >= 0)'
+        );
+
+        // Anti-sobre-abono ESTRUCTURAL (opción A): el saldo derivado nunca puede ser negativo.
+        DB::statement(
+            'ALTER TABLE `accounts_receivables` '
+            . 'ADD CONSTRAINT `chk_ar_balance_non_negative` CHECK (`balance` >= 0)'
+        );
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('accounts_receivables');

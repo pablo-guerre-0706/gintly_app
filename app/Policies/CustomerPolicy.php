@@ -71,4 +71,19 @@ final class CustomerPolicy
             ? Response::allow()
             : Response::deny('No tiene autorización para dar de baja clientes.');
     }
+ 
+    // --- MOD-08: autorización de los endpoints de crédito del cliente ---
+    // GET /customers/{id}/credit-status — estado de crédito consolidado
+    public function viewCreditStatus(User $user, Customer $customer): bool
+    {
+        return $this->sharesBusinessWith($user, $customer)
+            && $this->hasAtLeast($user, RoleName::Admin);
+    }
+
+    // POST /customers/{id}/credit-check — evaluación preventiva de cupo (ROL-03+, RF-08-02).
+    public function checkCredit(User $user, Customer $customer): bool
+    {
+        return $this->sharesBusinessWith($user, $customer)
+            && $this->hasAtLeast($user, RoleName::Operator);
+    }
 }
