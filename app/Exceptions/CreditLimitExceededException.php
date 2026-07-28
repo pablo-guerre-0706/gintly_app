@@ -1,25 +1,45 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
 
-class CreditLimitExceededException extends Exception
+final class CreditLimitExceededException extends RuntimeException
 {
     public function __construct(
-        private readonly string $exposure = '0.00',
-        private readonly string $limit = '0.00',
+        public readonly string $exposure,
+        public readonly string $limit,
+        string $message = 'La venta a crédito excede el cupo disponible del cliente.'
     ) {
-        parent::__construct('La venta a crédito excede el límite autorizado del cliente. Requiere autorización de ROL-01.');
+        parent::__construct($message);
     }
 
-    public function render(): JsonResponse
+    /** Cliente sin línea de crédito (límite = 0). No puede operar a crédito. */
+    public static function noCreditLine(string $limit): self
+    {
+        return new self(
+            exposure: '0.00',
+            limit: $limit,
+            message: 'El cliente no tiene línea de crédito habilitada.'
+        );
+    }
+
+    /** Exposición + monto supera el límite y no hay autorización ROL-01. */
+    public static function overLimit(string $exposure, string $limit): self
+    {
+        return new self($exposure, $limit);
+    }
+
+    public function render(Request $request): JsonResponse
     {
         return response()->json([
+            'code'     => 'CREDIT_LIMIT_EXCEEDED',
             'message'  => $this->getMessage(),
-            'error'    => 'CREDIT_LIMIT_EXCEEDED',
-            'exposure' => $this->exposure,
+            'exposure' => $this->exposure, // Respuesta auditable (RF-08-02).
             'limit'    => $this->limit,
         ], 422);
     }

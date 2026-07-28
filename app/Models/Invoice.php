@@ -9,12 +9,15 @@ use App\Enums\InvoicePaymentType;
 use App\Enums\InvoiceStatus;
 use App\Exceptions\ImmutableInvoiceException;
 use App\Models\Concerns\BelongsToBusiness;
+use App\Models\AccountReceivable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 
 /**
  * Factura: núcleo fiscal INMUTABLE PARCIAL (D-29, H-66).
@@ -122,7 +125,10 @@ final class Invoice extends Model
         return $this->hasMany(InvoicePayment::class);
     }
 
-    // accountReceivable(): se activa al cerrar MOD-08 (parche P7).
+    public function accountReceivable(): HasOne
+    {
+        return $this->hasOne(AccountReceivable::class);
+    }
 
     public function scopeEmitida(Builder $query): Builder
     {

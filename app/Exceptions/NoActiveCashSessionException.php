@@ -26,4 +26,10 @@ class NoActiveCashSessionException extends Exception
     {
         return new self("La sesión de caja {$sessionId} no está abierta y no puede cerrarse.");
     }
+
+    /** ERR-08B: abono en efectivo sin sesión de caja activa. */
+    public static function forCreditPayment(): self
+    {
+        return new self('No hay una sesión de caja activa para recibir el cobro en efectivo.');
+    }
 }

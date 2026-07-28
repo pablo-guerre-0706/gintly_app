@@ -1,19 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
 
-class OverpaymentException extends Exception
+final class OverpaymentException extends RuntimeException
 {
-    public function __construct(string $message = 'El abono excede el saldo pendiente de la cuenta.')
-    {
+    public function __construct(
+        public readonly string $balance,
+        public readonly string $amount,
+        string $message = 'El abono no puede exceder el saldo de la cuenta.'
+    ) {
         parent::__construct($message);
     }
 
-    public function render(): JsonResponse
+    public function render(Request $request): JsonResponse
     {
-        return response()->json(['message' => $this->getMessage(), 'error' => 'OVERPAYMENT'], 422);
+        return response()->json([
+            'code'    => 'OVERPAYMENT',
+            'message' => $this->getMessage(),
+            'balance' => $this->balance,
+            'amount'  => $this->amount,
+        ], 422);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\DocumentType;
 use App\Models\Concerns\BelongsToBusiness;
+use App\Models\AccountReceivable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,9 +49,25 @@ final class Customer extends Model
         return $this->hasMany(CustomerAddress::class);
     }
 
-    // accountsReceivable(): se activa al cerrar MOD-08 (parche P6).
-    // sales(), invoices(): se activan al cerrar MOD-07.
+    public function accountsReceivable(): HasMany
+    {
+        return $this->hasMany(AccountReceivable::class);
+    }
 
+    public function hasPendingReceivables(): bool
+    {
+        return $this->accountsReceivable()->pending()->exists();
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
 
     public function scopeReal(Builder $query): Builder
     {
@@ -71,11 +88,6 @@ final class Customer extends Model
     public function operatesOnCredit(): bool
     {
         return bccomp((string) $this->credit_limit, '0', 2) > 0;
-    }
-
-    public function hasPendingReceivables(): bool
-    {
-        return false;
     }
 }
 

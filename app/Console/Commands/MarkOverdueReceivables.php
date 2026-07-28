@@ -1,24 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\Business;
-use App\Services\Receivable\ReceivableService;
+use App\Services\Sales\ReceivableService;
 use Illuminate\Console\Command;
 
-class MarkOverdueReceivables extends Command
+final class MarkOverdueReceivablesCommand extends Command
 {
     protected $signature = 'receivables:mark-overdue';
-    protected $description = 'Marca CxC vencidas y dispara alertas (RF-08-05).';
 
-    public function handle(ReceivableService $service): int
+    protected $description = 'Marca como vencidas las CxC con plazo expirado y saldo vivo (RF-08-05).';
+
+    public function handle(ReceivableService $receivables): int
     {
-        Business::query()->chunkById(100, function ($businesses) use ($service) {
-            foreach ($businesses as $business) {
-                $count = $service->marcarVencidas($business->id);
-                if ($count > 0) $this->info("Negocio {$business->id}: {$count} CxC marcadas vencidas.");
+        $total = 0;
+
+        Business::query()->each(function (Business $business) use ($receivables, &$total): void {
+            $marked = $receivables->marcarVencidas($business->id);
+            $total += $marked;
+
+            if ($marked > 0) {
+                $this->info("Negocio #{$business->id}: {$marked} cuenta(s) marcada(s) vencida(s).");
             }
         });
+
+        $this->info("Total de cuentas marcadas vencidas: {$total}.");
+
         return self::SUCCESS;
     }
 }

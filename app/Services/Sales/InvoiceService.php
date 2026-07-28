@@ -50,6 +50,7 @@ final class InvoiceService
         private readonly InventoryService $inventory,
         private readonly CashService $cash,
         private readonly FolioGenerator $folios,
+        private readonly ReceivableService $receivables,
     ) {
     }
 
@@ -65,6 +66,24 @@ final class InvoiceService
         string $discountAmount,
         array $payments
     ): Invoice {
+        
+        $salesForTotals = Sale::query()
+            ->where('business_id', $actor->business_id)
+            ->whereIn('id', $saleIds)
+            ->get();
+
+        $customer = $salesForTotals->first()?->customer; // Obtiene el objeto Customer (o cámbialo por customer_id si tu método pide el ID)
+        $total = $salesForTotals->sum('total'); // Suma los totales de las ventas
+        $data = []; // Evita que falle por no existir la variable $data
+
+        if ($paymentType === InvoicePaymentType::credito) {
+            $this->receivables->assertCreditAvailable(
+                $customer,
+                $total,
+                (bool) ($data['owner_authorized'] ?? false) // Autorización ROL-01 para exceder.
+            );
+        }
+
         return DB::transaction(function () use (
             $actor, $saleIds, $paymentType, $cashSessionId, $discountAmount, $payments
         ): Invoice {
@@ -82,7 +101,8 @@ final class InvoiceService
 
             if ($paymentType === InvoicePaymentType::Credito) {
                 $this->assertNotGenericCustomer($customerId, $actor->business_id);
-                // P8 (MOD-08): $this->receivables->assertCreditAvailable(...) irá aquí.
+                
+                $this->receivables->assertCreditAvailable($customerId, $totalAmount); 
             }
 
             // --- 2. Totales: subtotal, IVA (solo gravable), total (H-68) ---
@@ -140,6 +160,11 @@ final class InvoiceService
             // --- 8. Marcar ventas como facturadas ---
             Sale::query()->whereIn('id', $sales->pluck('id'))->update(['status' => SaleStatus::Facturada->value]);
 
+            // genera la CxC atómicamente (RF-08-01).
+            if ($invoice->payment_type === InvoicePaymentType::credito) {
+                $this->receivables->generarDesdeFactura($invoice);
+            }
+
             return $invoice->refresh()->load(['sales', 'payments']);
         });
     }
@@ -168,8 +193,11 @@ final class InvoiceService
             $invoice->void_reason = $voidReason;
             $invoice->save();
 
-            // P8 (MOD-08): $this->receivables->revertirPorAnulacion($invoice) irá aquí.
-
+            // P8 (MOD-08) · revierte la CxC conservando los abonos (RF-08-07).
+            $ar = $invoice->accountReceivable()->lockForUpdate()->first();
+            if ($ar !== null) {
+                $this->receivables->revertirPorAnulacion($ar);
+            }
             return $invoice->refresh();
         });
     }
