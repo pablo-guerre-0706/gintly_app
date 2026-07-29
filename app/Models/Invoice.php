@@ -10,6 +10,7 @@ use App\Enums\InvoiceStatus;
 use App\Exceptions\ImmutableInvoiceException;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\AccountReceivable;
+use App\Models\CreditNote;
 use App\Models\Dispatch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+
 
 /**
  * Factura: núcleo fiscal INMUTABLE PARCIAL (D-29, H-66).
@@ -128,6 +130,11 @@ final class Invoice extends Model
     public function dispatches(): HasMany
     {
         return $this->hasMany(Dispatch::class);
+    }
+
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(CreditNote::class);
     }
 
     public function accountReceivable(): HasOne

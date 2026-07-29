@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AccountPayableController;
+use App\Http\Controllers\Api\V1\AccountReceivableController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
@@ -13,7 +14,9 @@ use App\Http\Controllers\Api\V1\CashRegisterController;
 use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
+use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\CustomerCreditController; // Reutilizado de MOD-08.
 use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
@@ -25,6 +28,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\SaleController;
+use App\Http\Controllers\Api\V1\SalesReturnController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SupplierController;
@@ -33,7 +37,11 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Models\Product;
 use App\Models\ProductRecipe;
+use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
+
+
+
 
 
 // 'v1' se antepone para componer /api/v1 conforme al contrato MOD-01 V2.
@@ -220,6 +228,30 @@ Route::prefix('v1')->group(function (): void {
         Route::model('item', \App\Models\SaleItem::class);
         Route::model('invoice', \App\Models\Invoice::class);
 
+        // MOD-08 · Cuentas por Cobrar
+        Route::prefix('accounts-receivable')->group(function (): void {
+            Route::get('/', [AccountReceivableController::class, 'index'])
+                ->name('accounts-receivable.index');
+
+            Route::get('/{accountReceivable}', [AccountReceivableController::class, 'show'])
+                ->name('accounts-receivable.show');
+
+            Route::get('/{accountReceivable}/payments', [AccountReceivableController::class, 'payments'])
+                ->name('accounts-receivable.payments.index');
+
+            Route::post('/{accountReceivable}/payments', [AccountReceivableController::class, 'storePayment'])
+                ->name('accounts-receivable.payments.store');
+        });
+
+        // MOD-09 Crédito del cliente (sub-recurso de customers)
+        Route::prefix('customers/{customer}')->group(function (): void {
+            Route::get('credit-status', [CustomerCreditController::class, 'status'])
+                ->name('customers.credit-status');
+
+            Route::post('credit-check', [CustomerCreditController::class, 'check'])
+            ->name('customers.credit-check');
+        });
+
         // MOD-09 · Entregas y Retiros
         Route::prefix('dispatches')->group(function (): void {
             Route::get('/', [DispatchController::class, 'index'])->name('dispatches.index');
@@ -232,8 +264,28 @@ Route::prefix('v1')->group(function (): void {
         // MOD-09 · Saldo pendiente de entrega (sub-recurso de invoices)
         Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
             ->name('invoices.delivery-status');
+
+
+        // MOD-10 · Devoluciones
+        Route::prefix('sales-returns')->group(function (): void {
+            Route::get('/', [SalesReturnController::class, 'index'])->name('sales-returns.index');
+            Route::post('/', [SalesReturnController::class, 'store'])->name('sales-returns.store');
+            Route::get('/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales-returns.show');
+            Route::get('/{salesReturn}/items', [SalesReturnController::class, 'items'])->name('sales-returns.items');
+        });
+
+        // MOD-10 · Notas de crédito
+        Route::prefix('credit-notes')->group(function (): void {
+            Route::get('/', [CreditNoteController::class, 'index'])->name('credit-notes.index');
+            Route::get('/{creditNote}', [CreditNoteController::class, 'show'])->name('credit-notes.show');
+        });
+
+        // MOD-10 · Saldo a favor del cliente
+        Route::get('customers/{customer}/credit-balance', [CustomerCreditController::class, 'creditBalance'])
+            ->name('customers.credit-balance');
     });
 });
+
 
 
 

@@ -23,6 +23,7 @@ use App\Models\SaleItem;
 use App\Models\User;
 use App\Services\Cash\CashService;
 use App\Services\Inventory\InventoryService;
+use App\Services\Receivable\ReceivableService;
 use App\Support\FolioGenerator;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;

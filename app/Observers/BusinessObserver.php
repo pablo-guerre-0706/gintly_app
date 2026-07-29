@@ -51,6 +51,7 @@ final class BusinessObserver
         $sequences = [
             'invoice'     => 'F-',
             'credit_note' => 'NC-',
+            'sales_return' => 'DV-',
         ];
 
         foreach ($sequences as $documentType => $prefix) {

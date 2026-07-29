@@ -1,265 +1,327 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Receivable;
 
 use App\Enums\AccountReceivableStatus;
-use App\Enums\CashMovementCategory;
-use App\Enums\CashMovementType;
 use App\Enums\InvoicePaymentStatus;
-use App\Enums\InvoicePaymentType;
-use App\Enums\PaymentMethod;
 use App\Exceptions\CreditLimitExceededException;
-use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\OverpaymentException;
 use App\Models\AccountReceivable;
-use App\Models\CashSession;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\ReceivablePayment;
 use App\Services\Cash\CashService;
-use DomainException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-class ReceivableService
+final class ReceivableService
 {
-    public function __construct(private readonly CashService $cash)
+    /** Plazo de crédito por defecto en días (RF-08-01). Parametrizable por negocio en Fase 2. */
+    private const DEFAULT_CREDIT_TERM_DAYS = 30;
+
+    public function __construct(private readonly CashService $cashService)
     {
     }
 
-    /**
-     * RF-08-02: valida el límite de crédito ANTES de facturar. Operación PURA (solo lectura).
-     * exposición = Σ balances de CxC pendientes/parciales/vencidas + nueva venta.
-     * Si excede y no hay autorización ROL-01, rechaza. Se llama desde InvoiceService.
-     *
-     * @throws CreditLimitExceededException
-     */
-    public function assertCreditAvailable(Customer $customer, string $newAmount, bool $authorizedByOwner = false): void
-    {
-        $limit = (string) $customer->credit_limit;
-
-        // credit_limit = 0 → el cliente no opera a crédito (RF-08-02).
-        if (bccomp($limit, '0', 2) <= 0) {
-            throw new DomainException('El cliente no tiene línea de crédito (credit_limit = 0).');
-        }
-
-        $exposure = $this->currentExposure($customer);
-        $projected = bcadd($exposure, $newAmount, 2);
-
-        if (bccomp($projected, $limit, 2) > 0 && ! $authorizedByOwner) {
-            throw new CreditLimitExceededException($projected, $limit);
-        }
-    }
-
-    /**
-     * RF-08-01: genera la CxC de una factura a crédito. Se invoca DENTRO de la transacción
-     * de emisión de InvoiceService (atomicidad factura⇄CxC: si una falla, ninguna persiste).
-     */
+    // =====================================================================
+    // RF-08-01 · Generación de la CxC al facturar (IN-TX, lo llama InvoiceService)
+    // =====================================================================
     public function generarDesdeFactura(Invoice $invoice): AccountReceivable
     {
-        if ($invoice->payment_type !== InvoicePaymentType::Credito) {
-            throw new DomainException('Solo una factura a crédito genera cuenta por cobrar.');
-        }
+        $total = (string) $invoice->total;
+        $paid  = (string) $invoice->paid_amount; // Pago inicial parcial, si lo hubo.
 
-        $paid = (string) $invoice->paid_amount;   // puede traer un pago inicial parcial
-
-        $ar = new AccountReceivable([
-            'customer_id'  => $invoice->customer_id,
-            'invoice_id'   => $invoice->id,
-            'total_amount' => (string) $invoice->total,
-            'paid_amount'  => $paid,
-            'status'       => bccomp($paid, '0', 2) > 0
-                ? AccountReceivableStatus::Parcial     // nace parcial si hubo abono inicial
-                : AccountReceivableStatus::Pendiente,  // si no, pendiente
-            'due_date'     => $invoice->issued_at?->copy()->addDays(30),  // plazo por defecto (parametrizable)
-        ]);
-        $ar->save();   // balance lo deriva el motor
+        $ar = new AccountReceivable();
+        $ar->customer_id  = $invoice->customer_id;
+        $ar->invoice_id   = $invoice->id;
+        $ar->total_amount = $total;
+        $ar->paid_amount  = $paid;
+        // Plazo por defecto: emisión + N días. copy() evita mutar la fecha de la factura.
+        $ar->due_date     = $invoice->issued_at->copy()
+            ->addDays(self::DEFAULT_CREDIT_TERM_DAYS)
+            ->toDateString();
+        // status FUERA de fillable: se deriva de los montos (nunca 'vencida').
+        $ar->status = AccountReceivableStatus::fromAmounts($total, $paid);
+        $ar->save(); // business_id lo inyecta el trait. unique(invoice_id) garantiza la unicidad 1:1.
 
         return $ar;
     }
 
-    /**
-     * RF-08-03: abono atómico de 5 pasos. Registra el pago, actualiza la CxC, sincroniza
-     * la factura y —si entra por caja— genera el movimiento 'cobro_credito'.
-     *
-     * @throws OverpaymentException|NoActiveCashSessionException
-     */
-    public function registrarAbono(
-        int $accountReceivableId,
-        string $amount,
-        PaymentMethod $method,
-        int $userId,
-        ?int $cashSessionId = null,
-        ?string $reference = null,
-    ): ReceivablePayment {
-        if (bccomp($amount, '0', 2) <= 0) {
-            throw new DomainException('El abono debe ser mayor que cero.');
+    // =====================================================================
+    // RF-08-02 · Validación preventiva de cupo (PRE-TX, solo lectura)
+    // =====================================================================
+    public function assertCreditAvailable(Customer $customer, string $amount, bool $ownerAuthorized = false): void
+    {
+        $limit = (string) $customer->credit_limit;
+
+        // Cliente sin línea de crédito: bloqueado incondicionalmente.
+        if (bccomp($limit, '0.00', 2) <= 0) {
+            throw CreditLimitExceededException::noCreditLine($limit);
         }
 
-        return DB::transaction(function () use ($accountReceivableId, $amount, $method, $userId, $cashSessionId, $reference) {
-            // lockForUpdate: serializa dos abonos concurrentes sobre la misma CxC.
-            $ar = AccountReceivable::query()->whereKey($accountReceivableId)->lockForUpdate()->firstOrFail();
+        $exposure  = $this->exposicion($customer);
+        $projected = bcadd($exposure, $amount, 2);
 
-            // Tope: nunca abonar más que el saldo (ERR-08 sobre-abono). Backstop legible antes del motor.
+        // Excede el cupo y no hay autorización ROL-01 ⇒ rechazo con cifras auditables.
+        if (bccomp($projected, $limit, 2) > 0 && ! $ownerAuthorized) {
+            throw CreditLimitExceededException::overLimit($exposure, $limit);
+        }
+    }
+
+    /**
+     * RF-08-02 (endpoint credit-check): evaluación PURA, no escribe.
+     * @return array{approved:bool,exposure:string,limit:string,available:string,requires_owner_authorization:bool}
+     */
+    public function evaluarCredito(Customer $customer, string $amount): array
+    {
+        $limit     = (string) $customer->credit_limit;
+        $exposure  = $this->exposicion($customer);
+        $projected = bcadd($exposure, $amount, 2);
+
+        $hasLine = bccomp($limit, '0.00', 2) > 0;
+        $fits    = $hasLine && bccomp($projected, $limit, 2) <= 0;
+
+        return [
+            'approved'                     => $fits,
+            'exposure'                     => $exposure,
+            'limit'                        => $limit,
+            'available'                    => $this->creditoDisponible($limit, $exposure),
+            'requires_owner_authorization' => $hasLine && ! $fits,
+        ];
+    }
+
+    // =====================================================================
+    // RF-08-06 · Estado de crédito consolidado (solo lectura)
+    // =====================================================================
+    /** @return array<string, mixed> */
+    public function estadoDeCredito(Customer $customer): array
+    {
+        $limit    = (string) $customer->credit_limit;
+        $exposure = $this->exposicion($customer);
+
+        $openAccounts = $customer->accountsReceivable()
+            ->pending()
+            ->orderBy('due_date')
+            ->get();
+
+        // Historial = TODOS los abonos de TODAS las cuentas del cliente (abiertas o saldadas).
+        $arIds   = $customer->accountsReceivable()->pluck('id');
+        $history = ReceivablePayment::query()
+            ->whereIn('accounts_receivable_id', $arIds)
+            ->with('user:id,name')
+            ->latest('paid_at')
+            ->get();
+
+        return [
+            'credit_limit'     => $limit,
+            'exposure'         => $exposure,
+            'available_credit' => $this->creditoDisponible($limit, $exposure),
+            'open_accounts'    => $openAccounts,
+            'payment_history'  => $history,
+        ];
+    }
+
+    // =====================================================================
+    // RF-08-03 · Abono atómico de 5 pasos (método transaccional canónico)
+    // =====================================================================
+    /** @param array{amount:string|float, payment_method:string, cash_session_id?:int|null, reference?:string|null} $data */
+    public function abonar(AccountReceivable $accountReceivable, array $data): ReceivablePayment
+    {
+        $amount = (string) $data['amount'];
+        $method = (string) $data['payment_method'];
+
+        return DB::transaction(function () use ($accountReceivable, $data, $amount, $method): ReceivablePayment {
+            // Serializa abonos concurrentes sobre la MISMA cuenta (bloqueo de fila).
+            $ar = AccountReceivable::query()
+                ->whereKey($accountReceivable->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // No se abona una cuenta ya saldada.
+            if ($ar->status->isSettled() || bccomp((string) $ar->balance, '0.00', 2) <= 0) {
+                throw new OverpaymentException(
+                    (string) $ar->balance,
+                    $amount,
+                    'La cuenta ya está saldada; no admite más abonos.'
+                );
+            }
+
+            // El abono no puede exceder el saldo (validación de servicio; el motor la respalda con el CHECK).
             if (bccomp($amount, (string) $ar->balance, 2) > 0) {
                 throw new OverpaymentException((string) $ar->balance, $amount);
             }
 
-            // Abono en efectivo → exige caja activa (ERR-08B). Reusa la excepción de MOD-06.
-            if ($method->affectsCashDrawer()) {
-                $this->assertActiveCashSession($cashSessionId);
+            // Paso 5 adelantado para FALLAR RÁPIDO si la caja está cerrada (todo es atómico igual).
+            $cashSessionId = $method === 'efectivo' ? (int) $data['cash_session_id'] : null;
+            if ($method === 'efectivo') {
+                $this->cashService->registrarCobroCredito($cashSessionId, $amount, $data['reference'] ?? null);
             }
 
-            // (1) Insertar el abono (append-only).
-            $payment = ReceivablePayment::create([
-                'accounts_receivable_id' => $ar->id,
-                'cash_session_id'        => $cashSessionId,
-                'user_id'                => $userId,
-                'amount'                 => $amount,
-                'payment_method'         => $method,
-                'reference'              => $reference,
-                'paid_at'                => now(),
-            ]);
+            // (1) Inserta el abono. user_id lo fija el Service (no-repudio), NUNCA el request.
+            $payment = new ReceivablePayment();
+            $payment->accounts_receivable_id = $ar->id;
+            $payment->cash_session_id        = $cashSessionId;
+            $payment->amount                 = $amount;
+            $payment->payment_method         = $method;
+            $payment->reference              = $data['reference'] ?? null;
+            $payment->paid_at                = now();
+            $payment->user_id                = Auth::id();
+            $payment->save();
 
-            // (2) Subir paid_amount (el motor recalcula balance solo).
+            // (2) Incrementa el pagado; (3) el MOTOR recalcula 'balance' (columna generada).
             $ar->paid_amount = bcadd((string) $ar->paid_amount, $amount, 2);
-
-            // (3+4) Sincronizar estado CxC ⇄ factura (RF-08-04).
-            $this->syncStatuses($ar);
             $ar->save();
+            $ar->refresh(); // Relee el 'balance' recomputado por el motor.
 
-            // (5) Reflejo en caja: movimiento 'cobro_credito' solo si es efectivo.
-            if ($method->affectsCashDrawer()) {
-                $this->cash->registrarMovimiento(
-                    sessionId:     $cashSessionId,
-                    type:          CashMovementType::Ingreso,
-                    category:      CashMovementCategory::CobroCredito,
-                    paymentMethod: $method,
-                    amount:        $amount,
-                    userId:        $userId,
-                    description:   'Cobro de crédito CxC #'.$ar->id,
-                );
-            }
+            // (4) Sincroniza estado de cuenta ⇄ estado de pago de la factura (RF-08-04).
+            $this->syncStatuses($ar, $amount);
 
-            return $payment;
+            return $payment->fresh(['accountReceivable', 'user']);
         });
     }
 
     /**
-     * RF-08-07: reversión por anulación/devolución. Reduce el balance por el monto de la
-     * nota de crédito. Los abonos ya recibidos NO se borran (BR-07); el resarcimiento del
-     * excedente ya pagado se resuelve en MOD-10. Se invoca desde InvoiceService::anular.
+     * Alias de compatibilidad. Antes existían llamadas a `registrarAbono()`;
+     * delega en el método canónico `abonar()`. Elimínalo si unificas el nombre en toda la base.
+     *
+     * @param array{amount:string|float, payment_method:string, cash_session_id?:int|null, reference?:string|null} $data
      */
-    public function revertirPorAnulacion(Invoice $invoice, int $authorizerId): void
+    public function registrarAbono(AccountReceivable $accountReceivable, array $data): ReceivablePayment
     {
-        $ar = $invoice->accountReceivable;
-        if ($ar === null) {
-            return;   // factura de contado: nada que revertir
+        return $this->abonar($accountReceivable, $data);
+    }
+
+    // =====================================================================
+    // RF-08-07 · Reversión por anulación (IN-TX, lo llama InvoiceService::anular)
+    // =====================================================================
+    public function revertirPorAnulacion(AccountReceivable $accountReceivable): void
+    {
+        $ar = AccountReceivable::query()
+            ->whereKey($accountReceivable->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // Salda llevando el total al monto ya pagado ⇒ balance 0 (RF-08-07).
+        // paid_amount se conserva VERAZ (== Σ abonos) para el resarcimiento en MOD-10.
+        // Los ReceivablePayment NO se eliminan: permanecen como evidencia (BR-07).
+        // (Requiere chk_ar_total_positive >= 0 para el caso paid = 0.)
+        $ar->total_amount = (string) $ar->paid_amount;
+        $ar->status       = AccountReceivableStatus::Pagada;
+        $ar->save();
+    }
+
+    // =====================================================================
+    // RF-08-07 / MOD-10 (P15) · Reducción por nota de crédito
+    // =====================================================================
+    /**
+     * Reduce el saldo de la CxC por una nota de crédito, sin borrar abonos (BR-07).
+     * El total baja por el monto, nunca por debajo de lo ya abonado. Re-sincroniza estados.
+     * Debe correr dentro de la transacción del retorno (ReturnService).
+     */
+    public function reducirPorNotaCredito(AccountReceivable $accountReceivable, string $amount): void
+    {
+        $ar = AccountReceivable::query()
+            ->whereKey($accountReceivable->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // El total no puede quedar por debajo de lo abonado (RF-08-07): saldo mínimo 0.
+        $newTotal = bcsub((string) $ar->total_amount, $amount, 2);
+        if (bccomp($newTotal, (string) $ar->paid_amount, 2) < 0) {
+            $newTotal = (string) $ar->paid_amount;
         }
+        $ar->total_amount = $newTotal;
+        $ar->save();
+        $ar->refresh(); // Relee 'balance' recomputado por el motor.
 
-        DB::transaction(function () use ($ar) {
-            // Anulación total: la deuda pendiente desaparece llevando total al monto ya pagado,
-            // dejando balance 0 y estado trazable (nunca borrado físico — BR-04/BR-07).
-            $ar->total_amount = (string) $ar->paid_amount;   // balance generado → 0
-            $ar->status = AccountReceivableStatus::Pagada;   // saldada por anulación, trazable
-            $ar->save();
-            // Los ReceivablePayment permanecen intactos (evidencia). El excedente ya abonado
-            // se resarce en MOD-10 (reembolso o saldo a favor).
-        });
+        // Re-deriva SIN sumar abono: pasa amount '0.00' para no tocar invoice.paid_amount.
+        $this->syncStatuses($ar, '0.00');
     }
 
-    /** RF-10-03: reduce el balance de la CxC por una nota de crédito (sin borrar abonos, BR-07). */
-    public function reducirPorNotaCredito(\App\Models\AccountReceivable $ar, string $amount): void
-    {
-        DB::transaction(function () use ($ar, $amount) {
-            $ar->refresh();
-            // Reducir el total (balance generado baja). Nunca por debajo de lo ya pagado.
-            $nuevoTotal = bcsub((string) $ar->total_amount, $amount, 2);
-            if (bccomp($nuevoTotal, (string) $ar->paid_amount, 2) < 0) {
-                $nuevoTotal = (string) $ar->paid_amount;   // piso: no dejar balance negativo
-            }
-            $ar->total_amount = $nuevoTotal;
-            $this->syncStatuses($ar);   // reutiliza la sincronización CxC⇄factura de MOD-08
-            $ar->save();
-        });
-    }
-
-    /**
-     * RF-08-05: cron que marca 'vencida' toda CxC con due_date pasada y balance > 0.
-     * Retorna cuántas marcó (para el log del job y la alerta de MOD-11).
-     */
+    // =====================================================================
+    // RF-08-05 · Marcado de vencidas (CRON, sin sesión de usuario)
+    // =====================================================================
     public function marcarVencidas(int $businessId): int
     {
-        return AccountReceivable::query()
-            ->where('business_id', $businessId)
-            ->whereIn('status', [AccountReceivableStatus::Pendiente->value, AccountReceivableStatus::Parcial->value])
-            ->whereNotNull('due_date')
-            ->whereDate('due_date', '<', now())
-            ->where('balance', '>', 0)
-            ->chunk(100, function ($cuentas) {
-                foreach ($cuentas as $ar) {
-                    $ar->update(['status' => AccountReceivableStatus::Vencida->value]);
+        return DB::transaction(function () use ($businessId): int {
+            $affected = 0;
 
-                    $this->anomalies->registrarSilencioso(
-                        businessId: $ar->business_id, code: \App\Enums\AnomalyRuleCode::CuentaVencida,
-                        sourceType: 'account_receivable', sourceId: $ar->id,
-                    );
-                }
-            });
+            AccountReceivable::query()
+                ->withoutGlobalScopes() // El cron corre sin tenant resuelto: filtra explícito.
+                ->where('business_id', $businessId)
+                ->overdue()
+                ->lockForUpdate()
+                ->get()
+                ->each(function (AccountReceivable $ar) use (&$affected): void {
+                    $ar->status = AccountReceivableStatus::Vencida;
+                    $ar->save();
+                    $affected++;
+
+                    // Alerta 'cuenta_vencida' → AnomalyService (MOD-11). Inerte hasta que exista.
+                    if (class_exists(\App\Services\Anomaly\AnomalyService::class)) {
+                        app(\App\Services\Anomaly\AnomalyService::class)->registrarSilencioso('cuenta_vencida', $ar);
+                    }
+                });
+
+            return $affected;
+        });
     }
 
+    // ---------------- Helpers ----------------
 
-
-    // ─────── Helpers privados ───────
-
-    /** Exposición = Σ balances de CxC que aún cuentan (pendiente/parcial/vencida). */
-    private function currentExposure(Customer $customer): string
+    /** Exposición = Σ balances de cuentas pendientes/parciales/vencidas del cliente. */
+    public function exposicion(Customer $customer): string
     {
-        $sum = AccountReceivable::query()
-            ->where('customer_id', $customer->id)
-            ->whereIn('status', [
-                AccountReceivableStatus::Pendiente->value,
-                AccountReceivableStatus::Parcial->value,
-                AccountReceivableStatus::Vencida->value,
-            ])
-            ->sum('balance');
+        $sum = $customer->accountsReceivable()->pending()->sum('balance');
 
-        return bcadd('0.00', (string) $sum, 2);
+        return bcadd((string) $sum, '0.00', 2); // Normaliza a escala 2.
     }
 
-    /** Sincroniza CxC y factura: nunca una pagada con la otra pendiente (RF-08-04). */
-    private function syncStatuses(AccountReceivable $ar): void
+    private function creditoDisponible(string $limit, string $exposure): string
     {
-        // balance recién actualizado: lo recalculamos en PHP para decidir estado
-        // (el valor del motor se refresca tras save; aquí usamos total - paid vigente).
-        $balance = bcsub((string) $ar->total_amount, (string) $ar->paid_amount, 2);
+        $available = bcsub($limit, $exposure, 2);
 
-        if (bccomp($balance, '0', 2) === 0) {
-            $ar->status = AccountReceivableStatus::Pagada;
-            $invoiceStatus = InvoicePaymentStatus::Pagada;
-        } elseif (bccomp((string) $ar->paid_amount, '0', 2) > 0) {
-            $ar->status = AccountReceivableStatus::Parcial;
-            $invoiceStatus = InvoicePaymentStatus::Parcial;
-        } else {
-            $ar->status = AccountReceivableStatus::Pendiente;
-            $invoiceStatus = InvoicePaymentStatus::Pendiente;
+        // Piso en cero (RF-08-06): nunca crédito disponible negativo.
+        return bccomp($available, '0.00', 2) < 0 ? '0.00' : $available;
+    }
+
+    /**
+     * Derivación única de estados (reutilizada por abono y por nota de crédito).
+     * $paymentDelta se suma a invoice.paid_amount SOLO cuando proviene de un abono real;
+     * en la reducción por NC se pasa '0.00' porque el estado se acopla al saldo YA reducido.
+     */
+    private function syncStatuses(AccountReceivable $ar, string $paymentDelta): void
+    {
+        // --- Estado de la CUENTA ---
+        $derived = AccountReceivableStatus::fromAmounts((string) $ar->total_amount, (string) $ar->paid_amount);
+
+        if ($derived->isSettled()) {
+            $ar->status = AccountReceivableStatus::Pagada;          // Saldar PRIMA incluso sobre 'vencida'.
+        } elseif ($ar->status !== AccountReceivableStatus::Vencida) {
+            $ar->status = $derived;                                 // 'vencida' solo la gestiona el cron.
         }
+        $ar->save();
 
-        // Sincroniza la factura en la MISMA transacción. El guard de Invoice permite
-        // mutar payment_status y paid_amount (no el núcleo fiscal).
-        $invoice = $ar->invoice;
-        $invoice->paid_amount    = (string) $ar->paid_amount;
-        $invoice->payment_status = $invoiceStatus;
-        $invoice->save();
-    }
-
-    private function assertActiveCashSession(?int $cashSessionId): void
-    {
-        if ($cashSessionId === null) {
-            throw new NoActiveCashSessionException('El abono en efectivo requiere una sesión de caja activa.');
-        }
-        $open = CashSession::query()->whereKey($cashSessionId)->where('status', 'abierta')->exists();
-        if (! $open) {
-            throw new NoActiveCashSessionException('La sesión de caja indicada no está abierta.');
+        // --- Estado de pago de la FACTURA (permitido por la inmutabilidad parcial D-29) ---
+        $invoice = $ar->invoice()->lockForUpdate()->first();
+        if ($invoice instanceof Invoice) {
+            if (bccomp($paymentDelta, '0.00', 2) > 0) {
+                // Abono real: suma al pagado de la factura y deriva del total FISCAL.
+                $invoice->paid_amount    = bcadd((string) $invoice->paid_amount, $paymentDelta, 2);
+                $invoice->payment_status = InvoicePaymentStatus::fromAmounts(
+                    (string) $invoice->total,
+                    (string) $invoice->paid_amount
+                );
+            } else {
+                // Reducción por NC: la factura acopla su estado al saldo REDUCIDO de la CxC.
+                $invoice->payment_status = InvoicePaymentStatus::fromAmounts(
+                    (string) $ar->total_amount,
+                    (string) $ar->paid_amount
+                );
+            }
+            $invoice->save();
         }
     }
 }

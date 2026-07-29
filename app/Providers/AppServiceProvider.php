@@ -4,14 +4,26 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\AccountReceivable;
 use App\Models\AuditLog;
 use App\Models\Branch;
+use App\Models\Brand;
 use App\Models\Business;
+use App\Models\Category;
+use App\Models\Dispatch;
+use App\Models\Invoice;
+use App\Models\Sale;
 use App\Models\User;
 use App\Observers\BusinessObserver;
 use App\Policies\AuditLogPolicy;
 use App\Policies\BranchPolicy;
+use App\Policies\BrandPolicy;
 use App\Policies\BusinessPolicy;
+use App\Policies\CategoryPolicy;
+use App\Policies\AccountReceivablePolicy;
+use App\Policies\DispatchPolicy;
+use App\Policies\InvoicePolicy;
+use App\Policies\SalePolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -90,6 +102,12 @@ final class AppServiceProvider extends ServiceProvider
         //MOD-07
         Gate::policy(Sale::class, SalePolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
+
+        //mod-08
+        Gate::policy(AccountReceivable::class, AccountReceivablePolicy::class);
+
+        // MOD-09
+        Gate::policy(Dispatch::class, DispatchPolicy::class);
     }
 
     // Bloqueo por intentos fallidos mediante limitación de tasa.

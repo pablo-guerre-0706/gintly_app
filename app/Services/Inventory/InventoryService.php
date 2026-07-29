@@ -23,7 +23,6 @@ use Illuminate\Support\Facades\Auth;
 
 
 
-
 final class InventoryService
 {
     private const QTY_SCALE = 3;
@@ -471,6 +470,98 @@ final class InventoryService
         }
 
         return $out;
+    }
+
+    /**
+    * RF-10-02 · Reingreso de una línea devuelta al stock vendible.
+    * Simple ⇒ a COSTO CONGELADO de la línea (recalcula promedio ponderado, RF-03-06).
+    * Compuesto ⇒ reingresa insumos al costo promedio vigente (Fase 1, simetría con la reversión MOD-09,
+    * pues el snapshot no congela el costo por insumo). Debe correr dentro de la transacción del retorno.
+    */
+    public function ingresarPorDevolucion(SaleItem $saleItem, string $quantity, Warehouse $warehouse, string $reason): void
+    {
+        if (! $saleItem->isCompound()) {
+            $this->entradaConCosto($saleItem->product_id, $quantity, $warehouse, (string) $saleItem->unit_cost, $reason);
+            return;
+        }
+
+        foreach ($this->explosionInsumos($saleItem, $quantity) as $productId => $qty) {
+            // unitCost null ⇒ el método usa el promedio vigente del insumo.
+            $this->entradaConCosto((int) $productId, (string) $qty, $warehouse, null, $reason);
+        }
+    }
+
+    /**
+    * RF-10-02 · Merma de devolución: marca de pérdida trazable.
+    * Fase 1: NO toca stock_levels ni escribe kardex (los bienes ya salieron en el retiro y no
+    * reingresan al stock vendible). Crea la cabecera de ajuste tipo 'merma'; el detalle
+    * producto/cantidad/costo vive en sales_return_items (+ sale_item.unit_cost congelado).
+    */
+    public function registrarMermaPorDevolucion(int $warehouseId, string $reason): InventoryAdjustment
+    {
+        $adjustment = new InventoryAdjustment();
+        $adjustment->warehouse_id = $warehouseId;
+        $adjustment->user_id      = Auth::id();      // Responsable (no-repudio).
+        $adjustment->type         = 'merma';         // El cast a InventoryAdjustmentType convierte el string.
+        $adjustment->reason       = $reason;
+        $adjustment->adjusted_at  = now();
+        $adjustment->save();
+
+        return $adjustment;
+    }
+
+    /** Entrada de stock a un costo dado (o al promedio vigente si es null), con recálculo ponderado. */
+    private function entradaConCosto(int $productId, string $qty, Warehouse $warehouse, ?string $unitCost, string $reason): void
+    {
+        $stock = $this->bloquearOCrearStock($productId, $warehouse->id);
+
+        $oldQty = (string) $stock->quantity;
+        $oldAvg = (string) $stock->average_cost;
+        $cost   = $unitCost ?? $oldAvg;
+
+        $newQty = bcadd($oldQty, $qty, 3);
+
+        // Costo promedio ponderado (RF-03-06), precisión 4 en el costo para no arrastrar redondeo.
+        $newValue = bcadd(bcmul($oldQty, $oldAvg, 4), bcmul($qty, $cost, 4), 4);
+        $newAvg   = bccomp($newQty, '0', 3) > 0 ? bcdiv($newValue, $newQty, 4) : $oldAvg;
+
+        $stock->quantity     = $newQty;
+        $stock->average_cost = $newAvg;
+        $stock->save();
+
+        InventoryMovement::create([
+            'product_id'    => $productId,
+            'warehouse_id'  => $warehouse->id,
+            'user_id'       => Auth::id(),
+            'type'          => 'entrada',
+            'quantity'      => $qty,
+            'balance_after' => $newQty,
+            'unit_cost'     => $cost,
+            'reason'        => $reason,
+            // Sin FK de origen: chk_movement_single_origin admite cero orígenes (no hay FK de devolución en Fase 1).
+        ]);
+    }
+
+    private function bloquearOCrearStock(int $productId, int $warehouseId): StockLevel
+    {
+        $stock = StockLevel::query()
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($stock === null) {
+            $stock = new StockLevel();
+            $stock->product_id   = $productId;   // Atributos de saldo fuera de fillable: se fijan directo.
+            $stock->warehouse_id = $warehouseId;
+            $stock->save();                       // business_id vía trait; quantity/reserved/avg quedan en 0.
+
+            $stock = StockLevel::query()
+                ->where('product_id', $productId)->where('warehouse_id', $warehouseId)
+                ->lockForUpdate()->first();
+        }
+
+        return $stock;
     }
 
     private function descontarFisicoYReserva(int $productId, string $qty, Warehouse $warehouse, Dispatch $dispatch): void

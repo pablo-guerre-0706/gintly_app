@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\DispatchItem;
+use App\Models\SalesReturnItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -63,15 +64,20 @@ final class SaleItem extends Model
         return bcsub((string) $this->quantity, (string) ($this->dispatched_quantity ?? '0'), 3);
     }
 
+    public function dispatchItems(): HasMany
+    {
+        return $this->hasMany(DispatchItem::class);
+    }
+
     // Cantidad devolvible = despachada − devuelta. Base de MOD-10.
     public function returnableQuantity(): string
     {
         return bcsub((string) ($this->dispatched_quantity ?? '0'), (string) ($this->returned_quantity ?? '0'), 3);
     }
 
-    public function dispatchItems(): HasMany
+    public function salesReturnItems(): HasMany
     {
-        return $this->hasMany(DispatchItem::class);
+        return $this->hasMany(SalesReturnItem::class);
     }
 
     /**
@@ -82,7 +88,4 @@ final class SaleItem extends Model
     {
         return ! empty($this->recipe_snapshot);
     }
-
-
-
 }

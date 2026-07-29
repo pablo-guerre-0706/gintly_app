@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Business;
-use App\Services\Sales\ReceivableService;
+use App\Services\Receivable\ReceivableService;
 use Illuminate\Console\Command;
 
 final class MarkOverdueReceivablesCommand extends Command

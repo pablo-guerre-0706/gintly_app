@@ -19,6 +19,7 @@ final class InventoryAdjustment extends Model
 
     protected $fillable = [
         'warehouse_id',
+        'user_id',
         'physical_count_id',
         'type',
         'reason',

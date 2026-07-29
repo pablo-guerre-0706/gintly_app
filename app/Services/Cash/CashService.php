@@ -11,6 +11,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\RoleName;
 use App\Exceptions\CashAuthorizationException;
 use App\Exceptions\CashSessionConflictException;
+use App\Exceptions\InvalidRefundMethodException;
 use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\UnreconciledCashClosingException;
 use App\Models\CashMovement;
@@ -190,6 +191,32 @@ final class CashService
 
             return $movement->refresh();
         });
+    }
+
+    /**
+     * RF-10-03 · Reembolso en efectivo de una devolución.
+     * Bloquea la sesión, exige que esté ABIERTA y asienta un egreso 'egreso_autorizado'
+     * (efectivo) autorizado por ROL-01. Debe invocarse dentro de la transacción del retorno.
+     */
+    public function registrarReembolsoDevolucion(int $cashSessionId, string $amount, int $authorizerId, string $reference): CashMovement
+    {
+        $session = CashSession::query()->whereKey($cashSessionId)->lockForUpdate()->first();
+
+        if ($session === null || $session->status->value !== 'abierta') {
+            throw InvalidRefundMethodException::noActiveCashSession(); // ERR-10B (422).
+        }
+
+        return CashMovement::create([
+            'cash_session_id' => $session->id,
+            'user_id'         => Auth::id(),          // Quien ejecuta el reembolso.
+            'type'            => 'egreso',
+            'category'        => 'egreso_autorizado',
+            'payment_method'  => 'efectivo',
+            'amount'          => $amount,
+            'sale_id'         => null,
+            'authorized_by'   => $authorizerId,       // ROL-01 (chk_cash_movement_egreso_auth).
+            'description'     => "Reembolso de devolución · Ref: {$reference}",
+        ]);
     }
 
     /**

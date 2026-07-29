@@ -12,14 +12,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('sequences')) {
+        if (Schema::hasTable('document_sequences')) {
             return;
         }
 
         Schema::create('sequences', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
-            $table->string('type', 40);
+            $table->foreignId('document_business_id')->constrained('businesses')->cascadeOnDelete();
+            $table->string('document_type', 40);
             $table->unsignedBigInteger('next_value')->default(1);
             $table->timestamps();
 
@@ -29,6 +29,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('sequences');
+        Schema::dropIfExists('document_sequences');
     }
 };

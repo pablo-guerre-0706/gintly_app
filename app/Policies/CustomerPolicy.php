@@ -86,4 +86,11 @@ final class CustomerPolicy
         return $this->sharesBusinessWith($user, $customer)
             && $this->hasAtLeast($user, RoleName::Operator);
     }
+
+    // --- MOD-10: saldo a favor del cliente (ROL-02+, RF-10-03) ---
+    public function viewCreditBalance(User $user, Customer $customer): bool
+    {
+        return $this->sharesBusinessWith($user, $customer)
+            && $this->hasAtLeast($user, RoleName::Admin);
+    }
 }
