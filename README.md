@@ -75,36 +75,47 @@ Cada módulo se encuentra detallado en la documentación del proyecto.
 
 ## Instalación y configuración local
 
-### 1. Clonar el repositorio
+### 1. Clonar el repositorio:
 
 ```bash
 cd C:\laragon\www\
 git clone https://github.com/pablo-guerre-0706/gintly_app.git
+```
+
+### 2. Navega a la carpeta del proyecto:
+
+```bash
 cd gintly_app
 ```
 
-### 2. Instalar dependencias
+### 3. Instala las dependencias PHP:
 
 ```bash
 composer install
 ```
 
-### 3. Configurar el entorno
+### 4. Instala las dependencias JavaScript:
+
+```bash
+npm install
+```
+
+### 5. Configurar el entorno:
 
 ```bash
 # Duplicar la plantilla de variables de entorno
-copy .env.example .env
+cp .env.example .env
 
 # Generar la clave de la aplicación
 php artisan key:generate
 ```
 
-### 4. Configurar la base de datos
+### 6. Configurar la base de datos:
 
 1. Crear una base de datos en MySQL llamada `gintly_app`.
 2. Ajustar las credenciales en el archivo `.env`:
 
-```env
+```bash
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -113,7 +124,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-### 5. Ejecutar migraciones y datos de prueba
+### 7. Ejecutar migraciones y seeders:
 
 ```bash
 php artisan migrate --seed
@@ -121,11 +132,15 @@ php artisan migrate --seed
 
 **Nota de arquitectura:** el modo *teams* de `spatie/laravel-permission` debe estar activo (`'teams' => true` en `config/permission.php`) **antes** de correr las migraciones. El seeder crea un negocio de demostración con su "Consumidor Final" (cliente genérico) y las reglas base de anomalías, de modo que el sistema queda operativo tras la instalación.
 
-### 6. Instalar y compilar dependencias de Frontend
+### 8. Inicia el servidor de desarrollo:
 
 ```bash
-npm install
+# Servidor de Laravel
+php artisan serve
+```
 
+```bash
+# Servidor de Vite (Frontend)
 npm run dev
 ```
 
@@ -133,13 +148,17 @@ npm run dev
 
 ## Acceso al sistema
 
-Con Apache y MySQL activos en Laragon, ingresar desde el navegador a:
-https://github.com/pablo-guerre-0706/gintly_app.git
+Con los servicios de Laragon (Apache y MySQL) activos en Laragon, ingresa desde tu navegador web a:
+
+* **Si usas Artisan Serve:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
+* **Si usas el Virtual Host de Laragon:** [http://gintly_app.test](http://gintly_app.test)
 
 ---
 
 **Usuario de demostración (generado por el seeder):**
-Propietario => `<demo@gintly.test>` => `<password>`
+* **Rol:** Propietario
+* **Usuario:** `demo@gintly.test`
+* **Contraseña:** `password`
 
 ---
 
@@ -162,6 +181,15 @@ El control de acceso se implementa con `spatie/laravel-permission` (roles y perm
 
 ---
 
-## Autoría
+## Autoría y Créditos
 
-Proyecto desarrollado por **Pablo Antonio Guerrero Guillen, Roberto Carlos Romero, Gianfranco Ubau Torres**.
+### Ingeniería y Desarrollo
+* **Pablo Antonio Guerrero Guillén**
+* **Roberto Carlos Romero Blandón**
+* **Gianfranco Ubau Torres**
+
+### Diseño UI/UX
+* **Juan Carlos Umanzor Cárcamo**
+
+### Marketing y Comunicación
+* **María Belén Cruz Rodríguez**
