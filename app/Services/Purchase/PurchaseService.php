@@ -12,6 +12,8 @@ use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
+use App\Models\User;
+use App\Services\Anomaly\AnomalyService;
 use App\Services\Inventory\InventoryService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +22,10 @@ use Illuminate\Support\Str;
 class PurchaseService
 {
     // Inyección por constructor: el estándar único de entrada de mercancía (MOD-03).
-    public function __construct(private readonly InventoryService $inventory)
-    {
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AnomalyService $anomalies,
+    ) {
     }
 
     /**
@@ -84,10 +88,8 @@ class PurchaseService
     }
 
     /**
-     * Recepción con 3-Way Match. Si todo cuadra: ingresa a inventario (costo promedio
-     * ponderado), acumula received_quantity y genera CxP 'pendiente'. Si hay discrepancia:
-     * NO ingresa a inventario, NO acumula, congela la CxP y señala 409 (ERR-04).
-     *
+     * Recepción con 3-Way Match. Si cuadra: ingresa a inventario, acumula received_quantity y genera
+     * CxP 'pendiente'. Si hay discrepancia: no ingresa a inventario, no acumula, congela la CxP y señala 409 (ERR-04).
      * @throws PurchaseMatchException
      */
     public function recibir(PurchaseOrder $po, array $data): GoodsReceipt
@@ -99,8 +101,10 @@ class PurchaseService
         // 1) Match como operación PURA (solo lectura): decide el resultado antes de escribir.
         $match = $this->performThreeWayMatch($po, $data);
 
+        $actor = User::findOrFail($data['user_id']);
+
         // 2) Persistencia atómica del recibo + líneas + CxP según el resultado.
-        $receipt = DB::transaction(function () use ($po, $data, $match) {
+        $receipt = DB::transaction(function () use ($po, $data, $match, $actor) {
             $receipt = GoodsReceipt::create([
                 'purchase_order_id'       => $po->id,
                 'warehouse_id'            => $data['warehouse_id'],
@@ -127,21 +131,12 @@ class PurchaseService
             }
 
             if ($match['matched']) {
-                $this->applyReceiptToInventory($receipt, $match['lines']);       // entra a stock + kardex
+                $this->applyReceiptToInventory($receipt, $match['lines'], $actor);       // entra a stock + kardex
                 $this->generateOrUpdatePayable($receipt, AccountPayableStatus::Pendiente);
                 $this->refreshPurchaseOrderStatus($po);                          // parcial / recibida
             } else {
-                // Discrepancia: la CxP nace CONGELADA. Ni un gramo entra a inventario.
+                // Discrepancia: la CxP nace congelada. Ni un gramo entra a inventario.
                 $this->generateOrUpdatePayable($receipt, AccountPayableStatus::Congelada);
-
-                $this->anomalies->registrarSilencioso(
-                    businessId: $receipt->business_id,
-                    code: \App\Enums\AnomalyRuleCode::Discrepancia3Way,
-                    sourceType: 'goods_receipt',
-                    sourceId: $receipt->id,
-                    expected: (string) $po->expected_total,
-                    actual: (string) $match['computed_total'],
-                );
             }
 
             return $receipt;
@@ -150,7 +145,11 @@ class PurchaseService
         // 3) "Throw después del commit": el recibo congelado ya persistió para ROL-01;
         //    aquí solo señalamos el 409 al cliente. El throw NO revierte nada.
         if (! $match['matched']) {
-            throw new PurchaseMatchException;
+            $this->anomalies->registrarSilencioso('discrepancia_3way', $receipt, [
+                'branch_id' => $goodsReceipt->branch_id ?? null,
+            ]);
+
+            throw new PurchaseMatchException($receipt);
         }
 
         return $receipt->load('items');
@@ -167,7 +166,9 @@ class PurchaseService
             throw new DomainException('El recibo no está en estado de discrepancia.');
         }
 
-        return DB::transaction(function () use ($receipt, $resolution, $resolverUserId) {
+        $actor = User::findOrFail($resolverUserId);
+
+        return DB::transaction(function () use ($receipt, $resolution, $actor) {
             $payable = AccountPayable::query()->where('goods_receipt_id', $receipt->id)->firstOrFail();
 
             if ($resolution === 'aceptar') {
@@ -179,12 +180,12 @@ class PurchaseService
                     'invoiced_unit_cost'     => (string) $i->invoiced_unit_cost,
                 ])->all();
 
-                $this->applyReceiptToInventory($receipt, $lines);
+                $this->applyReceiptToInventory($receipt, $lines, $actor);
                 $this->refreshPurchaseOrderStatus($receipt->purchaseOrder);
 
                 $receipt->match_status = GoodsReceiptMatchStatus::Ok;
                 $payable->status       = AccountPayableStatus::Pendiente;
-                $payable->unblocked_by = $resolverUserId;   // trazabilidad del desbloqueo (RF-04-04)
+                $payable->unblocked_by = $actor;   // trazabilidad del desbloqueo (RF-04-04)
             } else { // 'rechazar'
                 $receipt->match_status = GoodsReceiptMatchStatus::Bloqueada;
                 // La CxP permanece 'congelada' (terminal): mercancía rechazada, deuda no exigible.
@@ -276,18 +277,17 @@ class PurchaseService
     }
 
     /** Ingresa cada línea a inventario (estándar único MOD-03) y acumula received_quantity. */
-    private function applyReceiptToInventory(GoodsReceipt $receipt, array $lines): void
+    private function applyReceiptToInventory(GoodsReceipt $receipt, array $lines, User $actor): void
     {
         foreach ($lines as $line) {
             // ingresar() abre su propia transacción → savepoint dentro de la nuestra. Atómico.
-            $this->inventory->ingresar(
+            $this->inventory->ingresarporCompra(
+                actor: $actor,
                 productId:       $line['product_id'],
                 warehouseId:     $receipt->warehouse_id,
                 quantity:        $line['received_quantity'],
                 unitCost:        $line['invoiced_unit_cost'],
-                userId:          $receipt->user_id,
                 purchaseOrderId: $receipt->purchase_order_id,
-                reason:          'Recepción de compra',
             );
 
             $poItem = PurchaseOrderItem::query()->findOrFail($line['purchase_order_item_id']);

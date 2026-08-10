@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AccountPayableController;
 use App\Http\Controllers\Api\V1\AccountReceivableController;
+use App\Http\Controllers\Api\V1\AnomalyController;
+use App\Http\Controllers\Api\V1\AnomalyRuleController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
@@ -27,6 +29,7 @@ use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
+use App\Http\Controllers\Api\V1\ReconciliationRunController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesReturnController;
 use App\Http\Controllers\Api\V1\StockLevelController;
@@ -39,7 +42,6 @@ use App\Models\Product;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
-
 
 
 
@@ -283,6 +285,28 @@ Route::prefix('v1')->group(function (): void {
         // MOD-10 · Saldo a favor del cliente
         Route::get('customers/{customer}/credit-balance', [CustomerCreditController::class, 'creditBalance'])
             ->name('customers.credit-balance');
+
+        // MOD-11 · Reglas de anomalía
+        Route::prefix('anomaly-rules')->group(function (): void {
+            Route::get('/', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
+            Route::put('/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
+        });
+
+        // MOD-11 · Anomalías (máquina de estados)
+        Route::prefix('anomalies')->group(function (): void {
+            Route::get('/', [AnomalyController::class, 'index'])->name('anomalies.index');
+            Route::get('/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
+            Route::get('/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
+            Route::post('/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
+            Route::post('/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
+        });
+
+        // MOD-11 · Corridas de conciliación
+        Route::prefix('reconciliation-runs')->group(function (): void {
+            Route::get('/', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
+            Route::post('/', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
+            Route::get('/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
+        });
     });
 });
 

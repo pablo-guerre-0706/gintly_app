@@ -19,13 +19,10 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
         ]);
 
-        /**
-        // User::factory(10)->create();
-
-        * User::factory()->create([
-        *     'name' => 'Test User',
-        *     'email' => 'test@example.com',
-        * ]);
-        */
+        User::create([
+            'name'  => 'Usuario Demo Gintly',
+            'email' => 'demo@gintly.test',
+            'password' => bcrypt('password'),
+        ]);
     }
 }

@@ -1,146 +1,188 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Anomaly;
 
-use App\Enums\AnomalyRuleCode;
 use App\Enums\AnomalyStatus;
-use App\Exceptions\DuplicateAnomalyException;
+use App\Exceptions\InvalidAnomalyStateException;
 use App\Exceptions\SelfResolutionNotAllowedException;
 use App\Models\Anomaly;
+use App\Models\AnomalyEvent;
 use App\Models\AnomalyRule;
-use DomainException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-class AnomalyService
+final class AnomalyService
 {
     /**
-     * Registro IDEMPOTENTE de una anomalía (RF-11-03 / ERR-11B). Si ya existe una activa
-     * para (regla + source), el candado uniq_active_anomaly rechaza el INSERT y lo silenciamos:
-     * el resultado es "no se duplicó", sin error visible al usuario.
+     * Mapa causante por tabla origen. Ausente ⇒ sin causante humano (no aplica).
+     * @var array<string, string>
      */
-    public function registrar(
-        int $businessId,
-        AnomalyRuleCode $code,
-        ?string $sourceType,
-        ?int $sourceId,
-        ?string $expected = null,
-        ?string $actual = null,
-        ?int $branchId = null,
-        ?int $reconciliationRunId = null,
-    ): ?Anomaly {
-        $rule = AnomalyRule::query()
-            ->where('business_id', $businessId)
-            ->where('code', $code->value)
-            ->where('is_active', true)
-            ->first();
+    private const CAUSER_FIELDS = [
+        'cash_sessions'   => 'user_id',
+        'goods_receipts'  => 'user_id',
+        'physical_counts' => 'user_id',
+    ];
 
-        if ($rule === null) {
-            return null;   // regla desactivada por el negocio → no se genera
-        }
-
-        $difference = ($expected !== null && $actual !== null)
-            ? bcsub($actual, $expected, 2)
-            : null;
-
-        // Umbral: si la diferencia no supera el threshold de la regla, no es anomalía.
-        if (! $this->exceedsThreshold($rule, $difference)) {
-            return null;
-        }
-
-        try {
-            $anomaly = new Anomaly([
-                'anomaly_rule_id'       => $rule->id,
-                'reconciliation_run_id' => $reconciliationRunId,
-                'branch_id'             => $branchId,
-                'severity'              => $rule->default_severity,
-                'status'                => AnomalyStatus::Detectada,
-                'expected_value'        => $expected,
-                'actual_value'          => $actual,
-                'difference'            => $difference,
-                'source_type'           => $sourceType,
-                'source_id'             => $sourceId,
-                'detected_at'           => now(),
-            ]);
-            $anomaly->business_id = $businessId;
-            $anomaly->save();
-
-            // TODO (enrutamiento): si severity=critica → notificar ROL-01 (canal). RF-11-06.
-            return $anomaly;
-        } catch (QueryException $e) {
-            // Choque contra uniq_active_anomaly = ya hay una activa idéntica. Idempotencia (ERR-11B).
-            if ($this->isUniqueViolation($e)) {
-                throw new DuplicateAnomalyException;   // capturada arriba o silenciada por el caller
-            }
-            throw $e;
-        }
-    }
-
-    /** Versión "safe" para los hooks: registra o deduplica sin propagar la colisión. */
-    public function registrarSilencioso(int $businessId, AnomalyRuleCode $code, ?string $sourceType, ?int $sourceId, ?string $expected = null, ?string $actual = null, ?int $branchId = null): ?Anomaly
+    /**
+     * RF-11-01/08 · Registro SILENCIOSO e idempotente de una anomalía.
+     * Nunca rompe la operación anfitriona: captura el 1062 del candado de idempotencia
+     * (ya existe una activa por regla+origen ⇒ ERR-11B silencioso) y cualquier otro error.
+     *
+     * @param array{expected_value?:string|null, actual_value?:string|null, difference?:string|null, branch_id?:int|null, severity?:\App\Enums\AnomalySeverity|null, reconciliation_run_id?:int|null} $values
+     */
+    public function registrarSilencioso(string $ruleCode, Model $source, array $values = []): ?Anomaly
     {
         try {
-            return $this->registrar($businessId, $code, $sourceType, $sourceId, $expected, $actual, $branchId);
-        } catch (DuplicateAnomalyException) {
-            return null;   // ya existía: silencio total, como manda ERR-11B
+            return DB::transaction(function () use ($ruleCode, $source, $values): ?Anomaly {
+                $rule = AnomalyRule::query()
+                    ->where('code', $ruleCode)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($rule === null) {
+                    return null; // Regla inexistente o desactivada: no se detecta.
+                }
+
+                $difference = $values['difference'] ?? null;
+                if (! $this->superaUmbral($rule, $difference)) {
+                    return null; // Bajo umbral: no se genera anomalía.
+                }
+
+                $anomaly = new Anomaly();
+                $anomaly->anomaly_rule_id       = $rule->id;
+                $anomaly->reconciliation_run_id = $values['reconciliation_run_id'] ?? null;
+                $anomaly->branch_id             = $values['branch_id'] ?? ($source->branch_id ?? null);
+                $anomaly->severity              = $values['severity'] ?? $rule->default_severity;
+                $anomaly->status                = AnomalyStatus::Detectada;
+                $anomaly->expected_value        = $values['expected_value'] ?? null;
+                $anomaly->actual_value          = $values['actual_value'] ?? null;
+                $anomaly->difference            = $difference;
+                $anomaly->source_type           = $source->getTable(); // Puntero débil = nombre de tabla.
+                $anomaly->source_id             = $source->getKey();
+                $anomaly->detected_at           = now();
+                $anomaly->save(); // uniq_active_anomaly puede lanzar 1062 ⇒ idempotencia.
+
+                $this->writeEvent($anomaly, null, AnomalyStatus::Detectada, null);
+
+                return $anomaly;
+            });
+        } catch (QueryException $e) {
+            if ($this->isDuplicateActive($e)) {
+                return null; // Ya existe una activa por regla+origen (ERR-11B silencioso).
+            }
+            report($e); // Otro error de BD: nunca romper la operación host.
+            return null;
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
         }
     }
 
     /**
-     * Justificación por el administrador (RF-11-07 / ERR-11). BR-01: el causante NO puede
-     * justificar su propia anomalía. La validación conoce cómo extraer el causante del source.
-     *
-     * @throws SelfResolutionNotAllowedException
+     * RF-11-07 · Justifica una anomalía (ROL-02). BR-01: el causante no puede justificarla.
      */
-    public function justificar(Anomaly $anomaly, int $validatorId, string $motivo): Anomaly
+    public function justificar(Anomaly $anomaly, string $reason): Anomaly
     {
-        if (! $anomaly->status->isActive()) {
-            throw new DomainException('La anomalía no está en un estado justificable.');
-        }
+        return DB::transaction(function () use ($anomaly, $reason): Anomaly {
+            $anomaly = Anomaly::query()->whereKey($anomaly->getKey())->lockForUpdate()->firstOrFail();
 
-        $causanteId = $this->resolveCausante($anomaly);
-        if ($causanteId !== null && $causanteId === $validatorId) {
-            throw new SelfResolutionNotAllowedException;   // BR-01
-        }
+            if (! $anomaly->canJustify()) {
+                throw InvalidAnomalyStateException::notJustifiable();
+            }
 
-        return DB::transaction(function () use ($anomaly, $validatorId, $motivo) {
-            $anomaly->status      = AnomalyStatus::Justificada;
-            $anomaly->resolved_by = $validatorId;
+            $this->assertNotCauser($anomaly); // BR-01 (ERR-11, 403).
+
+            $from = $anomaly->status;
+            $anomaly->status      = AnomalyStatus::Justificada; // active_dedupe_key → NULL (libera candado).
+            $anomaly->resolved_by = Auth::id();
             $anomaly->resolved_at = now();
-            $anomaly->save();   // el booted registra el anomaly_event automáticamente
+            $anomaly->save();
 
-            // Comentario de justificación en la bitácora (el evento base ya lo creó el modelo).
-            $anomaly->events()->latest('id')->first()?->forceFill([])->save();  // no-op seguro
+            $this->writeEvent($anomaly, $from, AnomalyStatus::Justificada, $reason);
+
             return $anomaly;
         });
     }
 
-    // ─────── Helpers privados ───────
+    /**
+     * Marca la anomalía como resuelta (ROL-01). Libera el candado de idempotencia.
+     */
+    public function resolver(Anomaly $anomaly, ?string $comment = null): Anomaly
+    {
+        return DB::transaction(function () use ($anomaly, $comment): Anomaly {
+            $anomaly = Anomaly::query()->whereKey($anomaly->getKey())->lockForUpdate()->firstOrFail();
 
-    private function exceedsThreshold(AnomalyRule $rule, ?string $difference): bool
+            if (! $anomaly->canResolve()) {
+                throw InvalidAnomalyStateException::notResolvable();
+            }
+
+            $from = $anomaly->status;
+            $anomaly->status      = AnomalyStatus::Resuelta;
+            $anomaly->resolved_by = Auth::id();
+            $anomaly->resolved_at = now();
+            $anomaly->save();
+
+            $this->writeEvent($anomaly, $from, AnomalyStatus::Resuelta, $comment);
+
+            return $anomaly;
+        });
+    }
+
+    // ---------------- Helpers ----------------
+
+    /** BR-01: rechaza si quien valida es el causante extraído del origen. */
+    private function assertNotCauser(Anomaly $anomaly): void
+    {
+        $causerField = self::CAUSER_FIELDS[$anomaly->source_type] ?? null;
+
+        if ($causerField === null || $anomaly->source_id === null) {
+            return; // Sin causante humano trazable: BR-01 no aplica.
+        }
+
+        $causerId = DB::table($anomaly->source_type)
+            ->where('id', $anomaly->source_id)
+            ->where('business_id', $anomaly->business_id)
+            ->value($causerField);
+
+        if ($causerId !== null && (int) $causerId === (int) Auth::id()) {
+            throw new SelfResolutionNotAllowedException();
+        }
+    }
+
+    private function superaUmbral(AnomalyRule $rule, ?string $difference): bool
     {
         if ($rule->threshold_value === null || $difference === null) {
-            return true;   // reglas sin umbral (tiempo/cantidad) o sin diferencia → siempre relevante
+            return true; // Sin umbral o sin métrica: siempre se genera.
         }
-        // |diferencia| > umbral. Umbral 0.00 (ej. 3-way) → cualquier diferencia dispara.
-        $abs = bccomp($difference, '0', 2) < 0 ? bcmul($difference, '-1', 2) : $difference;
-        return bccomp($abs, (string) $rule->threshold_value, 2) > 0;
+
+        // Fase 1: monto/cantidad ⇒ |diferencia| >= umbral. Porcentaje/tiempo: el caller precalcula 'difference'.
+        return bccomp($this->abs((string) $difference), (string) $rule->threshold_value, 2) >= 0;
     }
 
-    /** Extrae el usuario "involucrado" según el tipo de source (para BR-01). */
-    private function resolveCausante(Anomaly $anomaly): ?int
+    private function writeEvent(Anomaly $anomaly, ?AnomalyStatus $from, AnomalyStatus $to, ?string $comment): void
     {
-        $source = $anomaly->resolveSource();
-        return match ($anomaly->source_type) {
-            'cash_session'   => $source?->opened_by,
-            'physical_count' => $source?->user_id,
-            'goods_receipt'  => $source?->user_id,
-            default          => null,
-        };
+        AnomalyEvent::create([
+            'anomaly_id'  => $anomaly->id,
+            'user_id'     => Auth::id(),        // NULL en procesos programados.
+            'from_status' => $from?->value,
+            'to_status'   => $to->value,
+            'comment'     => $comment,
+            'changed_at'  => now(),
+        ]);
     }
 
-    private function isUniqueViolation(QueryException $e): bool
+    private function isDuplicateActive(QueryException $e): bool
     {
-        return ($e->errorInfo[1] ?? null) === 1062;   // MySQL: duplicate entry
+        return (int) ($e->errorInfo[1] ?? 0) === 1062
+            && str_contains((string) $e->getMessage(), 'uniq_active_anomaly');
+    }
+
+    private function abs(string $value): string
+    {
+        return bccomp($value, '0', 2) < 0 ? bcmul($value, '-1', 2) : $value;
     }
 }

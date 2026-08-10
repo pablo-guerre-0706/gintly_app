@@ -1,37 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Enums\AnomalyRuleCode;
+use App\Enums\AnomalySeverity;
+use App\Enums\AnomalyThresholdType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('anomaly_rules', function (Blueprint $table) {
+        if (Schema::hasTable('anomaly_rules')) {
+            return;
+        }
+
+        Schema::create('anomaly_rules', function (Blueprint $table): void {
             $table->id();
+
             $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
-            // Catálogo fijo definido por el sistema
-            $table->enum('code', [
-                'descuadre_caja', 'faltante_inventario', 'discrepancia_3way',
-                'cuenta_vencida', 'omision_registro', 'venta_sin_sesion',
-            ])->index();
+
+            $table->enum('code', AnomalyRuleCode::values());
             $table->string('name', 120);
-            $table->decimal('threshold_value', 14, 2)->nullable(); // nullable, hay reglas sin umbral numérico
-            $table->enum('threshold_type', ['monto', 'porcentaje', 'cantidad', 'tiempo']);
-            $table->enum('default_severity', ['informativa', 'advertencia', 'critica']);
-            $table->boolean('is_active')->default(true); // el dueño puede desactivar una regla
+            $table->decimal('threshold_value', 14, 2)->nullable(); // bcmath. NULL = sin umbral.
+            $table->enum('threshold_type', AnomalyThresholdType::values());
+            $table->enum('default_severity', AnomalySeverity::values());
+            $table->boolean('is_active')->default(true);
+
             $table->timestamps();
-            $table->unique(['business_id', 'code']); // una regla por tipo, por negocio
+
+            // Catálogo cerrado: una regla por código y negocio (idempotencia del seed).
+            $table->unique(['business_id', 'code'], 'uniq_anomaly_rule_code');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('anomaly_rules');

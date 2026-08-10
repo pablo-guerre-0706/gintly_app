@@ -17,15 +17,22 @@ use App\Exceptions\UnreconciledCashClosingException;
 use App\Models\CashMovement;
 use App\Models\CashSession;
 use App\Models\User;
+use App\Services\Anomaly\AnomalyService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-
 final class CashService
 {
     private const MONEY_SCALE = 2;
+
+    /**
+     * Constructor para inyección de dependencias automáticas.
+     */
+    public function __construct(
+        private readonly AnomalyService $anomalies,
+    ) {}
 
     /**
      * Apertura con fondo inicial. Los candados de motor (open_register_lock / open_user_lock)
@@ -151,13 +158,22 @@ final class CashService
 
             $session->save();
 
-            // Hook de anomalía (D-24): inerte hasta MOD-11.
             if ($session->status === CashSessionStatus::Descuadrada) {
                 $this->dispatchDescuadreAnomaly($session, $difference);
             }
 
             return $session->refresh();
         });
+
+        // P17 (MOD-11): descuadre de caja → anomalía silenciosa.
+        if (bccomp((string) $closed->difference, '0.00', 2) !== 0) {
+            $this->anomalies->registrarSilencioso('descuadre_caja', $session, [
+                'expected_value' => (string) $closed->expected_amount,
+                'actual_value'   => (string) $closed->counted_amount,
+                'difference'     => (string) $closed->difference,
+                'branch_id'      => $session->branch_id ?? null,
+            ]);
+        }
 
         // La señal 422 se emite DESPUÉS del commit. La evidencia persiste.
         if ($closed->status === CashSessionStatus::Descuadrada) {

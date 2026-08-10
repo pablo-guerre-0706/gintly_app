@@ -6,10 +6,14 @@ namespace App\Observers;
 
 use App\Enums\DocumentType;
 use App\Models\AnomalyRule;
+use App\Enums\AnomalyRuleCode;
+use App\Enums\AnomalySeverity;
+use App\Enums\AnomalyThresholdType;
 use App\Models\Business;
 use App\Models\Customer;
 use App\Models\DocumentSequence;
 use Illuminate\Support\Facades\DB;
+
 
 
 final class BusinessObserver
@@ -68,81 +72,31 @@ final class BusinessObserver
         }
     }
 
-    /**
-     * Catálogo base de 6 reglas de anomalía.
-     * @return void
-     */
     private function seedAnomalyRules(Business $business): void
     {
-        if (! class_exists(AnomalyRule::class)) {
-            return;
-        }
+        // Catálogo cerrado de 6 reglas con umbral/severidad por defecto. firstOrCreate ⇒ idempotente.
+        $rules = [
+            [AnomalyRuleCode::DescuadreCaja,      'Descuadre de caja',           AnomalyThresholdType::Monto,    AnomalySeverity::Advertencia, null],
+            [AnomalyRuleCode::FaltanteInventario, 'Faltante de inventario',      AnomalyThresholdType::Cantidad, AnomalySeverity::Advertencia, null],
+            [AnomalyRuleCode::Discrepancia3Way,   'Discrepancia 3-way',          AnomalyThresholdType::Monto,    AnomalySeverity::Critica,     null],
+            [AnomalyRuleCode::CuentaVencida,      'Cuenta por cobrar vencida',   AnomalyThresholdType::Tiempo,   AnomalySeverity::Advertencia, null],
+            [AnomalyRuleCode::OmisionRegistro,    'Omisión de registro',         AnomalyThresholdType::Tiempo,   AnomalySeverity::Informativa, null],
+            [AnomalyRuleCode::VentaSinSesion,     'Venta sin sesión de caja',    AnomalyThresholdType::Cantidad, AnomalySeverity::Critica,     null],
+        ];
 
-        foreach ($this->anomalyRuleCatalog() as $rule) {
+        foreach ($rules as [$code, $name, $type, $severity, $threshold]) {
             AnomalyRule::query()->firstOrCreate(
                 [
                     'business_id' => $business->id,
-                    'code'        => $rule['code'],
-                ],
+                    'code' => $code->value],
                 [
-                    'name'             => $rule['name'],
-                    'threshold_type'   => $rule['threshold_type'],
-                    'default_severity' => $rule['default_severity'],
-                    'threshold_value'  => $rule['threshold_value'],
+                    'name'             => $name,
+                    'threshold_type'   => $type->value,
+                    'default_severity' => $severity->value,
+                    'threshold_value'  => $threshold,
+                    'is_active'        => true,
                 ]
             );
         }
-    }
-
-    /**
-     * Catálogo canónico de reglas de anomalía.
-     * @return array<int, array{code: string, name: string, threshold_type: string, default_severity: string, threshold_value: float|null}>
-     */
-    private function anomalyRuleCatalog(): array
-    {
-        return [
-            [
-                'code'             => 'descuadre_caja',
-                'name'             => 'Descuadre de caja',
-                'threshold_type'   => 'monto',
-                'default_severity' => 'advertencia',
-                'threshold_value'  => 50.00,
-            ],
-            [
-                'code'             => 'faltante_inventario',
-                'name'             => 'Faltante de inventario',
-                'threshold_type'   => 'porcentaje',
-                'default_severity' => 'advertencia',
-                'threshold_value'  => 2.00,
-            ],
-            [
-                'code'             => 'discrepancia_3way',
-                'name'             => 'Discrepancia 3-way match',
-                'threshold_type'   => 'monto',
-                'default_severity' => 'critica',
-                'threshold_value'  => 0.00,
-            ],
-            [
-                'code'             => 'cuenta_vencida',
-                'name'             => 'Cuenta por cobrar vencida',
-                'threshold_type'   => 'tiempo',
-                'default_severity' => 'advertencia',
-                'threshold_value'  => null,
-            ],
-            [
-                'code'             => 'omision_registro',
-                'name'             => 'Omisión de registro',
-                'threshold_type'   => 'cantidad',
-                'default_severity' => 'advertencia',
-                'threshold_value'  => null,
-            ],
-            [
-                'code'             => 'venta_sin_sesion',
-                'name'             => 'Venta sin sesión de caja',
-                'threshold_type'   => 'cantidad',
-                'default_severity' => 'critica',
-                'threshold_value'  => 0.00,
-            ],
-        ];
     }
 }

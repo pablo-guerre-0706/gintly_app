@@ -14,3 +14,6 @@ Schedule::command('reconciliation:run --scope=integral')->dailyAt('01:00');
 
 Schedule::command('kpi:snapshot --period=diario')->dailyAt('02:00');
 Schedule::command('kpi:snapshot --period=mensual')->monthlyOn(1, '02:30');
+
+Schedule::command('reconciliation:run --scope=integral')->dailyAt('01:00');
+// (receivables:mark-overdue está registrado a 00:30, MOD-08.)
