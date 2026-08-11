@@ -76,8 +76,8 @@ final class ReconciliationService
         $count = 0;
         foreach ($sessions as $session) {
             $registered = $this->anomalies->registrarSilencioso('descuadre_caja', $session, [
-                'expected_value'        => (string) ($session->expected_cash ?? '0.00'),
-                'actual_value'          => (string) ($session->counted_cash ?? '0.00'),
+                'expected_value'        => (string) ($session->expected_amount ?? '0.00'),
+                'actual_value'          => (string) ($session->counted_amount ?? '0.00'),
                 'difference'            => (string) $session->difference,
                 'branch_id'             => $branchId,
                 'reconciliation_run_id' => $runId,

@@ -20,17 +20,14 @@ return new class extends Migration
         Schema::create('accounts_receivables', function (Blueprint $table): void {
             $table->id();
 
-            $table->foreignId('business_id')
-                ->constrained('businesses')
-                ->cascadeOnDelete();          // El negocio es dueño; si desaparece, cae su cartera.
+            // El negocio es el dueño; si desaparece, cae su cartera.
+            $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
 
-            $table->foreignId('customer_id')
-                ->constrained('customers')
-                ->restrictOnDelete();         // No se borra un cliente con CxC (respalda ERR-05B).
+            // No se borra un cliente con CxC (respalda ERR-05B)
+            $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
 
-            $table->foreignId('invoice_id')
-                ->constrained('invoices')
-                ->restrictOnDelete();         // La factura es el ancla fiscal de la deuda.
+            // La factura es el ancla fiscal de la deuda.
+            $table->foreignId('invoice_id')->constrained('invoices')->restrictOnDelete();
 
             $table->decimal('total_amount', 14, 2);              // bcmath escala 2.
             $table->decimal('paid_amount', 14, 2)->default(0);   // bcmath escala 2.
@@ -46,12 +43,12 @@ return new class extends Migration
 
             $table->timestamps();
 
-            // Una factura ⇒ exactamente una CxC (garantía de motor, RF-08-01).
+            // Una factura ⇒ exactamente una CxC (garantía de motor).
             $table->unique('invoice_id', 'uniq_ar_invoice');
 
             $table->index('status', 'idx_ar_status');
             $table->index('due_date', 'idx_ar_due_date');
-            // Índice compuesto para la consulta de exposición por cliente (RF-08-02/06).
+            // Índice compuesto para la consulta de exposición por cliente.
             $table->index(['business_id', 'customer_id'], 'idx_ar_business_customer');
         });
 

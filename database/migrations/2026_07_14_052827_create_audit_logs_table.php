@@ -14,13 +14,11 @@ return new class extends Migration
         Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
 
-            // El tenant. RESTRICT, no puedes borrar un negocio con historial de auditoría
-            $table->foreignId('business_id')
-                  ->constrained('businesses')->restrictOnDelete();
+            // RESTRICT, no puedes borrar un negocio con historial de auditoría
+            $table->foreignId('business_id')->constrained('businesses')->restrictOnDelete();
 
-            // Responsable, NULL si fue el ROL-SYS. RESTRICT preserva la atribución
-            $table->foreignId('user_id')->nullable()
-                  ->constrained('users')->restrictOnDelete();
+            // Responsable, NULL si es ROL-SYS. RESTRICT preserva la atribución
+            $table->foreignId('user_id')->nullable()->constrained('users')->restrictOnDelete();
 
             $table->string('action', 100)->index();                // 'sale.created', 'cash.closed'
 

@@ -1,28 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ReportDefinition extends Model
+final class ReportDefinition extends Model
 {
-    use HasFactory, BelongsToBusiness;
+    use BelongsToBusiness;
 
     protected $fillable = [
-        'user_id', 'name', 'report_type', 'filters', 'is_scheduled', 'schedule_cron',
+        'name',
+        'report_type',
+        'filters',
+        'is_scheduled',
+        'schedule_cron',
     ];
+    // FUERA de fillable: user_id (lo fija el Service/controlador desde la sesión).
 
     protected function casts(): array
     {
         return [
             'filters'      => 'array',
-            'is_scheduled' => 'boolean',   // motor de envíos → Fase 2
+            'is_scheduled' => 'boolean',
         ];
     }
 
-    // business() del trait
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

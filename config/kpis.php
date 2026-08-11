@@ -1,72 +1,76 @@
 <?php
 
+declare(strict_types=1);
+
+// Registro canónico de indicadores (RF-12-02). Fuente única de etiqueta, unidad, familia,
+// meta admitida (goalable), dirección del logro y origen del dato. 'direction' = up | down.
 return [
     'kpi_01' => [
-        'brd' => 'KPI-01',
         'label' => 'Correspondencia ventas-caja-inventario',
         'unit' => 'porcentaje',
         'goalable' => false,
         'family' => 'integridad',
-        'source' => 'vw_kpi_correspondencia'
+        'direction' => 'up',
+        'source' => 'directo'
         ],
     'kpi_02' => [
-        'brd' => 'KPI-02',
         'label' => 'Correspondencia bodega-inventario',
         'unit' => 'porcentaje',
         'goalable' => false,
-        'family' => 'integridad', 
+        'family' => 'integridad',
+        'direction' => 'up',
         'source' => 'vw_kpi_exactitud_stock'
         ],
     'kpi_03' => [
-        'brd' => 'KPI-03',
         'label' => 'Reducción de faltantes no justificados',
         'unit' => 'monto',
-        'goalable' => true, 
+        'goalable' => true,
         'family' => 'control',
+        'direction' => 'down',
         'source' => 'vw_kpi_faltantes'
         ],
     'kpi_04' => [
-        'brd' => 'KPI-04',
         'label' => 'Uso consistente del sistema',
         'unit' => 'porcentaje',
-        'goalable' => true,
+        'goalable' => true, 
         'family' => 'cumplimiento',
+        'direction' => 'up',
         'source' => 'vw_kpi_uso_sistema'
         ],
     'kpi_05' => [
-        'brd' => 'KPI-05',
         'label' => 'Evolución de ventas',
         'unit' => 'monto',
         'goalable' => true,
         'family' => 'comercial',
+        'direction' => 'up',
         'source' => 'vw_kpi_ventas'
         ],
     'kpi_06' => [
-        'brd' => 'KPI-06',
         'label' => 'Cumplimiento de metas',
         'unit' => 'porcentaje',
         'goalable' => false,
         'family' => 'agregador',
-        'source' => null
+        'direction' => 'up',
+        'source' => 'snapshots'
         ],
     'kpi_07' => [
-        'brd' => 'KPI-07',
         'label' => 'Disponibilidad de reportes confiables',
         'unit' => 'porcentaje',
         'goalable' => false,
         'family' => 'sla',
+        'direction' => 'up',
         'source' => 'vw_kpi_disponibilidad'
         ],
     'kpi_08' => [
-        'brd' => 'KPI-08',
         'label' => 'Recuperación de cartera',
         'unit' => 'porcentaje',
         'goalable' => true,
         'family' => 'financiero',
+        'direction' => 'up',
         'source' => 'vw_kpi_cartera'
         ],
 
-        'margen'              => ['brd' => null, 'label' => 'Margen bruto',            'unit' => 'porcentaje', 'goalable' => true, 'family' => 'comercial', 'source' => null],
-        'ticket_promedio'     => ['brd' => null, 'label' => 'Ticket promedio',         'unit' => 'monto',      'goalable' => true, 'family' => 'comercial', 'source' => 'vw_kpi_ventas'],
-        'rotacion_inventario' => ['brd' => null, 'label' => 'Rotación de inventario',  'unit' => 'ratio',      'goalable' => true, 'family' => 'operativo', 'source' => null],
+    'margen'              => ['label' => 'Margen bruto',            'unit' => 'porcentaje', 'goalable' => true, 'family' => 'comercial', 'direction' => 'up', 'source' => 'fase2'],
+    'ticket_promedio'     => ['label' => 'Ticket promedio',         'unit' => 'monto',      'goalable' => true, 'family' => 'comercial', 'direction' => 'up', 'source' => 'vw_kpi_ventas'],
+    'rotacion_inventario' => ['label' => 'Rotación de inventario',  'unit' => 'ratio',      'goalable' => true, 'family' => 'operativo', 'direction' => 'up', 'source' => 'fase2'],
 ];

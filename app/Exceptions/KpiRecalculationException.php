@@ -1,12 +1,27 @@
 <?php
-// ERR-12B, HTTP 500 / normalmente resuelta en el job
+
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
+final class KpiRecalculationException extends RuntimeException
+{
+    public function __construct(public readonly string $periodType, ?Throwable $previous = null)
+    {
+        parent::__construct('No se pudo recalcular el indicador de forma consistente; la instantánea se descarta.', 0, $previous);
+    }
 
-class KpiRecalculationException extends Exception {
-    public function __construct(string $msg = 'Snapshot de KPI inconsistente: se descarta y recalcula desde las tablas fuente.') { parent::__construct($msg); }
-    public function render(): JsonResponse { return response()->json(['message'=>$this->getMessage(),'error'=>'KPI_RECALCULATION'], 500); }
+    public function render(Request $request): JsonResponse
+    {
+        return response()->json([
+            'code'        => 'KPI_RECALCULATION_FAILED',
+            'message'     => $this->getMessage(),
+            'period_type' => $this->periodType,
+        ], 500);
+    }
 }

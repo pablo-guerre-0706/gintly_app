@@ -1,25 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
-use App\Enums\KpiPeriodType;
+use App\Enums\PeriodType;
 use App\Models\Business;
-use App\Services\Kpi\KpiService;
+use App\Services\Report\KpiService;
 use Illuminate\Console\Command;
 
-class CalculateKpiSnapshots extends Command
+final class CalculateKpiSnapshots extends Command
 {
-    protected $signature = 'kpi:snapshot {--period=diario}';
-    protected $description = 'Recalcula los snapshots de KPI por negocio (RF-12, MOD-12).';
+    protected $signature = 'kpi:snapshot {--period=diario : Tipo de período a recalcular}';
 
-    public function handle(KpiService $service): int
+    protected $description = 'Recalcula las instantáneas de KPI por negocio (RF-12-03). Recorre todos los tenants sin sesión.';
+
+    public function handle(KpiService $kpis): int
     {
-        $period = KpiPeriodType::from($this->option('period'));
+        $period = PeriodType::tryFrom((string) $this->option('period')) ?? PeriodType::Diario;
 
-        Business::query()->where('status', '!=', 'suspended')->chunkById(100, function ($businesses) use ($service, $period) {
-            foreach ($businesses as $business) {
-                $service->calcular($business->id, $period);   // sin auth: tenant explícito
-                $this->info("KPIs {$period->value} recalculados para negocio {$business->id}.");
+        Business::query()->each(function (Business $business) use ($kpis, $period): void {
+            try {
+                $result = $kpis->calcular($business->id, $period, null);
+                $this->info("Negocio #{$business->id}: KPIs {$period->value} recalculados [{$result['period']['start']}..{$result['period']['end']}].");
+            } catch (\Throwable $e) {
+                report($e);
+                $this->error("Negocio #{$business->id}: fallo al recalcular ({$e->getMessage()}).");
             }
         });
 

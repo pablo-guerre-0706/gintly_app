@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\BusinessGoalController;
 use App\Http\Controllers\Api\V1\CashMovementController;
 use App\Http\Controllers\Api\V1\CashRegisterController;
 use App\Http\Controllers\Api\V1\CashSessionController;
@@ -25,11 +26,14 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
+use App\Http\Controllers\Api\V1\KpiSnapshotController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
+use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\ReportDefinitionController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesReturnController;
 use App\Http\Controllers\Api\V1\StockLevelController;
@@ -42,7 +46,6 @@ use App\Models\Product;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
-
 
 
 
@@ -306,6 +309,30 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
             Route::post('/', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
             Route::get('/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
+        });
+
+        // MOD-12 · Metas de negocio
+        Route::prefix('business-goals')->group(function (): void {
+            Route::get('/', [BusinessGoalController::class, 'index'])->name('business-goals.index');
+            Route::post('/', [BusinessGoalController::class, 'store'])->name('business-goals.store');
+            Route::put('/{businessGoal}', [BusinessGoalController::class, 'update'])->name('business-goals.update');
+            Route::delete('/{businessGoal}', [BusinessGoalController::class, 'destroy'])->name('business-goals.destroy');
+        });
+
+        // MOD-12 · Instantáneas de KPI y panel
+        Route::prefix('kpi-snapshots')->group(function (): void {
+            Route::get('/', [KpiSnapshotController::class, 'index'])->name('kpi-snapshots.index');
+            Route::post('/recalculate', [KpiSnapshotController::class, 'recalculate'])->name('kpi-snapshots.recalculate');
+        });
+        Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis');
+
+        // MOD-12 · Reportes
+        Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
+        Route::prefix('report-definitions')->group(function (): void {
+            Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
+            Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
+            Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
+            Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
         });
     });
 });

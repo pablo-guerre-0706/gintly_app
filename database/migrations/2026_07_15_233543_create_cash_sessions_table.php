@@ -15,6 +15,7 @@ return new class extends Migration
         Schema::create('cash_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
+            
             $table->foreignId('cash_register_id')->constrained('cash_registers')->restrictOnDelete();
 
             // Autoría dual, quien abre puede no ser quien cierra, 2 FK a users, nombres explícitos

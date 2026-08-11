@@ -19,6 +19,9 @@ use App\Policies\AuditLogPolicy;
 use App\Policies\BranchPolicy;
 use App\Policies\BrandPolicy;
 use App\Policies\BusinessPolicy;
+use App\Policies\CashMovementPolicy;
+use App\Policies\CashRegisterPolicy;
+use App\Policies\CashSessionPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\AccountReceivablePolicy;
 use App\Policies\DispatchPolicy;
@@ -108,6 +111,7 @@ final class AppServiceProvider extends ServiceProvider
 
         // MOD-09
         Gate::policy(Dispatch::class, DispatchPolicy::class);
+        
     }
 
     // Bloqueo por intentos fallidos mediante limitación de tasa.

@@ -65,7 +65,6 @@ $morphMap = [
     'sale'                  => \App\Models\Sale::class,
     'sale_item'             => \App\Models\SaleItem::class,
     'invoice'               => \App\Models\Invoice::class,
-    'invoice_sale'          => \App\Models\InvoiceSale::class,
     'invoice_payment'       => \App\Models\InvoicePayment::class,
     'document_sequence'     => \App\Models\DocumentSequence::class,
 

@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();                                          // BIGINT UNSIGNED, PK, AI
+            $table->id();
             $table->unsignedBigInteger('business_id');            // NOT NULL. FK diferida
             $table->unsignedBigInteger('branch_id')->nullable();  // NULL. FK diferida
             $table->string('name', 150);
@@ -24,10 +24,10 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            // Unicidad correcta: el email es único POR negocio, no globalmente
+            // Unicidad correcta: el email es único por negocio, no globalmente
             $table->unique(['business_id', 'email']);
 
-            // Índice para las consultas soft-delete (WHERE deleted_at IS NULL)
+            // Índice para las consultas soft-delete (WHERE deleted_at is NULL)
             $table->index('deleted_at');
         });
 
