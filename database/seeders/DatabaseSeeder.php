@@ -1,28 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+final class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Orquestador puro: solo define el ORDEN de siembra: 1) Permisos globales, ROL-SYS, matriz de roles.
+     * 2) Negocio de prueba, sus roles de tenant y los usuarios (cada uno con su rol).
      */
     public function run(): void
     {
         $this->call([
             RolesAndPermissionsSeeder::class,
-        ]);
-
-        User::create([
-            'name'  => 'Usuario Demo Gintly',
-            'email' => 'demo@gintly.test',
-            'password' => bcrypt('password'),
+            UserSeeder::class,
         ]);
     }
 }

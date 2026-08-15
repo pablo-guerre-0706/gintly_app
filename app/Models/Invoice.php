@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 
 /**
- * Factura: núcleo fiscal INMUTABLE PARCIAL (D-29, H-66).
+ * Factura: núcleo fiscal INMUTABLE PARCIAL.
  */
 final class Invoice extends Model
 {
@@ -31,7 +31,6 @@ final class Invoice extends Model
 
     /**
      * Campos del núcleo fiscal: una vez emitida la factura, no cambian jamás.
-     *
      * @var array<int, string>
      */
     private const FROZEN_FIELDS = [

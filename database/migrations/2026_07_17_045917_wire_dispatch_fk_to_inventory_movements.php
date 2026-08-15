@@ -11,7 +11,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // La columna dispatch_id ya existe desde MOD-03 (reservada). Aquí SOLO se cablea la FK.
+        // La columna dispatch_id existe desde MOD-03 (reservada), aquí se esta cableando la FK.
         $alreadyWired = collect(DB::select(
             "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inventory_movements'

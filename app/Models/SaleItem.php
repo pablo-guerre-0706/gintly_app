@@ -69,10 +69,9 @@ final class SaleItem extends Model
         return $this->hasMany(DispatchItem::class);
     }
 
-    // Cantidad devolvible = despachada − devuelta. Base de MOD-10.
     public function returnableQuantity(): string
     {
-        return bcsub((string) ($this->dispatched_quantity ?? '0'), (string) ($this->returned_quantity ?? '0'), 3);
+        return bcsub((string) $this->dispatched_quantity, (string) $this->returned_quantity, 3);
     }
 
     public function salesReturnItems(): HasMany

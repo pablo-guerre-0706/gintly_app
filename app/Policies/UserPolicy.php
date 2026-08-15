@@ -135,7 +135,6 @@ final class UserPolicy
         return Response::allow();
     }
 
-    
     // Prohíbe que un usuario de menor rango edite o desactive a su jefe, evitando que un
     // administrador le robe el control al propietario.
     private function canManage(User $actor, User $target): Response

@@ -12,6 +12,7 @@ use App\Models\AccountReceivable;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\ReceivablePayment;
+use App\Services\Anomaly\AnomalyService;
 use App\Services\Cash\CashService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,12 +22,14 @@ final class ReceivableService
     /** Plazo de crédito por defecto en días (RF-08-01). Parametrizable por negocio en Fase 2. */
     private const DEFAULT_CREDIT_TERM_DAYS = 30;
 
-    public function __construct(private readonly CashService $cashService)
-    {
+    public function __construct(
+        private readonly CashService $cashService,
+        private readonly AnomalyService $anomalyService
+    ) {
     }
 
     // =====================================================================
-    // RF-08-01 · Generación de la CxC al facturar (IN-TX, lo llama InvoiceService)
+    // Generación de la CxC al facturar (IN-TX, lo llama InvoiceService)
     // =====================================================================
     public function generarDesdeFactura(Invoice $invoice): AccountReceivable
     {
@@ -50,7 +53,7 @@ final class ReceivableService
     }
 
     // =====================================================================
-    // RF-08-02 · Validación preventiva de cupo (PRE-TX, solo lectura)
+    // Validación preventiva de cupo (PRE-TX, solo lectura)
     // =====================================================================
     public function assertCreditAvailable(Customer $customer, string $amount, bool $ownerAuthorized = false): void
     {
@@ -71,7 +74,7 @@ final class ReceivableService
     }
 
     /**
-     * RF-08-02 (endpoint credit-check): evaluación PURA, no escribe.
+     * (endpoint credit-check): evaluación PURA, no escribe.
      * @return array{approved:bool,exposure:string,limit:string,available:string,requires_owner_authorization:bool}
      */
     public function evaluarCredito(Customer $customer, string $amount): array
@@ -93,7 +96,7 @@ final class ReceivableService
     }
 
     // =====================================================================
-    // RF-08-06 · Estado de crédito consolidado (solo lectura)
+    // Estado de crédito consolidado (solo lectura)
     // =====================================================================
     /** @return array<string, mixed> */
     public function estadoDeCredito(Customer $customer): array
@@ -124,7 +127,7 @@ final class ReceivableService
     }
 
     // =====================================================================
-    // RF-08-03 · Abono atómico de 5 pasos (método transaccional canónico)
+    // Abono atómico de 5 pasos (método transaccional canónico)
     // =====================================================================
     /** @param array{amount:string|float, payment_method:string, cash_session_id?:int|null, reference?:string|null} $data */
     public function abonar(AccountReceivable $accountReceivable, array $data): ReceivablePayment
@@ -185,7 +188,6 @@ final class ReceivableService
     /**
      * Alias de compatibilidad. Antes existían llamadas a `registrarAbono()`;
      * delega en el método canónico `abonar()`. Elimínalo si unificas el nombre en toda la base.
-     *
      * @param array{amount:string|float, payment_method:string, cash_session_id?:int|null, reference?:string|null} $data
      */
     public function registrarAbono(AccountReceivable $accountReceivable, array $data): ReceivablePayment
@@ -194,7 +196,7 @@ final class ReceivableService
     }
 
     // =====================================================================
-    // RF-08-07 · Reversión por anulación (IN-TX, lo llama InvoiceService::anular)
+    // Reversión por anulación (IN-TX, lo llama InvoiceService::anular)
     // =====================================================================
     public function revertirPorAnulacion(AccountReceivable $accountReceivable): void
     {
@@ -213,10 +215,10 @@ final class ReceivableService
     }
 
     // =====================================================================
-    // RF-08-07 / MOD-10 (P15) · Reducción por nota de crédito
+    // MOD-10 · Reducción por nota de crédito
     // =====================================================================
     /**
-     * Reduce el saldo de la CxC por una nota de crédito, sin borrar abonos (BR-07).
+     * Reduce el saldo de la CxC por una nota de crédito, sin borrar abonos.
      * El total baja por el monto, nunca por debajo de lo ya abonado. Re-sincroniza estados.
      * Debe correr dentro de la transacción del retorno (ReturnService).
      */
@@ -227,7 +229,7 @@ final class ReceivableService
             ->lockForUpdate()
             ->firstOrFail();
 
-        // El total no puede quedar por debajo de lo abonado (RF-08-07): saldo mínimo 0.
+        // El total no puede quedar por debajo de lo abonado: saldo mínimo 0.
         $newTotal = bcsub((string) $ar->total_amount, $amount, 2);
         if (bccomp($newTotal, (string) $ar->paid_amount, 2) < 0) {
             $newTotal = (string) $ar->paid_amount;
@@ -241,7 +243,7 @@ final class ReceivableService
     }
 
     // =====================================================================
-    // RF-08-05 · Marcado de vencidas (CRON, sin sesión de usuario)
+    // Marcado de vencidas (CRON, sin sesión de usuario)
     // =====================================================================
     public function marcarVencidas(int $businessId): int
     {
@@ -259,11 +261,9 @@ final class ReceivableService
                     $ar->save();
                     $affected++;
 
-                    // Alerta 'cuenta_vencida' → AnomalyService (MOD-11). Inerte hasta que exista.
-                    if (class_exists(\App\Services\Anomaly\AnomalyService::class)) {
-                        app(\App\Services\Anomaly\AnomalyService::class)->registrarSilencioso('cuenta_vencida', $ar);
-                    }
-                });
+                    // Alerta 'cuenta_vencida' → AnomalyService (MOD-11).
+                    $this->anomalyService->registrarSilencioso('cuenta_vencida', $ar);                    }
+                );
 
             return $affected;
         });

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Enums\DocumentType;
-use App\Models\AnomalyRule;
 use App\Enums\AnomalyRuleCode;
 use App\Enums\AnomalySeverity;
 use App\Enums\AnomalyThresholdType;
+use App\Models\AnomalyRule;
 use App\Models\Business;
 use App\Models\Customer;
 use App\Models\DocumentSequence;
@@ -25,6 +25,8 @@ final class BusinessObserver
             $this->seedGenericCustomer($business);
             $this->seedDocumentSequences($business);
             $this->seedAnomalyRules($business);
+
+            app(\Database\Seeders\RolesAndPermissionsSeeder::class)->syncBusinessRoles($business->id);
         });
     }
 

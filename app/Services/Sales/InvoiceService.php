@@ -30,18 +30,17 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * RF-07 · Orquestación transaccional de la facturación: el punto de mayor
- * densidad del sistema. Coordina, ATÓMICAMENTE (D-27, rollback estricto):
+ * Orquestación transaccional de la facturación: el punto de mayor
+ * densidad del sistema. Coordina, atomicamente (rollback estricto):
  *   1. Validación de homogeneidad de ventas (mismo cliente y sucursal).
- *   2. Cálculo de subtotal, IVA (solo líneas gravables) y total (H-68).
- *   3. Verificación de pago completo en contado (H-64, ERR-07).
- *   4. Folio fiscal bajo lock (H-63).
+ *   2. Cálculo de subtotal, IVA (solo líneas gravables) y total.
+ *   3. Verificación de pago completo en contado (ERR-07).
+ *   4. Folio fiscal bajo lock.
  *   5. Reserva de stock: simples e insumos de compuestos vía recipe_snapshot
- *      congelado (H-59, H-60, D-26/D-28). NO toca el kardex.
- *   6. invoice_payments + cash_movement 'venta' si hay efectivo (H-65).
+ *      congelado NO toca el kardex.
+ *   6. invoice_payments + cash_movement 'venta' si hay efectivo.
  *   7. Marca las ventas como facturadas.
- * Cualquier fallo revierte todo (a diferencia de MOD-04/06): la factura es
- * todo-o-nada real.
+ * Cualquier fallo revierte todo (a diferencia de MOD-04/06), la factura es todo o nada real.
  */
 final class InvoiceService
 {
@@ -182,7 +181,7 @@ final class InvoiceService
     }
 
     /**
-     * RF-07 · Anulación por ROL-01 (H-67). Libera las reservas de stock, marca
+     * Anulación por ROL-01. Libera las reservas de stock, marca
      * 'anulada' conservando folio y auditoría. La reversión de CxC (MOD-08) y el
      * reembolso (MOD-10) se orquestan en esos módulos.
      */
@@ -205,7 +204,7 @@ final class InvoiceService
             $invoice->void_reason = $voidReason;
             $invoice->save();
 
-            // P8 (MOD-08) · revierte la CxC conservando los abonos (RF-08-07).
+            // P8 (MOD-08) · revierte la CxC conservando los abonos.
             $ar = $invoice->accountReceivable()->lockForUpdate()->first();
             if ($ar !== null) {
                 $this->receivables->revertirPorAnulacion($ar);
@@ -215,8 +214,7 @@ final class InvoiceService
     }
 
     /**
-     * Todas las ventas deben compartir cliente y sucursal (H-64).
-     *
+     * Todas las ventas deben compartir cliente y sucursal.
      * @param  \Illuminate\Support\Collection<int, Sale>  $sales
      */
     private function assertHomogeneous($sales): void
@@ -300,9 +298,8 @@ final class InvoiceService
 
     /**
      * Reserva de stock por línea. Simples: reservan su propia cantidad. Compuestos:
-     * reservan cada insumo del recipe_snapshot × cantidad de la línea (H-59).
+     * reservan cada insumo del recipe_snapshot × cantidad de la línea.
      * Usa la bodega por defecto de la sucursal.
-     *
      * @param  \Illuminate\Support\Collection<int, Sale>  $sales
      */
     private function reserveStock(int $businessId, int $branchId, $sales): void
@@ -337,7 +334,6 @@ final class InvoiceService
 
     /**
      * Libera las reservas de todas las líneas (anulación).
-     *
      * @param  \Illuminate\Support\Collection<int, Sale>  $sales
      */
     private function releaseStock(int $businessId, int $branchId, $sales): void
@@ -358,7 +354,7 @@ final class InvoiceService
                     }
 
                     if ($this->productTracksInventory($businessId, $item->product_id)) {
-                        $this->inventory->liberarReserva($businessId, (int) $item->product_id, $warehouseOrigen, (string) $item->quantity);
+                        $this->inventory->liberarReserva($businessId, (int) $item->product_id, $warehouseOrigen, $remnant);
                     }
                 }
             }

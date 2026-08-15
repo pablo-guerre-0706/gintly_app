@@ -9,6 +9,7 @@ namespace App\Enums;
 // automáticas del sistema no necesitan permisos.
 enum RoleName: string
 {
+    case System   = 'ROL-SYS'; 
     case Owner    = 'ROL-01';
     case Admin    = 'ROL-02';
     case Operator = 'ROL-03';
@@ -16,6 +17,7 @@ enum RoleName: string
     public function label(): string
     {
         return match ($this) {
+            self::System   => 'Soporte Sistema', 
             self::Owner    => 'Propietario',
             self::Admin    => 'Administrador',
             self::Operator => 'Empleado operativo',
@@ -26,6 +28,7 @@ enum RoleName: string
     public function level(): int
     {
         return match ($this) {
+            self::System   => 4, 
             self::Owner    => 3,
             self::Admin    => 2,
             self::Operator => 1,

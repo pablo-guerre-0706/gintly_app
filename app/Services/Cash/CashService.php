@@ -152,7 +152,7 @@ final class CashService
             if (bccomp($difference, '0', self::MONEY_SCALE) === 0) {
                 $session->status = CashSessionStatus::Cerrada;
             } else {
-                // D-20 · Descuadre: se persiste como evidencia, no se revierte.
+                // Descuadre: se persiste como evidencia, no se revierte.
                 $session->status = CashSessionStatus::Descuadrada;
             }
 
@@ -165,7 +165,7 @@ final class CashService
             return $session->refresh();
         });
 
-        // P17 (MOD-11): descuadre de caja → anomalía silenciosa.
+        // ?(MOD-11): descuadre de caja → anomalía silenciosa.
         if (bccomp((string) $closed->difference, '0.00', 2) !== 0) {
             $this->anomalies->registrarSilencioso('descuadre_caja', $session, [
                 'expected_value' => (string) $closed->expected_amount,
