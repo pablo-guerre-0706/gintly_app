@@ -35,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+
+
     ->withMiddleware(function (Middleware $middleware): void {
 
         // SetPermissionsTeamId se aplica globalmente en la API para asegurar la gestión
@@ -45,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->throttleApi();
 
+        // UBICACIÓN PERFECTA: Activa el soporte de sesiones/cookies para Sanctum SPA requerido por el AuthController
+        $middleware->statefulApi();
+
         $middleware->alias([
             'tenant.permissions' => SetPermissionsTeamId::class,
             'role'               => RoleMiddleware::class,
@@ -52,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
     })
+
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (SupplierNotApprovedException $e, Request $request) {
             return response()->json([
@@ -118,7 +124,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (IncompletePaymentException $e, Request $request) {
-            // D-27 · Rollback estricto: NADA se persistió. Solo la señal 422.
+            // Rollback estricto: NADA se persistió. Solo la señal 422.
             return response()->json(['message' => $e->getMessage(), 'code' => 'INCOMPLETE_PAYMENT'], 422);
         });
 

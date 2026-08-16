@@ -11,9 +11,7 @@ final class UpdateBranchRequest extends BaseTenantRequest
 {
     public function authorize(): bool
     {
-        $target = $this->route('branch');
-
-        return $this->user()?->can('update', $target instanceof Branch ? $target : Branch::class) ?? false;
+        return true;
     }
 
     /**

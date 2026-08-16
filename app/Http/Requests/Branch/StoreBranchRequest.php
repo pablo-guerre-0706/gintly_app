@@ -11,7 +11,7 @@ final class StoreBranchRequest extends BaseTenantRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Branch::class) ?? false;
+        return true;
     }
 
     /**

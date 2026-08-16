@@ -97,9 +97,14 @@ return [
 
     //Aislamiento multi-negocio
     'tenant' => [
-        'guards' => ['sanctum'],
+        'guards'    => ['web'],   // El usuario vive en el guard web (Sanctum es solo transporte)
+        'api_guard' => 'web',     // lo leen VerifiesCurrentPassword (current_password:web) y SetPermissionsTeamId
+    ],
 
-        'api_guard' => 'sanctum',
+    // Seguridad y Autenticacion
+    'auth' => [
+        'max_attempts'  => 5,     // Umbral parametrizable del rate-limit
+        'decay_seconds' => 60,
     ],
 
     //Bitácora de auditoría

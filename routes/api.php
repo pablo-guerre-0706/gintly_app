@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\KpiSnapshotController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductRecipeController;
+use App\Http\Controllers\Api\V1\UpdatePasswordController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -40,9 +41,12 @@ use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\UnitController;
+use App\Http\Controllers\Api\V1\UpdateUserEmailController; //
+use App\Http\Controllers\Api\V1\UpdateUserPasswordController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Models\Product;
+use App\Models\User;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
@@ -60,14 +64,14 @@ Route::prefix('v1')->group(function (): void {
 
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
-        Route::put('/me/password', [UserController::class, 'updateOwnPassword']);
+        Route::put('/me/password', [UpdatePasswordController::class, 'update']);
 
         // apiResource genera los parámetros {user} y {branch}, que son los
         // que esperan routeId() en los FormRequest y el ignore() del unique.
         Route::apiResource('users', UserController::class);
         Route::put('/users/{user}/role', [UserController::class, 'updateRole']);
-        Route::put('/users/{user}/password', [UserController::class, 'resetPassword']);
-        Route::put('/users/{user}/email', [UserController::class, 'updateEmail']);
+        Route::put('/users/{user}/password', [UpdateUserPasswordController::class, 'update']);
+        Route::put('/users/{user}/email', [UpdateUserEmailController::class, 'update']);
 
         Route::apiResource('branches', BranchController::class);
 
@@ -75,7 +79,6 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/business', [BusinessController::class, 'show']);
         Route::put('/business', [BusinessController::class, 'update']);
-
 
         // MOD-02 · Catálogo y Datos Maestros //
         // Los parámetros los genera apiResource, coinciden con los routeId() de los FormRequest.
