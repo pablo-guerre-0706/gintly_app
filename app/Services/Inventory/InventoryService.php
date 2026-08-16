@@ -12,6 +12,7 @@ use App\Exceptions\InvalidCountStateException;
 use App\Models\Dispatch;
 use App\Models\InventoryAdjustment;
 use App\Models\InventoryMovement;
+use App\Models\Product;
 use App\Models\PhysicalCount;
 use App\Models\SaleItem;
 use App\Models\Warehouse;
@@ -20,6 +21,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use InvalidArgumentException;
 
 
 
@@ -262,6 +264,29 @@ final class InventoryService
 
         // Re-lee bajo lock para serializar contra otra creación concurrente.
         return StockLevel::query()->whereKey($stock->getKey())->lockForUpdate()->firstOrFail();
+    }
+
+    /** único escritor de umbrales. min/max NO están en $fillable -> asignación directa bajo lock. */
+    public function fijarUmbrales(Product $product, Warehouse $warehouse, ?string $min, ?string $max): StockLevel
+    {
+        return DB::transaction(function () use ($product, $warehouse, $min, $max): StockLevel {
+            $stock = $this->lockOrCreateStock(
+                $product->business_id ?? $warehouse ->business_id,
+                $product->id,
+                $warehouse->id
+            );
+
+            // Backstop de motor (chk_stock_min_le_max) replicado en dominio con bcmath.
+            if ($min !== null && $max !== null && bccomp($min, $max, 3) === 1) {
+                throw new InvalidArgumentException('min_stock no puede exceder max_stock.');
+            }
+
+            $stock->min_stock = $min; // evade $fillable a propósito
+            $stock->max_stock = $max;
+            $stock->save();
+
+            return $stock;
+        });
     }
 
     //Inserta el asiento inmutable de kardex. balance_after es la foto del saldo

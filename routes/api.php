@@ -29,7 +29,7 @@ use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
-use App\Http\Controllers\Api\V1\ProductRecipeController;
+use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\UpdatePasswordController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
@@ -81,29 +81,16 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/business', [BusinessController::class, 'update']);
 
         // MOD-02 · Catálogo y Datos Maestros //
-        // Los parámetros los genera apiResource, coinciden con los routeId() de los FormRequest.
-
-        Route::model('compound', Product::class);
-        Route::model('line', ProductRecipe::class);
-        
         Route::apiResource('categories', CategoryController::class);
-        Route::apiResource('brands', BrandController::class);     
-
-        // units: parámetro {unit} explícito para casar con route('unit').
-        Route::apiResource('units', UnitController::class)->parameters(['units' => 'unit']);
-
+        Route::apiResource('brands', BrandController::class);
+        Route::apiResource('units', UnitController::class);          // Laravel singulariza a {unit}
         Route::apiResource('products', ProductController::class);
 
-        // Receta como sub-recurso del compuesto. scopeBindings() obliga a que {line}
-        Route::prefix('products/{compound}/recipe')
-            ->scopeBindings()
-            ->group(function (): void {
-                Route::get('/', [ProductRecipeController::class, 'index']);
-                Route::post('/', [ProductRecipeController::class, 'store']);
-                Route::put('/{line}', [ProductRecipeController::class, 'update']);
-                Route::delete('/{line}', [ProductRecipeController::class, 'destroy']);
-            });
-        
+        // Sub-recurso: products/{compound}/recipe/{line}. scopeBindings amarra la línea a su compuesto (H-20).
+        Route::apiResource('products.recipe', RecipeController::class)
+            ->parameters(['products' => 'compound', 'recipe' => 'line'])
+            ->scoped();
+
         // MOD-03 - Inventario logico y Bodega fisica
         Route::apiResource('warehouses', WarehouseController::class)
             ->parameters(['warehouses' => 'warehouse']);

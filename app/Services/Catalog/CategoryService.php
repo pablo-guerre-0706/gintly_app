@@ -17,10 +17,9 @@ final class CategoryService
     {
         return DB::transaction(function () use ($data): Category {
             if (! empty($data['parent_id'])) {
-                // En create el nodo aún no existe: basta con verificar que el
-                // padre elegido no cuelgue de una cadena rota. No hay ciclo
-                // posible todavía, pero validamos que el padre exista y esté
-                // activo bajo lock para serializar contra ediciones concurrentes.
+                // En create el nodo aún no existe: basta con verificar que el padre elegido no 
+                // cuelgue de una cadena rota. No hay ciclo posible todavía, pero validamos que 
+                // el padre exista y esté activo bajo lock para serializar contra ediciones concurrentes.
                 Category::query()
                     ->whereKey($data['parent_id'])
                     ->lockForUpdate()

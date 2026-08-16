@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 
-// RF-02-05 · Línea de receta. Tabla puente con auto-referencia doble a
+// Línea de receta. Tabla puente con auto-referencia doble a
 // products (compound_id / ingredient_id).
 final class ProductRecipe extends Model
 {

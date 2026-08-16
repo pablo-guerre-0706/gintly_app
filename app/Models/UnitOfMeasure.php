@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Exceptions\RestrictDeleteException;
 use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,19 @@ final class UnitOfMeasure extends Model
         'name',
         'abbreviation',
     ];
+
+    protected static function booted(): void
+    {
+        // units_of_measure no tiene SoftDeletes y está protegida por RESTRICT.
+        // La regla viaja con el dato: cualquier borrado (API, job, tinker) queda blindado.
+        static::deleting(function (self $unit): void {
+            if ($unit->hasDependents()) {
+                throw new RestrictDeleteException(
+                    'No se puede eliminar la unidad: existen productos o recetas que la referencian.',
+                );
+            }
+        });
+    }
 
     public function products(): HasMany
     {
