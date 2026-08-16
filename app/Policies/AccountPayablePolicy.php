@@ -44,7 +44,7 @@ final class AccountPayablePolicy
             : Response::deny('No tiene autorización para registrar pagos a proveedores.');
     }
 
-    // Descongelar una CxP es potestad EXCLUSIVA de ROL-01 (RF-04-04).
+    // Descongelar una CxP es potestad EXCLUSIVA de ROL-01.
     public function unblock(User $actor, AccountPayable $payable): Response
     {
         if (! $this->sharesBusinessWith($actor, $payable)) {

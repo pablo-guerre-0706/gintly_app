@@ -7,12 +7,14 @@ use App\Http\Controllers\Api\V1\AccountReceivableController;
 use App\Http\Controllers\Api\V1\AnomalyController;
 use App\Http\Controllers\Api\V1\AnomalyRuleController;
 use App\Http\Controllers\Api\V1\ApplyPhysicalCountController;
+use App\Http\Controllers\Api\V1\ApproveSupplierController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\BusinessGoalController;
+use App\Http\Controllers\Api\V1\CancelPurchaseOrderController;
 use App\Http\Controllers\Api\V1\CancelStockTransferController;
 use App\Http\Controllers\Api\V1\CashMovementController;
 use App\Http\Controllers\Api\V1\CashRegisterController;
@@ -25,12 +27,15 @@ use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerCreditController; // Reutilizado de MOD-08.
 use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
+use App\Http\Controllers\Api\V1\GoodsReceiptItemsController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
+use App\Http\Controllers\Api\V1\IssuePurchaseOrderController;
 use App\Http\Controllers\Api\V1\JustifyPhysicalCountController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
+use App\Http\Controllers\Api\V1\PayAccountPayableController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\RecipeController;
@@ -39,11 +44,14 @@ use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportDefinitionController;
+use App\Http\Controllers\Api\V1\ResolveGoodsReceiptController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesReturnController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SupplierController;
+use App\Http\Controllers\Api\V1\SuspendSupplierController;
+use App\Http\Controllers\Api\V1\UnblockAccountPayableController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UpdateUserEmailController; //
 use App\Http\Controllers\Api\V1\UpdateUserPasswordController;
@@ -54,7 +62,6 @@ use App\Models\User;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
-
 
 
 
@@ -127,37 +134,28 @@ Route::prefix('v1')->group(function (): void {
         Route::model('stock_transfer', \App\Models\StockTransfer::class);
         Route::model('inventory_adjustment', \App\Models\InventoryAdjustment::class);
 
-        //MOD-04 - Proveedores, Compras y Recepcion
-        Route::apiResource('suppliers', SupplierController::class)
-            ->parameters(['suppliers' => 'supplier']);
-        Route::post('suppliers/{supplier}/approve', [SupplierController::class, 'approve']);
-        Route::post('suppliers/{supplier}/suspend', [SupplierController::class, 'suspend']);
+        // MOD-04
+        // Proveedores: apiResource + aprobar/suspender (ROL-01).
+        Route::apiResource('suppliers', SupplierController::class);
+        Route::post('suppliers/{supplier}/approve', ApproveSupplierController::class)->name('suppliers.approve');
+        Route::post('suppliers/{supplier}/suspend', SuspendSupplierController::class)->name('suppliers.suspend');
 
-        // Órdenes de compra — CRUD parcial + transiciones.
-        Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
-        Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
-        Route::get('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'show']);
-        Route::put('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'update']);
-        Route::post('purchase-orders/{purchase_order}/issue', [PurchaseOrderController::class, 'issue']);
-        Route::post('purchase-orders/{purchase_order}/cancel', [PurchaseOrderController::class, 'cancel']);
+        // Órdenes: index/store/show/update + emitir/cancelar (sin destroy: cancelar es la terminación real).
+        Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show', 'update']);
+        Route::post('purchase-orders/{purchase_order}/issue', IssuePurchaseOrderController::class)->name('purchase-orders.issue');
+        Route::post('purchase-orders/{purchase_order}/cancel', CancelPurchaseOrderController::class)->name('purchase-orders.cancel');
 
-        // Recepciones — registrar (3-Way Match), ver, evidencia, resolver (ROL-01).
-        Route::get('goods-receipts', [GoodsReceiptController::class, 'index']);
-        Route::post('goods-receipts', [GoodsReceiptController::class, 'store']);
-        Route::get('goods-receipts/{goods_receipt}', [GoodsReceiptController::class, 'show']);
-        Route::get('goods-receipts/{goods_receipt}/items', [GoodsReceiptController::class, 'items']);
-        Route::post('goods-receipts/{goods_receipt}/resolve', [GoodsReceiptController::class, 'resolve']);
+        // Recepciones: index/store/show + evidencia + resolver.
+        Route::apiResource('goods-receipts', GoodsReceiptController::class)->only(['index', 'store', 'show']);
+        Route::get('goods-receipts/{goods_receipt}/items', GoodsReceiptItemsController::class)->name('goods-receipts.items');
+        Route::post('goods-receipts/{goods_receipt}/resolve', ResolveGoodsReceiptController::class)->name('goods-receipts.resolve');
 
-        // Cuentas por pagar — listar, ver, pagar, descongelar (ROL-01).
-        Route::get('accounts-payable', [AccountPayableController::class, 'index']);
-        Route::get('accounts-payable/{account_payable}', [AccountPayableController::class, 'show']);
-        Route::post('accounts-payable/{account_payable}/pay', [AccountPayableController::class, 'pay']);
-        Route::post('accounts-payable/{account_payable}/unblock', [AccountPayableController::class, 'unblock']);
-
-        // Binding de modelos para parámetros no convencionales.
-        Route::model('purchase_order', \App\Models\PurchaseOrder::class);
-        Route::model('goods_receipt', \App\Models\GoodsReceipt::class);
-        Route::model('account_payable', \App\Models\AccountPayable::class);
+        // Cuentas por pagar: index/show + pagar/descongelar.
+        Route::apiResource('accounts-payable', AccountPayableController::class)
+            ->only(['index', 'show'])
+            ->parameters(['accounts-payable' => 'account_payable']);
+        Route::post('accounts-payable/{account_payable}/pay', PayAccountPayableController::class)->name('accounts-payable.pay');
+        Route::post('accounts-payable/{account_payable}/unblock', UnblockAccountPayableController::class)->name('accounts-payable.unblock');
 
         // MOD-05 - Clientes
         Route::apiResource('customers', CustomerController::class)
