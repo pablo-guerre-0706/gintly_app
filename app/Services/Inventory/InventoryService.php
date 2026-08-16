@@ -34,7 +34,6 @@ final class InventoryService
     /**
      * Aplica un ajuste directo (merma/sobrante/corrección) sobre el saldo y
      * escribe el asiento de kardex, de forma atómica.
-     *
      * @param  numeric-string|float|int  $quantity  Magnitud SIEMPRE positiva.
      */
     public function ajustar(

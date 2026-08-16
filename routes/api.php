@@ -6,16 +6,19 @@ use App\Http\Controllers\Api\V1\AccountPayableController;
 use App\Http\Controllers\Api\V1\AccountReceivableController;
 use App\Http\Controllers\Api\V1\AnomalyController;
 use App\Http\Controllers\Api\V1\AnomalyRuleController;
+use App\Http\Controllers\Api\V1\ApplyPhysicalCountController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\BusinessGoalController;
+use App\Http\Controllers\Api\V1\CancelStockTransferController;
 use App\Http\Controllers\Api\V1\CashMovementController;
 use App\Http\Controllers\Api\V1\CashRegisterController;
 use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\CompleteStockTransferController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
@@ -26,6 +29,7 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
+use App\Http\Controllers\Api\V1\JustifyPhysicalCountController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -50,6 +54,7 @@ use App\Models\User;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
+
 
 
 
@@ -91,35 +96,30 @@ Route::prefix('v1')->group(function (): void {
             ->parameters(['products' => 'compound', 'recipe' => 'line'])
             ->scoped();
 
-        // MOD-03 - Inventario logico y Bodega fisica
-        Route::apiResource('warehouses', WarehouseController::class)
-            ->parameters(['warehouses' => 'warehouse']);
+        // MOD-03
+        Route::apiResource('warehouses', WarehouseController::class);
 
-        // Stock. Solo lectura + edición de umbrales. Sin POST.
-        Route::get('stock', [StockLevelController::class, 'index']);
-        Route::get('stock/{product}/{warehouse}', [StockLevelController::class, 'show']);
-        Route::put('stock/{product}/{warehouse}/thresholds', [StockLevelController::class, 'updateThresholds']);
+        // Stock: sin store/destroy. show y thresholds con binding compuesto product+warehouse.
+        Route::get('stock', [StockLevelController::class, 'index'])->name('stock.index');
+        Route::get('stock/{product}/{warehouse}', [StockLevelController::class, 'show'])->name('stock.show');
+        Route::put('stock/{product}/{warehouse}/thresholds', [StockLevelController::class, 'updateThresholds'])
+            ->name('stock.thresholds');
 
-        // Conteos físicos: registrar, ver, aplicar (ajustar), justificar.
-        Route::get('physical-counts', [PhysicalCountController::class, 'index']);
-        Route::post('physical-counts', [PhysicalCountController::class, 'store']);
-        Route::get('physical-counts/{physical_count}', [PhysicalCountController::class, 'show']);
-        Route::post('physical-counts/{physical_count}/apply', [PhysicalCountController::class, 'apply']);
-        Route::post('physical-counts/{physical_count}/justify', [PhysicalCountController::class, 'justify']);
+        // Physical counts: index/store/show + acciones apply/justify (invocables).
+        Route::apiResource('physical-counts', PhysicalCountController::class)->only(['index', 'store', 'show']);
+        Route::post('physical-counts/{physicalCount}/apply', ApplyPhysicalCountController::class)->name('physical-counts.apply');
+        Route::post('physical-counts/{physicalCount}/justify', JustifyPhysicalCountController::class)->name('physical-counts.justify');
 
-        // Traspasos: crear, ver, completar, cancelar.
-        Route::get('stock-transfers', [StockTransferController::class, 'index']);
-        Route::post('stock-transfers', [StockTransferController::class, 'store']);
-        Route::get('stock-transfers/{stock_transfer}', [StockTransferController::class, 'show']);
-        Route::post('stock-transfers/{stock_transfer}/complete', [StockTransferController::class, 'complete']);
-        Route::post('stock-transfers/{stock_transfer}/cancel', [StockTransferController::class, 'cancel']);
+        // Stock transfers: index/store/show + acciones complete/cancel (invocables).
+        Route::apiResource('stock-transfers', StockTransferController::class)->only(['index', 'store', 'show']);
+        Route::post('stock-transfers/{stockTransfer}/complete', CompleteStockTransferController::class)->name('stock-transfers.complete');
+        Route::post('stock-transfers/{stockTransfer}/cancel', CancelStockTransferController::class)->name('stock-transfers.cancel');
 
-        // Ajustes directos: crear, listar, ver.
-        Route::get('inventory-adjustments', [InventoryAdjustmentController::class, 'index']);
-        Route::post('inventory-adjustments', [InventoryAdjustmentController::class, 'store']);
-        Route::get('inventory-adjustments/{inventory_adjustment}', [InventoryAdjustmentController::class, 'show']);
+        // Adjustments: index/store (merma/sobrante). Movements: kardex solo index.
+        Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'store']);
+        Route::get('inventory-movements', [InventoryMovementController::class, 'index'])->name('inventory-movements.index');
 
-        // Kardex, solo lectura (H-30).
+        // Kardex, solo lectura.
         Route::get('inventory-movements', [InventoryMovementController::class, 'index']);
 
         // Binding de modelos para parámetros no convencionales.
