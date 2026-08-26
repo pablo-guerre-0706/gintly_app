@@ -1,0 +1,341 @@
+:root {
+    --bg-page: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --border-default: #cbd5e1;
+    
+    /* Estados de validación */
+    --neutral-hint-bg: #f1f5f9;
+    --neutral-hint-text: #64748b;
+    
+    --error-border: #ef4444;
+    --error-hint-bg: #fee2e2;
+    --error-hint-text: #991b1b;
+    
+    --success-border: #10b981;
+    --success-hint-bg: #d1fae5;
+    --success-hint-text: #065f46;
+    
+    --teal-brand: #0e7490;
+    --teal-brand-hover: #155e75;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.wizard-body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-page);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+}
+
+.wizard-card-container {
+    background: #ffffff;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 1280px;
+    display: grid;
+    grid-template-columns: 460px 1fr;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    min-height: 800px;
+}
+
+/* PANEL IZQUIERDO HERO */
+.hero-sidebar {
+    position: relative;
+    padding: 40px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    margin: 16px;
+    border-radius: 20px;
+}
+
+.hero-image {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(180deg, rgba(14, 116, 144, 0.2) 0%, rgba(15, 23, 42, 0.85) 100%);
+    z-index: 2;
+}
+
+.hero-caption {
+    position: relative;
+    z-index: 3;
+    color: #ffffff;
+}
+
+.hero-heading {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 20px;
+}
+
+.hero-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* PANEL DERECHO FORMULARIO */
+.wizard-form-area {
+    padding: 40px 56px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.back-btn {
+    width: 44px;
+    height: 44px;
+    background: #f1f5f9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dark);
+    text-decoration: none;
+}
+
+.intro-section {
+    margin-bottom: 24px;
+}
+
+.form-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.form-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* STEPPER */
+.stepper-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 20px;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+}
+
+.step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: var(--text-muted);
+}
+
+.step-item.active .step-badge {
+    background: #bae6fd;
+    color: var(--teal-brand);
+}
+
+.step-info strong {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dark);
+    line-height: 1.2;
+}
+
+.step-info small {
+    font-size: 9px;
+    color: var(--text-muted);
+    display: block;
+}
+
+.step-line {
+    width: 24px;
+    height: 2px;
+    background: #e2e8f0;
+}
+
+/* FORM FIELDS */
+.registration-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper input {
+    width: 100%;
+    height: 44px;
+    padding: 0 40px 0 14px;
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.input-wrapper .icon-prefix {
+    position: absolute;
+    left: 12px;
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+}
+
+.input-wrapper .icon-prefix + input {
+    padding-left: 40px;
+}
+
+.phone-wrapper .prefix-select {
+    height: 44px;
+    border: 1px solid var(--border-default);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+    padding: 0 8px;
+    background: #f8fafc;
+    font-size: 13px;
+}
+
+.phone-wrapper input {
+    border-radius: 0 10px 10px 0;
+}
+
+.icon-status {
+    position: absolute;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+}
+
+/* ESTADOS DE VALIDACIÓN */
+/* Neutro */
+.field-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--neutral-hint-bg);
+    color: var(--neutral-hint-text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.field-hint svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Error */
+.field-group.state-error input {
+    border-color: var(--error-border);
+}
+
+.field-group.state-error .field-hint {
+    background: var(--error-hint-bg);
+    color: var(--error-hint-text);
+}
+
+.icon-error {
+    color: var(--error-border);
+}
+
+/* Éxito */
+.field-group.state-success input {
+    border-color: var(--success-border);
+}
+
+.field-group.state-success .field-hint {
+    background: var(--success-hint-bg);
+    color: var(--success-hint-text);
+}
+
+.icon-success {
+    color: var(--success-border);
+}
+
+/* BOTÓN SUBMIT */
+.submit-btn {
+    width: 100%;
+    height: 48px;
+    border-radius: 12px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.2s;
+}
+
+.btn-disabled {
+    background: #f1f5f9;
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.btn-active {
+    background: var(--teal-brand);
+    color: #ffffff;
+}
+
+.btn-active:hover {
+    background: var(--teal-brand-hover);
+}
