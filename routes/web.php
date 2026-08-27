@@ -2,22 +2,39 @@
 
 use Illuminate\Support\Facades\Route;
 
-// 1. Pagina de bienvenida que trae Laravel por defecto
+
+// Web Routes - ERP Gintly App //
+
+// 1. La Landing Page oficial
 Route::get('/', function () {
-    return view('welcome');
-});
+    return view('landing'); // Carga resources/views/landing.blade.php
+})->name('landing');
 
-// 2. MOD-02: Catálogo y Datos Maestros
-Route::get('/catalogo', function () {
-    return view('catalogo'); // Carga resources/views/catalogo.blade.php
-});
+// 2. Rutas temporales del asistente de registro, view:perfil de usuario
+Route::get('/register', function () {
+    return view('singupprofile');
+})->name('register');
 
-// 3. MOD-03: Inventario Lógico y Bodega Física
-Route::get('/inventario', function () {
-    return view('inventario'); // Carga resources/views/inventario.blade.php
-});
+// Paso 1, alias por consistencia visual
+Route::get('/register/step1', function () {
+    return view('singupprofile');
+})->name('register.step1');
 
-// 4. Pantalla Principal: Dashboard
-Route::get('/dashboard', function () {
-    return view('dashboard'); // Carga resources/views/dashboard.blade.php
-});
+// Paso 2: perfil de la tienda
+Route::get('/register/step2', function () {
+    return view('singupbusinessprofile');
+})->name('register.step2');
+
+// 3. Rutas temporales de envío, simuladas para evitar errores al presionar botones, al enviar paso 1 salta al paso 2
+Route::post('/register/step1', function () {
+    return redirect()->route('register.step2');
+})->name('register.step1.store');
+
+Route::post('/register/step2', function () {
+    return response()->json(['message' => 'Simulación de registro exitosa']);
+})->name('register.step2.store');
+
+// 4. Ruta temporal de inicio de sesión (lo requieren los botones de la Landing)
+Route::get('/login', function () {
+    return "Pantalla de Login (Pendiente de enlazar al backend)";
+})->name('login');
