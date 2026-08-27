@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerCreditController; // Reutilizado de MOD-08.
 use App\Http\Controllers\Api\V1\DispatchController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\GoodsReceiptItemsController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\UpdatePasswordController;
+use App\Http\Controllers\Api\V1\POSController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -77,6 +79,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/me/password', [UpdatePasswordController::class, 'update']);
+        Route::get('/pos', [POSController::class, 'index'])->name('pos.index');
+        Route::get('/finance/cash-closing', [FinanceController::class, 'cashClosing'])
+            ->name('finance.cash-closing');
 
         // apiResource genera los parámetros {user} y {branch}, que son los
         // que esperan routeId() en los FormRequest y el ignore() del unique.
@@ -192,7 +197,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('cash-movements', [CashMovementController::class, 'store']);
 
         Route::model('cash_register', \App\Models\CashRegister::class);
-        Route::model('cash_session', \App\Models\CashSession::class);        
+        Route::model('cash_session', \App\Models\CashSession::class);
 
         // MOD-07 - Ventas, Facturacion e Inmutabilidad
 
