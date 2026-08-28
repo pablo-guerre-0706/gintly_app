@@ -6,7 +6,7 @@ import { money, subtract } from '@/core/money';
 
 let debounceTimer;
 const esc = value => $('<div>').text(value ?? '—').html();
-const fmt = value => C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')};
+const fmt = value => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 function customerFrom($card) {
     try { return JSON.parse($card.attr('data-customer')); }
@@ -44,7 +44,7 @@ function renderDetail(customer) {
     );
 
     $('#customerDetail').html(`
-        <div class="w-full max-w-[330px] text-left">
+        <div class="w-full max-w-xs text-left">
             <div class="border-b border-[#E8E8E8] pb-5">
                 <p class="text-[17px] font-bold text-[#202020]">${esc(customer.name)}</p>
                 <p class="mt-2 text-[9px] text-[#777]">${esc(customer.document_number ?? 'Sin documento')}</p>

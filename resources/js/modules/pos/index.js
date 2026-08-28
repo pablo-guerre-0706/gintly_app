@@ -6,12 +6,12 @@ import { add, subtract, multiply, money, quantity, SCALE } from '@/core/money';
 
 let products = [], cart = new Map();
 const esc = value => $('<div>').text(value ?? '').html();
-const fmt = value => C$ ${money(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')};
+const fmt = value => `C$ ${money(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 function renderProducts(list = products) {
     $('#posProducts').html(list.map(p => `
         <button type="button" data-product="${p.id}"
-            class="min-h-[138px] rounded-xl border border-[#DDD] bg-white p-3 text-left transition hover:border-[#07839B]/50 hover:shadow-sm">
+            class="min-h-36 rounded-xl border border-neutral-300 bg-white p-3 text-left transition hover:border-cyan-800/50 hover:shadow-sm">
             <div class="grid h-12 w-12 place-items-center rounded-full bg-[#F3F3F3] text-xl">📦</div>
             <p class="mt-3 truncate text-[10px] font-semibold text-[#282828]">${esc(p.name)}</p>
             <p class="mt-1 text-[8px] text-[#888]">${esc(p.sku)}</p>
@@ -45,7 +45,7 @@ function renderCart() {
         </div>`));
     const t = totals();
     $('#posSubtotal').text(fmt(t.subtotal)); $('#posTax').text(fmt(t.tax)); $('#posTotal').text(fmt(t.total));
-    $('#posItemCount').text(${rows.length} artículos);
+    $('#posItemCount').text(`${rows.length} artículos`);
 }
 
 function payload() {

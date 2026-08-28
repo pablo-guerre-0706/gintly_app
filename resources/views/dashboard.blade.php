@@ -17,18 +17,18 @@ $kpis = [
 ];
 @endphp
 
-<main class="mx-auto w-full max-w-[1180px] bg-[#F5F5F4] px-6 py-7" data-dashboard-root>
+<main class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7" data-dashboard-root>
     <header class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h1 class="text-[28px] font-bold tracking-[-.035em] text-[#171717]">Dashboard</h1>
-            <p id="dashboardContext" class="mt-1 text-[10px] text-[#777]">Actualizando información...</p>
+            <h1 class="text-3xl font-bold tracking-tight text-neutral-900">Dashboard</h1>
+            <p id="dashboardContext" class="mt-1 text-xs text-neutral-500">Actualizando información...</p>
         </div>
 
         <div class="flex gap-2.5">
-            <button class="h-10 rounded-full border border-[#D0D0D0] bg-white px-5 text-[11px] text-[#696969]">
+            <button class="h-10 rounded-full border border-neutral-300 bg-white px-5 text-xs text-neutral-600">
                 <i class="fa-solid fa-download mr-2"></i> Exportar
             </button>
-            <button data-dashboard-refresh class="h-10 rounded-full bg-[#087E98] px-5 text-[11px] font-semibold text-white">
+            <button data-dashboard-refresh class="h-10 rounded-full bg-cyan-800 px-5 text-xs font-semibold text-white">
                 <i class="fa-solid fa-rotate mr-2"></i> Actualizar
             </button>
         </div>
@@ -42,11 +42,14 @@ $kpis = [
     <a href="{{ route('customers.index') }}">
     Clientes y Fidelidad
     </a>
-    <section class="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-12 xl:auto-rows-min">
+    <a href="{{ route('inventory.reconciliation') }}">
+    Conciliación y stock
+    </a>
+    <section class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-12">
         @foreach ($kpis as $kpi)
             <x-kpi-card
                 id="kpi-{{ $kpi['key'] }}"
-                class="{{ $kpi['class'] }} min-h-[96px]"
+                class="{{ $kpi['class'] }} min-h-24"
                 :title="$kpi['title']"
                 value="—"
                 subtext="—"
@@ -57,19 +60,19 @@ $kpis = [
         <article class="card xl:col-start-1 xl:col-span-7 xl:row-start-3">
             <div class="card-head">
                 <div><h2>Estadísticas de ventas semanal</h2><p>VS ventas diarias</p></div>
-                <button class="rounded-full bg-[#F4F4F4] px-3 py-2 text-[9px] text-[#777]">Ver más</button>
+                <button class="rounded-full bg-neutral-100 px-3 py-2 text-2xs text-neutral-500">Ver más</button>
             </div>
-            <div class="h-[300px]"><canvas id="salesWeeklyChart"></canvas></div>
+            <div class="h-80"><canvas id="salesWeeklyChart"></canvas></div>
         </article>
 
         <article class="card xl:col-start-8 xl:col-span-5 xl:row-start-3">
             <div class="card-head"><h2>Estado de caja: Encuadre</h2></div>
-            <div class="h-[300px]"><canvas id="cashStatusChart"></canvas></div>
+            <div class="h-80"><canvas id="cashStatusChart"></canvas></div>
         </article>
 
         <article class="card xl:col-start-1 xl:col-span-3 xl:row-start-4 xl:row-span-3">
             <div class="card-head"><div><h2>Inv. Lógico vs. Físico</h2><p>Diferencia por sucursal (uds)</p></div></div>
-            <div class="h-[270px]"><canvas id="inventoryComparisonChart"></canvas></div>
+            <div class="h-72"><canvas id="inventoryComparisonChart"></canvas></div>
         </article>
 
         <article class="card xl:col-start-4 xl:col-span-6 xl:row-start-4 xl:row-span-3">
@@ -77,7 +80,7 @@ $kpis = [
                 <div><h2>Exposición de cuentas por cobrar</h2><p>Antigüedad de cartera · Últimos 5 meses</p></div>
                 <strong id="receivablesTotal" class="text-base">—</strong>
             </div>
-            <div class="h-[270px]"><canvas id="receivablesChart"></canvas></div>
+            <div class="h-72"><canvas id="receivablesChart"></canvas></div>
         </article>
 
         <article class="card xl:col-start-1 xl:col-span-12 xl:row-start-7">
@@ -90,7 +93,7 @@ $kpis = [
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-[9px]">
+                <table class="w-full text-left text-2xs">
                     <tbody id="anomalyAlertsBody"></tbody>
                 </table>
             </div>

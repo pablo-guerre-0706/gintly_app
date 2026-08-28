@@ -28,7 +28,7 @@
 <main
     id="cashClosingRoot"
     data-close-url="{{ $closeEndpoint ?? '' }}"
-    class="mx-auto w-full max-w-[1160px] bg-[#F5F5F4] px-6 py-7"
+    <main class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7">
 >
     <header class="mb-7">
         <h1 class="text-[27px] font-bold tracking-[-.035em] text-[#171717]">
@@ -42,7 +42,7 @@
         </p>
     </header>
 
-    <div class="mb-6 rounded-[8px] border border-[#9EA8F2] bg-[#E8E9FF] px-4 py-3 text-[9px] leading-5 text-[#5A63AA]">
+    <div class="mb-6 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-3 text-2xs leading-5 text-indigo-700">
         Arqueo ciego activo. El saldo teórico se mantiene oculto hasta confirmar el conteo físico.
         Ingresa la cantidad de cada denominación disponible en caja.
     </div>
@@ -57,7 +57,7 @@
     </section>
 
     <form id="cashClosingForm" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <section class="overflow-hidden rounded-[12px] border border-[#DDD] bg-white p-5 shadow-sm">
+        <section class="card overflow-hidden">
             <div class="grid grid-cols-[1fr_85px_140px_145px] bg-[#F1F1F1] px-3 py-3 text-[9px] font-semibold text-[#555]">
                 <span>Denominación</span><span>Tipo</span>
                 <span class="text-center">Cantidad</span><span class="text-right">Sub-Total</span>
@@ -121,7 +121,7 @@
             </div>
         </section>
 
-        <aside class="h-fit rounded-[12px] border border-[#DDD] bg-white p-5 shadow-sm">
+        <aside class="card h-fit">
             <h2 class="text-[12px] font-bold text-[#292929]">Conciliación</h2>
             <p class="mt-1 text-[8px] leading-4 text-[#888]">
                 El saldo del sistema se revelará únicamente después del cierre.

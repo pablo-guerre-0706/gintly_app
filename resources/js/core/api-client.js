@@ -55,7 +55,7 @@ function apiUrl(path) {
 
     const normalizedBase = base.href.endsWith('/')
         ? base.href
-        : ${base.href}/;
+        : `${base.href}/`;
 
     return new URL(
         path.replace(/^\/+/, ''),

@@ -4,7 +4,7 @@ import { withLoading, setButtonLoading } from '@/core/loading';
 import { notify } from '@/core/notifications';
 import { add, multiply, money, SCALE } from '@/core/money';
 
-const fmt = value => C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')};
+const fmt = value => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 function calculate() {
     let total = '0.00';

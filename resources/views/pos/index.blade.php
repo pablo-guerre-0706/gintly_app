@@ -65,7 +65,7 @@
         </div>
 
         {{-- Ticket --}}
-        <aside class="flex min-h-[510px] flex-col border-t border-[#ECECEC] pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+        <aside class="flex min-h-128 flex-col border-t border-neutral-200 pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
             <header class="flex items-center justify-between">
                 <div>
                     <p class="text-[10px] font-semibold text-[#222]">Ticket de venta</p>
@@ -81,9 +81,9 @@
 
                 <div
                     id="posCart"
-                    class="min-h-[210px] flex-1 space-y-2 overflow-y-auto pr-1"
+                    class="min-h-52 flex-1 space-y-2 overflow-y-auto pr-1"
                 >
-                    <div id="posEmpty" class="grid h-full min-h-[210px] place-items-center text-center">
+                    <div id="posEmpty" class="grid h-full min-h-52 place-items-center text-center">
                         <div>
                             <div class="text-5xl text-[#888]">🛒</div>
                             <p class="mt-4 text-[11px] font-medium text-[#555]">

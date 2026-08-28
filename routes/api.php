@@ -26,7 +26,7 @@ use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerCreditController; // Reutilizado de MOD-08.
 use App\Http\Controllers\Api\V1\DispatchController;
-use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\GoodsReceiptItemsController;
 use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
@@ -79,9 +79,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/me/password', [UpdatePasswordController::class, 'update']);
-        Route::get('/pos', [POSController::class, 'index'])->name('pos.index');
-        Route::get('/finance/cash-closing', [FinanceController::class, 'cashClosing'])
-            ->name('finance.cash-closing');
+        // Route::get('/pos', [POSController::class, 'index'])->name('pos.index');
+        // Route::get('/finance/cash-closing', [FinanceController::class, 'cashClosing'])
+            // ->name('finance.cash-closing');
 
         // apiResource genera los parámetros {user} y {branch}, que son los
         // que esperan routeId() en los FormRequest y el ignore() del unique.
@@ -103,7 +103,7 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('units', UnitController::class);          // Laravel singulariza a {unit}
         Route::apiResource('products', ProductController::class);
 
-        // Sub-recurso: products/{compound}/recipe/{line}. scopeBindings amarra la línea a su compuesto (H-20).
+        // Sub-recurso: products/{compound}/recipe/{line}. scopeBindings amarra la línea a su compuesto.
         Route::apiResource('products.recipe', RecipeController::class)
             ->parameters(['products' => 'compound', 'recipe' => 'line'])
             ->scoped();
@@ -163,170 +163,172 @@ Route::prefix('v1')->group(function (): void {
         Route::post('accounts-payable/{account_payable}/unblock', UnblockAccountPayableController::class)->name('accounts-payable.unblock');
 
         // MOD-05 - Clientes
-        Route::apiResource('customers', CustomerController::class)
-            ->parameters(['customers' => 'customer']);
+        // Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+
+        // Route::apiResource('customers', CustomerController::class)
+            // ->parameters(['customers' => 'customer'])
+                // ->except(['index']);
 
         // Direcciones — sub-recurso del cliente con scopeBindings (doble binding H-47).
-        Route::prefix('customers/{customer}/addresses')
-            ->scopeBindings()
-            ->group(function (): void {
-                Route::get('/', [CustomerAddressController::class, 'index']);
-                Route::post('/', [CustomerAddressController::class, 'store']);
-                Route::put('/{address}', [CustomerAddressController::class, 'update']);
-                Route::delete('/{address}', [CustomerAddressController::class, 'destroy']);
-            });
+        // Route::prefix('customers/{customer}/addresses')
+            // ->scopeBindings()
+            // ->group(function (): void {
+                // Route::get('/', [CustomerAddressController::class, 'index']);
+                // Route::post('/', [CustomerAddressController::class, 'store']);
+                // Route::put('/{address}', [CustomerAddressController::class, 'update']);
+                // Route::delete('/{address}', [CustomerAddressController::class, 'destroy']);
+            // });
 
         // Binding de modelos.
-        Route::model('customer', \App\Models\Customer::class);
-        Route::model('address', \App\Models\CustomerAddress::class);
+        // Route::model('customer', \App\Models\Customer::class);
+        // Route::model('address', \App\Models\CustomerAddress::class);
 
         // MOD-06 - Gestion de Caja
         // Cajas — CRUD.
-        Route::apiResource('cash-registers', CashRegisterController::class)
-            ->parameters(['cash-registers' => 'cash_register']);
+        // Route::apiResource('cash-registers', CashRegisterController::class)
+            // ->parameters(['cash-registers' => 'cash_register']);
 
         // Sesiones — abrir, listar, ver, cerrar, movimientos.
-        Route::get('cash-sessions', [CashSessionController::class, 'index']);
-        Route::post('cash-sessions/open', [CashSessionController::class, 'open']);
-        Route::get('cash-sessions/{cash_session}', [CashSessionController::class, 'show']);
-        Route::post('cash-sessions/{cash_session}/close', [CashSessionController::class, 'close']);
-        Route::get('cash-sessions/{cash_session}/movements', [CashSessionController::class, 'movements']);
+        // Route::get('cash-sessions', [CashSessionController::class, 'index']);
+        // Route::post('cash-sessions/open', [CashSessionController::class, 'open']);
+        // Route::get('cash-sessions/{cash_session}', [CashSessionController::class, 'show']);
+        // Route::post('cash-sessions/{cash_session}/close', [CashSessionController::class, 'close']);
+        // Route::get('cash-sessions/{cash_session}/movements', [CashSessionController::class, 'movements']);
 
         // Movimientos — listar (append-only), registrar manual.
-        Route::get('cash-movements', [CashMovementController::class, 'index']);
-        Route::post('cash-movements', [CashMovementController::class, 'store']);
+        // Route::get('cash-movements', [CashMovementController::class, 'index']);
+        // Route::post('cash-movements', [CashMovementController::class, 'store']);
 
-        Route::model('cash_register', \App\Models\CashRegister::class);
-        Route::model('cash_session', \App\Models\CashSession::class);
+        // Route::model('cash_register', \App\Models\CashRegister::class);
+        // Route::model('cash_session', \App\Models\CashSession::class);
 
         // MOD-07 - Ventas, Facturacion e Inmutabilidad
-
-        Route::get('sales', [SaleController::class, 'index']);
-        Route::post('sales', [SaleController::class, 'store']);
-        Route::get('sales/{sale}', [SaleController::class, 'show']);
-        Route::post('sales/{sale}/confirm', [SaleController::class, 'confirm']);
+        // Route::get('sales', [SaleController::class, 'index']);
+        // Route::post('sales', [SaleController::class, 'store']);
+        // Route::get('sales/{sale}', [SaleController::class, 'show']);
+        // Route::post('sales/{sale}/confirm', [SaleController::class, 'confirm']);
 
         // Ítems de venta — sub-recurso con scopeBindings (doble binding).
-        Route::prefix('sales/{sale}/items')
-            ->scopeBindings()
-            ->group(function (): void {
-                Route::post('/', [SaleController::class, 'addItem']);
-                Route::delete('/{item}', [SaleController::class, 'removeItem']);
-            });
+        // Route::prefix('sales/{sale}/items')
+            // ->scopeBindings()
+            // ->group(function (): void {
+                // Route::post('/', [SaleController::class, 'addItem']);
+                // Route::delete('/{item}', [SaleController::class, 'removeItem']);
+            // });
 
         // Facturas — emitir, ver, pagos, anular. PUT devuelve 403 (inmutable).
-        Route::get('invoices', [InvoiceController::class, 'index']);
-        Route::post('invoices', [InvoiceController::class, 'store']);
-        Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
-        Route::get('invoices/{invoice}/payments', [InvoiceController::class, 'payments']);
-        Route::put('invoices/{invoice}', [InvoiceController::class, 'update']);   // → 403 IMMUTABLE_INVOICE
-        Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void']);
+        // Route::get('invoices', [InvoiceController::class, 'index']);
+        // Route::post('invoices', [InvoiceController::class, 'store']);
+        // Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
+        // Route::get('invoices/{invoice}/payments', [InvoiceController::class, 'payments']);
+        // Route::put('invoices/{invoice}', [InvoiceController::class, 'update']);   // → 403 IMMUTABLE_INVOICE
+        // Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void']);
 
-        Route::model('sale', \App\Models\Sale::class);
-        Route::model('item', \App\Models\SaleItem::class);
-        Route::model('invoice', \App\Models\Invoice::class);
+        // Route::model('sale', \App\Models\Sale::class);
+        // Route::model('item', \App\Models\SaleItem::class);
+        // Route::model('invoice', \App\Models\Invoice::class);
 
         // MOD-08 · Cuentas por Cobrar
-        Route::prefix('accounts-receivable')->group(function (): void {
-            Route::get('/', [AccountReceivableController::class, 'index'])
-                ->name('accounts-receivable.index');
+        // Route::prefix('accounts-receivable')->group(function (): void {
+            // Route::get('/', [AccountReceivableController::class, 'index'])
+                // ->name('accounts-receivable.index');
 
-            Route::get('/{accountReceivable}', [AccountReceivableController::class, 'show'])
-                ->name('accounts-receivable.show');
+            // Route::get('/{accountReceivable}', [AccountReceivableController::class, 'show'])
+                // ->name('accounts-receivable.show');
 
-            Route::get('/{accountReceivable}/payments', [AccountReceivableController::class, 'payments'])
-                ->name('accounts-receivable.payments.index');
+            // Route::get('/{accountReceivable}/payments', [AccountReceivableController::class, 'payments'])
+                // ->name('accounts-receivable.payments.index');
 
-            Route::post('/{accountReceivable}/payments', [AccountReceivableController::class, 'storePayment'])
-                ->name('accounts-receivable.payments.store');
-        });
+            // Route::post('/{accountReceivable}/payments', [AccountReceivableController::class, 'storePayment'])
+                // ->name('accounts-receivable.payments.store');
+        // });
 
         // MOD-09 Crédito del cliente (sub-recurso de customers)
-        Route::prefix('customers/{customer}')->group(function (): void {
-            Route::get('credit-status', [CustomerCreditController::class, 'status'])
-                ->name('customers.credit-status');
+        // Route::prefix('customers/{customer}')->group(function (): void {
+            // Route::get('credit-status', [CustomerCreditController::class, 'status'])
+                // ->name('customers.credit-status');
 
-            Route::post('credit-check', [CustomerCreditController::class, 'check'])
-            ->name('customers.credit-check');
-        });
+            // Route::post('credit-check', [CustomerCreditController::class, 'check'])
+            // ->name('customers.credit-check');
+        // });
 
         // MOD-09 · Entregas y Retiros
-        Route::prefix('dispatches')->group(function (): void {
-            Route::get('/', [DispatchController::class, 'index'])->name('dispatches.index');
-            Route::post('/', [DispatchController::class, 'store'])->name('dispatches.store');
-            Route::get('/{dispatch}', [DispatchController::class, 'show'])->name('dispatches.show');
-            Route::get('/{dispatch}/items', [DispatchController::class, 'items'])->name('dispatches.items');
-            Route::post('/{dispatch}/revert', [DispatchController::class, 'revert'])->name('dispatches.revert');
-        });
+        // Route::prefix('dispatches')->group(function (): void {
+            // Route::get('/', [DispatchController::class, 'index'])->name('dispatches.index');
+            // Route::post('/', [DispatchController::class, 'store'])->name('dispatches.store');
+            // Route::get('/{dispatch}', [DispatchController::class, 'show'])->name('dispatches.show');
+            // Route::get('/{dispatch}/items', [DispatchController::class, 'items'])->name('dispatches.items');
+            // Route::post('/{dispatch}/revert', [DispatchController::class, 'revert'])->name('dispatches.revert');
+        // });
 
         // MOD-09 · Saldo pendiente de entrega (sub-recurso de invoices)
-        Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
-            ->name('invoices.delivery-status');
+        // Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
+            // ->name('invoices.delivery-status');
 
 
         // MOD-10 · Devoluciones
-        Route::prefix('sales-returns')->group(function (): void {
-            Route::get('/', [SalesReturnController::class, 'index'])->name('sales-returns.index');
-            Route::post('/', [SalesReturnController::class, 'store'])->name('sales-returns.store');
-            Route::get('/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales-returns.show');
-            Route::get('/{salesReturn}/items', [SalesReturnController::class, 'items'])->name('sales-returns.items');
-        });
+        // Route::prefix('sales-returns')->group(function (): void {
+            // Route::get('/', [SalesReturnController::class, 'index'])->name('sales-returns.index');
+            // Route::post('/', [SalesReturnController::class, 'store'])->name('sales-returns.store');
+            // Route::get('/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales-returns.show');
+            // Route::get('/{salesReturn}/items', [SalesReturnController::class, 'items'])->name('sales-returns.items');
+        // });
 
         // MOD-10 · Notas de crédito
-        Route::prefix('credit-notes')->group(function (): void {
-            Route::get('/', [CreditNoteController::class, 'index'])->name('credit-notes.index');
-            Route::get('/{creditNote}', [CreditNoteController::class, 'show'])->name('credit-notes.show');
-        });
+        // Route::prefix('credit-notes')->group(function (): void {
+            // Route::get('/', [CreditNoteController::class, 'index'])->name('credit-notes.index');
+            // Route::get('/{creditNote}', [CreditNoteController::class, 'show'])->name('credit-notes.show');
+        // });
 
         // MOD-10 · Saldo a favor del cliente
-        Route::get('customers/{customer}/credit-balance', [CustomerCreditController::class, 'creditBalance'])
-            ->name('customers.credit-balance');
+        // Route::get('customers/{customer}/credit-balance', [CustomerCreditController::class, 'creditBalance'])
+            // ->name('customers.credit-balance');
 
         // MOD-11 · Reglas de anomalía
-        Route::prefix('anomaly-rules')->group(function (): void {
-            Route::get('/', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
-            Route::put('/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
-        });
+        // Route::prefix('anomaly-rules')->group(function (): void {
+            // Route::get('/', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
+            // Route::put('/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
+        // });
 
         // MOD-11 · Anomalías (máquina de estados)
-        Route::prefix('anomalies')->group(function (): void {
-            Route::get('/', [AnomalyController::class, 'index'])->name('anomalies.index');
-            Route::get('/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
-            Route::get('/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
-            Route::post('/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
-            Route::post('/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
-        });
+        // Route::prefix('anomalies')->group(function (): void {
+            // Route::get('/', [AnomalyController::class, 'index'])->name('anomalies.index');
+            // Route::get('/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
+            // Route::get('/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
+            // Route::post('/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
+            // Route::post('/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
+        // });
 
         // MOD-11 · Corridas de conciliación
-        Route::prefix('reconciliation-runs')->group(function (): void {
-            Route::get('/', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
-            Route::post('/', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
-            Route::get('/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
-        });
+        // Route::prefix('reconciliation-runs')->group(function (): void {
+            // Route::get('/', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
+            // Route::post('/', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
+            // Route::get('/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
+        // });
 
         // MOD-12 · Metas de negocio
-        Route::prefix('business-goals')->group(function (): void {
-            Route::get('/', [BusinessGoalController::class, 'index'])->name('business-goals.index');
-            Route::post('/', [BusinessGoalController::class, 'store'])->name('business-goals.store');
-            Route::put('/{businessGoal}', [BusinessGoalController::class, 'update'])->name('business-goals.update');
-            Route::delete('/{businessGoal}', [BusinessGoalController::class, 'destroy'])->name('business-goals.destroy');
-        });
+        // Route::prefix('business-goals')->group(function (): void {
+            // Route::get('/', [BusinessGoalController::class, 'index'])->name('business-goals.index');
+            // Route::post('/', [BusinessGoalController::class, 'store'])->name('business-goals.store');
+            // Route::put('/{businessGoal}', [BusinessGoalController::class, 'update'])->name('business-goals.update');
+            // Route::delete('/{businessGoal}', [BusinessGoalController::class, 'destroy'])->name('business-goals.destroy');
+        // });
 
         // MOD-12 · Instantáneas de KPI y panel
-        Route::prefix('kpi-snapshots')->group(function (): void {
-            Route::get('/', [KpiSnapshotController::class, 'index'])->name('kpi-snapshots.index');
-            Route::post('/recalculate', [KpiSnapshotController::class, 'recalculate'])->name('kpi-snapshots.recalculate');
-        });
-        Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis');
+        // Route::prefix('kpi-snapshots')->group(function (): void {
+            // Route::get('/', [KpiSnapshotController::class, 'index'])->name('kpi-snapshots.index');
+            // Route::post('/recalculate', [KpiSnapshotController::class, 'recalculate'])->name('kpi-snapshots.recalculate');
+        // });
+        // Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis');
 
         // MOD-12 · Reportes
-        Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
-        Route::prefix('report-definitions')->group(function (): void {
-            Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
-            Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
-            Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
-            Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
-        });
+        // Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
+        // Route::prefix('report-definitions')->group(function (): void {
+            // Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
+            // Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
+            // Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
+            // Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
+        // });
     });
 });
 

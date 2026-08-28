@@ -33,7 +33,7 @@
 <main
     id="customersRoot"
     data-customers-url="{{ $customersEndpoint ?? '/customers' }}"
-    class="mx-auto w-full max-w-[1180px] bg-[#F5F5F4] px-6 py-7"
+    class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7"
 >
     <header class="mb-7">
         <h1 class="text-[28px] font-bold tracking-[-.035em] text-[#171717]">
@@ -44,7 +44,7 @@
         </p>
     </header>
 
-    <section class="grid min-h-[600px] overflow-hidden rounded-[17px] bg-white shadow-sm xl:grid-cols-[1.62fr_.95fr]">
+    <section class="grid min-h-152 overflow-hidden rounded-2xl bg-white shadow-sm xl:grid-cols-12">
         <div class="min-w-0 border-b border-[#E2E2E2] p-6 xl:border-b-0 xl:border-r">
             <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_230px]">
                 <label class="relative">
@@ -57,14 +57,14 @@
                         type="search"
                         autocomplete="off"
                         placeholder="Busca el cliente/producto"
-                        class="h-[42px] w-full rounded-[9px] border border-[#D7D7D7] bg-white pl-11 pr-4 text-[10px] text-[#333] outline-none transition focus:border-[#087F98] focus:ring-2 focus:ring-[#087F98]/10"
+                        class="h-10 w-full rounded-lg border border-neutral-300 bg-white pl-11 pr-4 text-xs text-neutral-800 outline-none transition focus:border-cyan-800 focus:ring-2 focus:ring-cyan-800/10"
                     >
                 </label>
 
                 <button
                     type="button"
                     data-customer-create
-                    class="h-[42px] rounded-[9px] bg-[#087F98] px-5 text-[11px] font-semibold text-white transition hover:bg-[#076F86]"
+                    class="h-10 rounded-lg bg-cyan-800 px-5 text-xs font-semibold text-white transition hover:bg-cyan-900"
                 >
                     <span class="mr-2 text-[15px] font-normal">⊕</span>
                     Registra a nuevo cliente
@@ -115,7 +115,7 @@
             </div>
         </div>
 
-        <aside id="customerDetail" class="grid min-h-[440px] place-items-center p-8 text-center">
+        <aside id="customerDetail" class="grid min-h-112 place-items-center p-8 text-center">
             <div id="customerEmptyState">
                 <svg class="mx-auto h-14 w-14 text-[#4F81A5]" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
                     <circle cx="22" cy="19" r="9"/><circle cx="43" cy="19" r="9"/>

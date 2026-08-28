@@ -1,23 +1,40 @@
 <?php
 
+use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\PhysicalCountController;
+use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\POSController;
 use Illuminate\Support\Facades\Route;
 
-// 1. Pagina de bienvenida que trae Laravel por defecto
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::middleware(['auth'])->group(function () {
 
-// 2. MOD-02: Catálogo y Datos Maestros
-Route::get('/catalogo', function () {
-    return view('catalogo'); // Carga resources/views/catalogo.blade.php
-});
+    // Verdadera conexion Dashboard principal
+    // Route::get('/dashboard', [DashboardController::class, 'index'])
+    // ->name('dashboard');
+    
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
 
-// 3. MOD-03: Inventario Lógico y Bodega Física
-Route::get('/inventario', function () {
-    return view('inventario'); // Carga resources/views/inventario.blade.php
-});
+    // puntos de venta
+    Route::get('/pos', function () {
+        return view('pos.index');
+    })->middleware('auth')->name('pos.index');
 
-// 4. Pantalla Principal: Dashboard
-Route::get('/dashboard', function () {
-    return view('dashboard'); // Carga resources/views/dashboard.blade.php
+    // Inventario: Conciliación y Stocks
+    Route::get('/inventory/reconciliation', [PhysicalCountController::class, 'index'])->name('inventory.reconciliation');
+
+    // Finanzas, cierre de caja
+    Route::get('/finance/cash-closing', function () {
+        return view('finance.cash-closing');
+    })->middleware('auth')->name('finance.cash-closing');
+
+    // Clientes y Fidelidad
+    Route::get('/customers', function () {
+        return view('customers.index');
+    })->middleware('auth')->name('customers.index');
+
+    // Catálogo de Productos y Datos Maestros
+    Route::get('/catalog/products', [ProductController::class, 'products'])->name('catalog.products');
 });

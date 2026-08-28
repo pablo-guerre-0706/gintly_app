@@ -9,7 +9,7 @@ let activeCategory = '';
 
 const $root = () => $('#catalogProductsRoot');
 const esc = value => $('<div>').text(value ?? '—').html();
-const fmtMoney = value => C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')};
+const fmtMoney = value => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 const fmtCost = value => fmtMoney(cost(String(value ?? '0')));
 
 const typeLabel = type => ({
@@ -24,7 +24,7 @@ function row(product) {
     const unit = product.unit?.abbreviation ?? product.abbreviation ?? '—';
     const tax = product.is_taxable ? $root().data('tax-label') : 'Exento';
 
-    return `<tr class="h-[82px] border-b border-[#E1E1E1] text-[11px] text-[#464646]" data-product-row="${product.id}">
+    return `<tr class="h-20 border-b border-neutral-200 text-xs text-neutral-600" data-product-row="${product.id}">
         <td class="px-6 text-[14px] font-bold text-[#171717]">${esc(product.sku)}</td>
         <td class="px-6">${esc(product.name)}</td><td class="px-6">${esc(category)}</td>
         <td class="px-6">${esc(brand)}</td><td class="px-6">${esc(unit)}</td>
@@ -33,7 +33,7 @@ function row(product) {
         <td class="px-6"><span class="rounded bg-blue-50 px-2.5 py-2 text-blue-700 ring-1 ring-blue-600/20">${esc(typeLabel(product.type))}</span></td>
         <td class="px-6"><span class="rounded bg-amber-50 px-2.5 py-2 text-amber-700 ring-1 ring-amber-600/20">${esc(tax)}</span></td>
         <td class="px-6"><span class="rounded px-2.5 py-2 ${product.is_active ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-red-50 text-red-700 ring-red-600/20'} ring-1">${product.is_active ? 'Activo' : 'Inactivo'}</span></td>
-        <td class="px-6"><button type="button" data-edit-product="${product.id}" class="h-9 rounded-[6px] border border-[#087F98] px-3 text-[10px] text-[#244753]">Editar</button></td>
+        <td class="px-6"><button type="button" data-edit-product="${product.id}" class="h-9 rounded-md border border-cyan-800 px-3 text-xs font-medium text-cyan-900">Editar</button></td>
     </tr>`;
 }
 
@@ -58,7 +58,7 @@ async function loadProducts() {
             ? products.map(row).join('')
             : '<tr><td colspan="11" class="py-16 text-center text-[11px] text-[#888]">No se encontraron productos.</td></tr>');
 
-        $('#productsCount').text(${response?.meta?.total ?? products.length} productos);
+        $('#productsCount').text(`${response?.meta?.total ?? products.length} productos`);
     } catch (error) {
         if (error instanceof ApiError && [401, 403].includes(error.status)) return;
         notify({ type: 'error', message: 'No fue posible consultar el catálogo.' });
