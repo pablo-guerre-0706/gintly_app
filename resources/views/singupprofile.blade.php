@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro - Gintly App</title>
     
+    <!-- Fuente Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons para la simetría visual de los inputs -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    @vite(['resources/css/register-wizard.css'])
+    <!-- Carga de Assets unificada con la Arquitectura Base -->
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js'
+    ])
 </head>
 <body class="wizard-body">
 
