@@ -39,15 +39,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
     ->withMiddleware(function (Middleware $middleware): void {
 
-        // SetPermissionsTeamId se aplica globalmente en la API para asegurar la gestión
-        // correcta del tenant, incluso en rutas públicas.
+        // Activa el contexto del tenant para las peticiones Web (Vistas de Blade / Sidebar)
+        $middleware->web(append: [
+            SetPermissionsTeamId::class,
+        ]);
+        
+        // Activa el contexto del tenant para la API (Peticiones AJAX)
         $middleware->api(append: [
             SetPermissionsTeamId::class,
         ]);
 
         $middleware->throttleApi();
-
-        // UBICACIÓN PERFECTA: Activa el soporte de sesiones/cookies para Sanctum SPA requerido por el AuthController
+        // Activa el soporte de sesiones/cookies para Sanctum SPA requerido por el AuthController
         $middleware->statefulApi();
 
         $middleware->alias([
@@ -67,7 +70,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (PurchaseMatchException $e, Request $request) {
-            // D-10 · 409 CON el recurso creado. La evidencia persistió; el cliente
+            // 409 CON el recurso creado. La evidencia persistió; el cliente
             // recibe el goods_receipt completo para que ROL-01 lo resuelva.
             return response()->json([
                 'message'       => $e->getMessage(),
@@ -136,6 +139,6 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // InsufficientStockException ya está mapeada en MOD-03 a 409 (INSUFFICIENT_STOCK).
-        // Al reservar, su lanzamiento revierte toda la facturación (D-27).   
+        // Al reservar, su lanzamiento revierte toda la facturación.   
       
     })->create();

@@ -48,6 +48,14 @@ final class StoreCustomerAddressRequest extends BaseTenantRequest
                         'El cliente indicado no existe o no pertenece a su negocio.'
                     );
                 }
+
+                // Candado de parentesco H-47: Evita que el body suplante al cliente de la URL
+                if (! $this->bodyCustomerMatchesRoute()) {
+                    $validator->errors()->add(
+                        'customer_id',
+                        'El número de cliente enviado en el cuerpo no coincide con el cliente de la URL.'
+                    );
+                }
             },
         ];
     }

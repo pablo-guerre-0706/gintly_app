@@ -10,7 +10,6 @@ use App\Models\DocumentSequence;
 /**
  * Genera el folio fiscal secuencial bloqueando SOLO la fila del contador 
  * (document_sequences), no la tabla de facturas.
- *
  * Reutilizable para notas de crédito (MOD-10) cambiando el DocumentSequenceType.
  */
 final class FolioGenerator

@@ -44,34 +44,37 @@ final class CustomerPolicy
     // Editar es ROL-02, y NUNCA el Consumidor Final (PROTECTED_RESOURCE).
     public function update(User $actor, Customer $customer): Response
     {
-        if (! $this->sharesBusinessWith($actor, $customer)) {
-            return Response::deny('El cliente indicado no pertenece a su negocio.');
-        }
-
-        if ($customer->isProtected()) {
-            return Response::deny('El "Consumidor Final" es un cliente protegido del sistema y no puede modificarse.');
-        }
-
-        return $this->hasAtLeast($actor, RoleName::Admin)
-            ? Response::allow()
-            : Response::deny('No tiene autorización para modificar clientes.');
+        return $this->guardMutation($actor, $customer, 'modificar');
     }
 
     public function delete(User $actor, Customer $customer): Response
     {
+        return $this->guardMutation($actor, $customer, 'dar de baja');
+    }
+
+    /**
+     * Validación unificada de mutaciones (Seguridad + Recurso Protegido + Rol)
+     */
+    private function guardMutation(User $actor, Customer $customer, string $accion): Response
+    {
         if (! $this->sharesBusinessWith($actor, $customer)) {
-            return Response::deny('El cliente indicado no pertenece a su negocio.');
+            return Response::denyWithStatus(404, 'El cliente indicado no pertenece a su negocio.');
         }
 
+        // Candado del recurso protegido ANTES del rango (si se invirtiera, un Admin
+        // pasaría el rango y podría mutar el «Consumidor Final»).
         if ($customer->isProtected()) {
-            return Response::deny('El "Consumidor Final" es un cliente protegido del sistema y no puede eliminarse.');
+            return Response::denyWithStatus(
+                403,
+                "El «Consumidor Final» es un cliente protegido del sistema y no puede {$accion}se.",
+            );
         }
 
         return $this->hasAtLeast($actor, RoleName::Admin)
             ? Response::allow()
-            : Response::deny('No tiene autorización para dar de baja clientes.');
+            : Response::denyWithStatus(403, "No tiene autorización para {$accion} clientes.");
     }
- 
+
     // --- MOD-08: autorización de los endpoints de crédito del cliente ---
     // GET /customers/{id}/credit-status — estado de crédito consolidado
     public function viewCreditStatus(User $user, Customer $customer): bool
@@ -87,7 +90,7 @@ final class CustomerPolicy
             && $this->hasAtLeast($user, RoleName::Operator);
     }
 
-    // --- MOD-10: saldo a favor del cliente (ROL-02+, RF-10-03) ---
+    // --- MOD-10: saldo a favor del cliente (ROL-02) ---
     public function viewCreditBalance(User $user, Customer $customer): bool
     {
         return $this->sharesBusinessWith($user, $customer)

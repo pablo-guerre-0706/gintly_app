@@ -5,7 +5,10 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\POSController;
+use App\Models\Customer;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
 
 
 // RUTAS PÚBLICAS (ACCESIBLES SIN LOGIN)
@@ -74,9 +77,20 @@ Route::middleware(['auth'])->group(function () {
 
     // Clientes y Fidelidad
     Route::get('/customers', function () {
-        return view('customers.index');
-    })->middleware('auth')->name('customers.index');
+        $customers = Customer::all(); 
+        return view('customers.index', compact('customers'));
+    })->middleware('auth')->name('customers.view.index');
+
+    // Formulario de creación de clientes (Interfaz Web)
+    Route::get('/customers/create', function () {
+        return view('customers.create');
+    })->middleware('auth')->name('customers.view.create');
 
     // Catálogo de Productos y Datos Maestros
     Route::get('/catalog/products', [ProductController::class, 'products'])->name('catalog.products');
-});
+    });
+    // 4. Ruta temporal de inicio de sesión (lo requieren los botones de la Landing)
+    Route::get('/login', function () {
+        return "Pantalla de Login (Pendiente de enlazar al backend)";
+    })->name('login');
+

@@ -4,35 +4,10 @@
 @section('page-script', 'modules/customers/index')
 
 @section('content')
-@php
-    $customers = $customers ?? collect([
-        [
-            'id'=>1, 'name'=>'María Elena Hernández', 'profile_type'=>'frequent',
-            'profile_label'=>'Cliente frecuente', 'document_number'=>'001-220478-0011F',
-            'address'=>'Bo. San Luis, frente a la cancha, Managua',
-            'phone_number'=>'+505 8812-3344', 'credit_limit'=>'1500.00',
-            'balance'=>'938.00', 'purchase_count'=>4,
-        ],
-        [
-            'id'=>2, 'name'=>'María Elena Hernández', 'profile_type'=>'frequent',
-            'profile_label'=>'Cliente frecuente', 'document_number'=>'001-220478-0011F',
-            'address'=>'Bo. San Luis, frente a la cancha, Managua',
-            'phone_number'=>'+505 8812-3344', 'credit_limit'=>'1500.00',
-            'balance'=>'938.00', 'purchase_count'=>4,
-        ],
-        [
-            'id'=>3, 'name'=>'María Elena Hernández', 'profile_type'=>'frequent',
-            'profile_label'=>'Cliente frecuente', 'document_number'=>'001-220478-0011F',
-            'address'=>'Bo. San Luis, frente a la cancha, Managua',
-            'phone_number'=>'+505 8812-3344', 'credit_limit'=>'1500.00',
-            'balance'=>'938.00', 'purchase_count'=>4,
-        ],
-    ]);
-@endphp
 
 <main
     id="customersRoot"
-    data-customers-url="{{ $customersEndpoint ?? '/customers' }}"
+    data-customers-url="{{ $customersEndpoint ?? route('customers.index') }}"
     class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7"
 >
     <header class="mb-7">
@@ -61,14 +36,13 @@
                     >
                 </label>
 
-                <button
-                    type="button"
-                    data-customer-create
-                    class="h-10 rounded-lg bg-cyan-800 px-5 text-xs font-semibold text-white transition hover:bg-cyan-900"
+                <a
+                    href="{{ route('customers.view.create') }}"
+                    class="flex h-10 items-center justify-center rounded-lg bg-cyan-800 px-5 text-xs font-semibold text-white transition hover:bg-cyan-900"
                 >
-                    <span class="mr-2 text-[15px] font-normal">⊕</span>
+                <span class="mr-2 text-sm font-normal">⊕</span>
                     Registra a nuevo cliente
-                </button>
+                </a>
             </div>
 
             <nav class="mt-6 flex flex-wrap gap-3" aria-label="Filtros de clientes">

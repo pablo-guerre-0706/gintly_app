@@ -27,14 +27,16 @@ final class StoreCustomerRequest extends BaseTenantRequest
 
             'document_type' => ['required', Rule::in(DocumentType::publicValues())],
 
-            'document_number' => [
+            'document_number' => array_values(array_filter([
                 'nullable',
                 'string',
                 'max:30',
-                Rule::unique('customers', 'document_number')
-                    ->where('business_id', $this->businessId())
-                    ->whereNull('deleted_at'),
-            ],
+                $this->filled('document_number')
+                    ? Rule::unique('customers', 'document_number')
+                        ->where('business_id', $this->businessId())
+                        ->whereNull('deleted_at')
+                    : null,
+            ])),
 
             'email'        => ['nullable', 'string', 'email:rfc', 'max:180'],
             'phone_number' => ['nullable', 'string', 'max:30'],

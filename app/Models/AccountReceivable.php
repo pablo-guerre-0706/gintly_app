@@ -71,7 +71,7 @@ final class AccountReceivable extends Model
 
     /**
      * Cuentas con saldo vivo que pesan en la exposición del cliente
-     * (pendiente/parcial/vencida). Sirve a la exposición (RF-08-02/06) y al guarda ERR-05B (P6).
+     * (pendiente/parcial/vencida). Sirve a la exposición y al guarda ERR-05B (P6).
      */
     public function scopePending(Builder $query): Builder
     {

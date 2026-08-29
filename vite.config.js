@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/modules/security/auth.js',
+                'resources/js/modules/customers/create.js'
             ],
             refresh: true,
         }),

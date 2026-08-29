@@ -30,16 +30,18 @@ final class UpdateCustomerRequest extends BaseTenantRequest
 
             'document_type' => ['sometimes', 'required', Rule::in(DocumentType::publicValues())],
 
-            'document_number' => [
+            'document_number' => array_values(array_filter([
                 'sometimes',
                 'nullable',
                 'string',
                 'max:30',
-                Rule::unique('customers', 'document_number')
-                    ->where('business_id', $this->businessId())
-                    ->whereNull('deleted_at')
-                    ->ignore($this->routeId('customer')),
-            ],
+                $this->filled('document_number')
+                    ? Rule::unique('customers', 'document_number')
+                        ->where('business_id', $this->businessId())
+                        ->whereNull('deleted_at')
+                        ->ignore($this->route('customer')?->getKey() ?? $this->routeId('customer'))
+                    : null,
+            ])),
 
             'email'        => ['sometimes', 'nullable', 'string', 'email:rfc', 'max:180'],
             'phone_number' => ['sometimes', 'nullable', 'string', 'max:30'],

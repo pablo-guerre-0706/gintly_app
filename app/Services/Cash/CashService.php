@@ -184,7 +184,7 @@ final class CashService
     }
 
     /**
-     * H-65 / P3 · Registra el movimiento de caja 'venta' generado por el cobro
+     * Registra el movimiento de caja 'venta' generado por el cobro
      * en efectivo de una factura. Reutiliza registrarMovimiento con la categoría
      * y tipo forzados, y adjunta el sale_id (P3). Exige sesión abierta bajo lock.
      */
@@ -210,7 +210,7 @@ final class CashService
     }
 
     /**
-     * RF-10-03 · Reembolso en efectivo de una devolución.
+     * Reembolso en efectivo de una devolución.
      * Bloquea la sesión, exige que esté ABIERTA y asienta un egreso 'egreso_autorizado'
      * (efectivo) autorizado por ROL-01. Debe invocarse dentro de la transacción del retorno.
      */
@@ -309,7 +309,7 @@ final class CashService
     }
 
     /**
-    * Paso 5 del abono (RF-08-03): movimiento de caja del cobro en efectivo.
+    * Paso 5 del abono: movimiento de caja del cobro en efectivo.
     * Bloquea la sesión, exige que esté ABIERTA y asienta un ingreso categoría 'cobro_credito'.
     * DEBE invocarse DENTRO de la transacción del abono (ReceivableService::abonar) para que,
     * si la caja está cerrada, todo el abono se revierta (atomicidad de 5 pasos).

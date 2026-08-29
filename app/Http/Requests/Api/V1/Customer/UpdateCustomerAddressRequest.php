@@ -35,7 +35,7 @@ final class UpdateCustomerAddressRequest extends BaseTenantRequest
     }
 
     /**
-     * La dirección debe pertenecer al cliente de la ruta.
+     * La dirección debe pertenecer al cliente de la ruta y coincidir con el cuerpo.
      *
      * @return array<int, callable>
      */
@@ -56,6 +56,14 @@ final class UpdateCustomerAddressRequest extends BaseTenantRequest
                     $validator->errors()->add(
                         'address',
                         'La dirección indicada no pertenece a este cliente.'
+                    );
+                }
+
+                // Candado de parentesco H-47: Evita que el body modifique el dueño de la dirección
+                if (! $this->bodyCustomerMatchesRoute()) {
+                    $validator->errors()->add(
+                        'customer_id',
+                        'El número de cliente enviado en el cuerpo no coincide con el cliente de la URL.'
                     );
                 }
             },

@@ -163,25 +163,21 @@ Route::prefix('v1')->group(function (): void {
         Route::post('accounts-payable/{account_payable}/unblock', UnblockAccountPayableController::class)->name('accounts-payable.unblock');
 
         // MOD-05 - Clientes
-        // Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+        // Clientes (Un solo registro limpio, controlando todos los endpoints)
+        Route::apiResource('customers', CustomerController::class)
+            ->parameters(['customers' => 'customer']);
 
-        // Route::apiResource('customers', CustomerController::class)
-            // ->parameters(['customers' => 'customer'])
-                // ->except(['index']);
+        // Direcciones — sub-recurso del cliente con scopeBindings automático y nombres correctos
+        Route::apiResource('customers.addresses', CustomerAddressController::class)
+            ->parameters([
+                'customers' => 'customer',
+                'addresses' => 'address'
+            ])
+            ->scopeBindings();
 
-        // Direcciones — sub-recurso del cliente con scopeBindings (doble binding H-47).
-        // Route::prefix('customers/{customer}/addresses')
-            // ->scopeBindings()
-            // ->group(function (): void {
-                // Route::get('/', [CustomerAddressController::class, 'index']);
-                // Route::post('/', [CustomerAddressController::class, 'store']);
-                // Route::put('/{address}', [CustomerAddressController::class, 'update']);
-                // Route::delete('/{address}', [CustomerAddressController::class, 'destroy']);
-            // });
-
-        // Binding de modelos.
-        // Route::model('customer', \App\Models\Customer::class);
-        // Route::model('address', \App\Models\CustomerAddress::class);
+        // Explicit Model Binding (Garantiza que Laravel resuelva los strings como modelos)
+        Route::model('customer', \App\Models\Customer::class);
+        Route::model('address', \App\Models\CustomerAddress::class);
 
         // MOD-06 - Gestion de Caja
         // Cajas — CRUD.
@@ -328,7 +324,8 @@ Route::prefix('v1')->group(function (): void {
             // Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
             // Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
             // Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
-        // });
+       // });
+        //});
     });
 });
 

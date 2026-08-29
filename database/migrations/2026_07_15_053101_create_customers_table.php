@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('document_number', 30)->nullable();
             $table->string('email', 180)->nullable();
             $table->string('phone_number', 30)->nullable()->index();
-            $table->date('birth_date')->nullable();               // base de campañas Fase 2 (no ahora)
+            $table->date('birth_date')->nullable();               // base de campañas Fase 2
             $table->boolean('is_generic')->default(false)->index(); // TRUE solo en el "Consumidor Final"
             $table->boolean('is_active')->default(true);
             $table->decimal('credit_limit', 14, 2)->default(0);   // 0 = no accede a crédito

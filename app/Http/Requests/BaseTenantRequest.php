@@ -13,8 +13,7 @@ use Illuminate\Validation\Rules\Unique;
 
 /**
  * Base de toda petición ejecutada bajo sesión autenticada.
- *
- * Centraliza el aislamiento multi-negocio (RF-01-05): el identificador de
+ * Centraliza el aislamiento multi-negocio: el identificador de
  * negocio se deriva SIEMPRE del token y nunca se acepta como dato de entrada.
  * Una sola omisión del filtro por negocio en un `exists` es una fuga de
  * tenant (ERR-12); por eso el filtro vive aquí y no en cada regla.
@@ -62,7 +61,6 @@ abstract class BaseTenantRequest extends FormRequest
 
     /**
      * Unicidad acotada al negocio, replicando el índice UQ(business_id, columna).
-     *
      * @param  bool  $excludeTrashed  Debe coincidir EXACTAMENTE con el índice real:
      *   - false → índice plano UNIQUE(business_id, columna): un registro con
      *     borrado lógico sigue ocupando el valor y la validación debe reflejarlo.
