@@ -98,7 +98,7 @@
             <button
                 type="button"
                 data-export
-                class="h-9 rounded-lg bg-cyan-800 px-5 text-2xs font-semibold text-white"
+                class="h-9 rounded-lg bg-cyan-800 px-5 text-xs font-semibold text-white"
             >
                 ⇩&nbsp;&nbsp; Exportar para Excel
             </button>
@@ -107,7 +107,7 @@
         <div class="overflow-x-auto">
             <table class="w-full border-collapse text-left min-w-5xl">
                 <thead class="border-y border-[#DDD] bg-[#F2F2F2]">
-                    <tr class="h-14 text-2xs font-medium text-neutral-500">
+                    <tr class="h-14 text-xs font-medium text-neutral-500">
                         @foreach (['SKU','Producto','Categoría','Stock teórico','Conteo físico','Diferencia','Valor','Nivel de stock','Ajuste'] as $heading)
                             <th class="whitespace-nowrap px-5 font-medium">{{ $heading }}</th>
                         @endforeach
@@ -123,7 +123,7 @@
                             data-system="{{ $row['system'] }}"
                             data-counted="{{ $row['counted'] }}"
                             data-cost="{{ $row['cost'] }}"
-                            class="h-20 text-2xs text-neutral-600"
+                            class="h-20 text-xs text-neutral-600"
                         >
                             <td class="px-5 text-[11px] font-bold text-[#222]">{{ $row['sku'] }}</td>
                             <td class="px-5">{{ $row['name'] }}</td>
@@ -143,7 +143,7 @@
                                 <button
                                     type="button"
                                     data-apply-count="{{ $row['count_id'] }}"
-                                    class="h-8 rounded-md border border-cyan-800 px-3 text-2xs font-medium text-cyan-900"
+                                    class="h-8 rounded-md border border-cyan-800 px-3 text-xs font-medium text-cyan-900"
                                 >Ajustar</button>
                             </td>
                         </tr>

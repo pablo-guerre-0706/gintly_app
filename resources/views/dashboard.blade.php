@@ -33,18 +33,24 @@ $kpis = [
             </button>
         </div>
     </header>
-    <a href="{{ route('pos.index') }}">
-        Punto de venta
-    </a>
-    <a href="{{ route('finance.cash-closing') }}">
-    Cierre de caja
-    </a>
-    <a href="{{ route('customers.index') }}">
-    Clientes y Fidelidad
-    </a>
-    <a href="{{ route('inventory.reconciliation') }}">
-    Conciliación y stock
-    </a>
+    <nav class="mb-8 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm" aria-label="Accesos rápidos">
+        <h2 class="mb-3 text-[11px] font-bold uppercase tracking-wider text-neutral-400">Accesos Rápidos al Sistema</h2>
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ route('pos.index') }}" class="inline-flex h-9 items-center rounded-lg bg-neutral-50 px-4 text-xs font-medium text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-100">
+                <i class="fa-solid fa-cash-register mr-2 text-neutral-500"></i> Punto de venta
+            </a>
+            <a href="{{ route('finance.cash-closing') }}" class="inline-flex h-9 items-center rounded-lg bg-neutral-50 px-4 text-xs font-medium text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-100">
+                <i class="fa-solid fa-vault mr-2 text-neutral-500"></i> Cierre de caja
+            </a>
+            <a href="{{ route('customers.index') }}" class="inline-flex h-9 items-center rounded-lg bg-neutral-50 px-4 text-xs font-medium text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-100">
+                <i class="fa-solid fa-users mr-2 text-neutral-500"></i> Clientes y Fidelidad
+            </a>
+            <a href="{{ route('inventory.reconciliation') }}" class="inline-flex h-9 items-center rounded-lg bg-neutral-50 px-4 text-xs font-medium text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-100">
+                <i class="fa-solid fa-boxes-packing mr-2 text-neutral-500"></i> Conciliación y stock
+            </a>
+        </div>
+    </nav>
+
     <section class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-12">
         @foreach ($kpis as $kpi)
             <x-kpi-card
@@ -56,11 +62,10 @@ $kpis = [
                 :icon="$kpi['icon']"
             />
         @endforeach
-
         <article class="card xl:col-start-1 xl:col-span-7 xl:row-start-3">
             <div class="card-head">
                 <div><h2>Estadísticas de ventas semanal</h2><p>VS ventas diarias</p></div>
-                <button class="rounded-full bg-neutral-100 px-3 py-2 text-2xs text-neutral-500">Ver más</button>
+                <button class="rounded-full bg-neutral-100 px-3 py-2 text-xs text-neutral-500">Ver más</button>
             </div>
             <div class="h-80"><canvas id="salesWeeklyChart"></canvas></div>
         </article>
@@ -93,7 +98,7 @@ $kpis = [
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-2xs">
+                <table class="w-full text-left text-xs">
                     <tbody id="anomalyAlertsBody"></tbody>
                 </table>
             </div>

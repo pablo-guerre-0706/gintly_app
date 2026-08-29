@@ -32,7 +32,7 @@
                 <a href="#funciones" class="nav-item">Funciones</a>
                 <a href="#modulos" class="nav-item">Módulos</a>
                 <a href="#planes" class="nav-item">Planes</a>
-                <a href="{{ route('register') }}" class="btn-pill-teal">Regístrate</a>
+                <a href="{{ route('register.step1') }}" class="btn-pill-teal">Regístrate</a>
             </nav>
         </header>
 
@@ -47,7 +47,7 @@
                     Gestiona. Impulsa. Crece. Centraliza la administración de tu negocio con contabilidad automatizada, facturación, cobros, gestión de clientes e inventario en una sola plataforma en la nube.
                 </p>
                 <div class="hero-actions">
-                    <a href="{{ route('register') }}" class="btn-primary">Regístrate</a>
+                    <a href="{{ route('register.step1') }}" class="btn-primary">Regístrate</a>
                     <a href="{{ route('login') }}" class="btn-secondary">Iniciar sesión</a>
                 </div>
             </div>

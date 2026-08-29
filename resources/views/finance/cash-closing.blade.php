@@ -42,7 +42,7 @@
         </p>
     </header>
 
-    <div class="mb-6 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-3 text-2xs leading-5 text-indigo-700">
+    <div class="mb-6 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-3 text-xs leading-5 text-indigo-700">
         Arqueo ciego activo. El saldo teórico se mantiene oculto hasta confirmar el conteo físico.
         Ingresa la cantidad de cada denominación disponible en caja.
     </div>

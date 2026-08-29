@@ -29,10 +29,11 @@
             </div>
         </aside>
 
-        <!-- Panel Derecho: Formulario Paso 2 -->
+    <!-- Panel Derecho: Formulario Paso 2 -->
         <main class="wizard-form-area">
             <header class="form-header">
-                <a href="{{ route('register.step1') }}" class="back-btn" aria-label="Volver">
+                <!-- Enlace único y corregido que regresa al Paso 1 -->
+                <a href="{{ route('register.step1') }}" class="back-btn" aria-label="Volver a datos personales">
                     <i data-lucide="arrow-left"></i>
                 </a>
                 <div class="brand-logo">
@@ -85,7 +86,10 @@
             </div>
 
             <!-- Formulario Paso 2 -->
-            <form action="{{ route('register.step2.store') }}" method="POST" class="registration-form" novalidate>
+            <form class="registration-form" novalidate 
+                data-msg-success-user="@lang('messages.user_created')" 
+                data-msg-success-account="@lang('messages.account_created')"
+                data-msg-error="@lang('messages.register_error')">
                 @csrf
 
                 <div class="form-row">
@@ -273,17 +277,16 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Botón Submit -->
-                <button type="submit" class="submit-btn {{ $errors->any() ? 'btn-disabled' : (old() ? 'btn-active' : 'btn-disabled') }}">
-                    Ingresar
+                <button type="submit" class="submit-btn btn-disabled" disabled>
+                    Crear Cuenta
                 </button>
             </form>
         </main>
     </div>
-
     <script>
         lucide.createIcons();
     </script>
+    @vite('resources/js/modules/security/auth.js')   
 </body>
 </html>

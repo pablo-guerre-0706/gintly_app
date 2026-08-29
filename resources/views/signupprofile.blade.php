@@ -88,7 +88,10 @@
             </div>
 
             <!-- Formulario de Registro -->
-            <form action="{{ route('register.step1.store') }}" method="POST" class="registration-form" novalidate>
+            <form class="registration-form" novalidate 
+                data-msg-success-user="@lang('messages.user_created')" 
+                data-msg-success-account="@lang('messages.account_created')"
+                data-msg-error="@lang('messages.register_error')">
                 @csrf
 
                 <div class="form-row">
@@ -215,17 +218,16 @@
                         <span>{{ $errors->first('password_confirmation') ?? 'Confirma si la contraseña es correcta' }}</span>
                     </div>
                 </div>
-
                 <!-- Botón Submit Dinámico -->
-                <button type="submit" class="submit-btn {{ $errors->any() ? 'btn-disabled' : (old() ? 'btn-active' : 'btn-disabled') }}">
-                    Ingresar
+                <button type="submit" class="submit-btn btn-disabled" disabled>
+                    Siguiente
                 </button>
             </form>
         </main>
     </div>
-
     <script>
         lucide.createIcons();
     </script>
+    @vite('resources/js/modules/security/auth.js')
 </body>
 </html>

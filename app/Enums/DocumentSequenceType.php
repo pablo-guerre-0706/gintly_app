@@ -11,6 +11,9 @@ enum DocumentSequenceType: string
 {
     case Invoice    = 'invoice';
     case CreditNote = 'credit_note';
+    case SALE = 'sale';
+    case SALE_RETURN = 'sale_return'; 
+
 
     public function label(): string
     {
