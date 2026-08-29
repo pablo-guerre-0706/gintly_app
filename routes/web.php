@@ -2,22 +2,38 @@
 
 use Illuminate\Support\Facades\Route;
 
-// 1. Pagina de bienvenida que trae Laravel por defecto
 Route::get('/', function () {
     return view('welcome');
 });
 
-// 2. MOD-02: Catálogo y Datos Maestros
-Route::get('/catalogo', function () {
-    return view('catalogo'); // Carga resources/views/catalogo.blade.php
-});
+Route::get('/landing', function () {
+    return view('landing');
+})->name('landing');
 
-// 3. MOD-03: Inventario Lógico y Bodega Física
-Route::get('/inventario', function () {
-    return view('inventario'); // Carga resources/views/inventario.blade.php
-});
+// Paso 1: Registro de Empresa / Datos iniciales
+Route::get('/register1', function () {
+    return view('register1');
+})->name('register.step1');
 
-// 4. Pantalla Principal: Dashboard
+Route::post('/register1', function () {
+    return redirect()->route('register.step2');
+})->name('register.step1.store');
+
+// Paso 2: Configuración de Perfil / Negocio
+Route::get('/register2', function () {
+    return view('register2');
+})->name('register.step2');
+
+Route::post('/register2', function () {
+    return redirect()->route('dashboard');
+})->name('register.step2.store');
+
+// Dashboard
 Route::get('/dashboard', function () {
-    return view('dashboard'); // Carga resources/views/dashboard.blade.php
-});
+    return view('dashboard');
+})->name('dashboard');
+
+// Inicio de sesión
+Route::get('/login', function () {
+    return view('auth.login');
+})->name('login');

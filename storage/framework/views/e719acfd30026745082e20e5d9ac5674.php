@@ -1,0 +1,1 @@
+<?php /**PATH C:\laragon\www\gintly_app\resources\views/auth/login.blade.php ENDPATH**/ ?>

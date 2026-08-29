@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html
     lang="es"
-    data-page="@yield('page-script')"
+    data-page="<?php echo $__env->yieldContent('page-script'); ?>"
     class="scroll-smooth"
 >
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Gintly') - Sistema de Facturación</title>
+    <title><?php echo $__env->yieldContent('title', 'Gintly'); ?> - Sistema de Facturación</title>
 
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="api-base-url" content="{{ url('/api/v1') }}">
-    <meta name="login-url" content="{{ route('login') }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+    <meta name="api-base-url" content="<?php echo e(url('/api/v1')); ?>">
+    <meta name="login-url" content="<?php echo e(route('login')); ?>">
 
-    @vite([
+    <?php echo app('Illuminate\Foundation\Vite')([
         'resources/css/app.css',
         'resources/js/app.js',
-    ])
+    ]); ?>
 </head>
 <body 
-    style="background-image: url('{{ asset('images/backgroundhero.png') }}');" 
+    style="background-image: url('<?php echo e(asset('images/backgroundhero.png')); ?>');" 
     class="bg-cover bg-center bg-no-repeat bg-fixed font-sans text-white antialiased min-h-screen selection:bg-[#146F8A] selection:text-white"
 >
 
@@ -32,7 +32,7 @@
             <a href="#" class="flex items-center shrink-0 transition-transform duration-300 hover:scale-105">
                 <div class="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/[0.04] backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] p-2.5 transition-all duration-300 hover:bg-white/[0.08]">
                     <img 
-                        src="{{ asset('images/logo.png') }}" 
+                        src="<?php echo e(asset('images/logo.png')); ?>" 
                         alt="Logo" 
                         class="h-full w-full object-contain"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
@@ -113,12 +113,12 @@
 
                     <!-- Botones -->
                     <div class="flex flex-wrap items-center gap-6 pt-2">
-                        <a href="{{ route('register.step1') }}" 
+                        <a href="<?php echo e(route('register.step1')); ?>" 
                            class="inline-flex items-center justify-center rounded-full bg-[#146F8A] px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#146F8A]/30 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-[#18809f] hover:shadow-xl hover:shadow-[#146F8A]/50 active:translate-y-0 active:scale-100">
                             Regístrate
                         </a>
 
-                        <a href="{{ route('login') }}" 
+                        <a href="<?php echo e(route('login')); ?>" 
                            class="inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[#146F8A] shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-slate-50 hover:text-[#125c73] hover:shadow-xl hover:shadow-white/30 active:translate-y-0 active:scale-100">
                             Iniciar sesión
                         </a>
@@ -140,7 +140,7 @@
                                     <span class="text-xs font-normal text-[#333333] opacity-70">Gestiona tu personal</span>
                                     <h3 class="text-xl font-semibold leading-snug text-black">Une a todo tu equipo de trabajo</h3>
                                 </div>
-                                <img src="{{ asset('images/profesionales.png') }}" alt="Profesionales" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
+                                <img src="<?php echo e(asset('images/profesionales.png')); ?>" alt="Profesionales" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
                             </div>
                         </div>
 
@@ -148,7 +148,7 @@
                         <div class="relative overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
                             <div class="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#3988A0]/20 blur-sm"></div>
                             <div class="relative z-10 flex items-center justify-between gap-4">
-                                <img src="{{ asset('images/cash.png') }}" alt="Inventario" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
+                                <img src="<?php echo e(asset('images/cash.png')); ?>" alt="Inventario" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
                                 <div class="flex flex-col space-y-2 text-right">
                                     <span class="text-xs font-normal text-[#333333] opacity-70">Maneja tu inventario</span>
                                     <h3 class="text-xl font-semibold leading-snug text-black">Las mejores herramientas</h3>
@@ -165,7 +165,7 @@
                         <div class="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/10 bg-transparent"></div>
 
                         <img 
-                            src="{{ asset('images/men_hero.png') }}" 
+                            src="<?php echo e(asset('images/men_hero.png')); ?>" 
                             alt="Gestión Hero" 
                             class="relative z-10 max-h-[460px] w-auto object-contain pt-4 transition-transform duration-500 ease-out hover:scale-105"
                         >
@@ -231,7 +231,7 @@
                 <div class="lg:col-span-6">
                     <div class="relative overflow-hidden rounded-[24px] shadow-lg transition-transform duration-500 hover:scale-[1.02]">
                         <img 
-                            src="{{ asset('images/about_office.png') }}" 
+                            src="<?php echo e(asset('images/about_office.png')); ?>" 
                             alt="Maneja las finanzas" 
                             class="w-full h-auto object-cover max-h-[460px] transition-transform duration-700 hover:scale-105"
                             onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1000&auto=format&fit=crop';"
@@ -298,7 +298,7 @@
                     
                     <div class="relative overflow-hidden rounded-[24px] shadow-lg h-full transition-transform duration-500 hover:scale-[1.02]">
                         <img 
-                            src="{{ asset('images/mission_team.png') }}" 
+                            src="<?php echo e(asset('images/mission_team.png')); ?>" 
                             alt="Nuestra misión equipo" 
                             class="w-full h-full min-h-[380px] object-cover transition-transform duration-700 hover:scale-105"
                             onerror="this.src='https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop';"
@@ -308,7 +308,7 @@
                     <div class="flex flex-col gap-6">
                         <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/mission_dashboard.png') }}" 
+                                src="<?php echo e(asset('images/mission_dashboard.png')); ?>" 
                                 alt="Dashboard Financiero" 
                                 class="w-full h-[175px] object-cover transition-transform duration-700 hover:scale-105"
                                 onerror="this.src='https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop';"
@@ -316,7 +316,7 @@
                         </div>
                         <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/mission_business.png') }}" 
+                                src="<?php echo e(asset('images/mission_business.png')); ?>" 
                                 alt="Business News" 
                                 class="w-full h-[175px] object-cover transition-transform duration-700 hover:scale-105"
                                 onerror="this.src='https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop';"
@@ -426,7 +426,7 @@
                     <!-- Imagen Superior Grande -->
                     <div class="relative overflow-hidden rounded-[24px] shadow-lg transition-transform duration-500 hover:scale-[1.02]">
                         <img 
-                            src="{{ asset('images/value_teamwork.png') }}" 
+                            src="<?php echo e(asset('images/value_teamwork.png')); ?>" 
                             alt="Trabajo en equipo" 
                             class="w-full h-[260px] object-cover transition-transform duration-700 hover:scale-105"
                             onerror="this.src='https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop';"
@@ -436,7 +436,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_idea.png') }}" 
+                                src="<?php echo e(asset('images/value_idea.png')); ?>" 
                                 alt="Idea Innovadora" 
                                 class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                                 onerror="this.src='https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=600&auto=format&fit=crop';"
@@ -444,7 +444,7 @@
                         </div>
                         <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_metrics.png') }}" 
+                                src="<?php echo e(asset('images/value_metrics.png')); ?>" 
                                 alt="Métricas y Gráficas" 
                                 class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                                 onerror="this.src='https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop';"
@@ -463,7 +463,7 @@
                     <!-- Imagen Superior Grande -->
                     <div class="relative overflow-hidden rounded-[24px] shadow-lg transition-transform duration-500 hover:scale-[1.02]">
                         <img 
-                            src="{{ asset('images/value_hands.png') }}" 
+                            src="<?php echo e(asset('images/value_hands.png')); ?>" 
                             alt="Confianza y Soporte" 
                             class="w-full h-[260px] object-cover transition-transform duration-700 hover:scale-105"
                             onerror="this.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000&auto=format&fit=crop';"
@@ -473,7 +473,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_laptop.png') }}" 
+                                src="<?php echo e(asset('images/value_laptop.png')); ?>" 
                                 alt="Laptop y Operaciones" 
                                 class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                                 onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=600&auto=format&fit=crop';"
@@ -481,7 +481,7 @@
                         </div>
                         <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_meeting.png') }}" 
+                                src="<?php echo e(asset('images/value_meeting.png')); ?>" 
                                 alt="Reunión de Negocios" 
                                 class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                                 onerror="this.src='https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=600&auto=format&fit=crop';"
@@ -567,7 +567,7 @@
     
     <!-- Fondo PNG personalizado -->
     <div class="absolute inset-0 pointer-events-none opacity-40 select-none">
-        <img src="{{ asset('images/background2.png') }}" alt="Fondo Hero" class="w-full h-full object-cover">
+        <img src="<?php echo e(asset('images/background2.png')); ?>" alt="Fondo Hero" class="w-full h-full object-cover">
     </div>
 
     
@@ -585,17 +585,17 @@
     
     <!-- 1. Esquina inferior izquierda (Monitoreo / Pantalla) -->
     <div class="absolute left-[-60px] bottom-[-40px] w-[380px] sm:w-[440px] h-[380px] sm:h-[440px] z-30 pointer-events-none transform -rotate-[12deg]">
-        <img src="{{ asset('images/imagen-izquierda.png') }}" alt="Monitoreo" class="w-full h-full object-contain drop-shadow-2xl">
+        <img src="<?php echo e(asset('images/imagen-izquierda.png')); ?>" alt="Monitoreo" class="w-full h-full object-contain drop-shadow-2xl">
     </div>
 
     <!-- 2. Centro (Portapapeles - Ajustado al doble de tamaño) -->
     <div class="absolute left-1/2 transform -translate-x-1/2 bottom-1/2 w-[560px] h-[480px] z-30 pointer-events-none translate-y-100">
-        <img src="{{ asset('images/imagen-centro.png') }}" alt="Trabajo social" class="w-full h-full object-contain object-bottom drop-shadow-2xl">
+        <img src="<?php echo e(asset('images/imagen-centro.png')); ?>" alt="Trabajo social" class="w-full h-full object-contain object-bottom drop-shadow-2xl">
     </div>
 
     <!-- 3. Esquina inferior derecha (Finanzas / Monedas y Calculadora) -->
     <div class="absolute right-[-40px] bottom-[-50px] w-[380px] sm:w-[440px] h-[380px] sm:h-[440px] z-30 pointer-events-none transform rotate-[8deg]">
-        <img src="{{ asset('images/imagen-derecha.png') }}" alt="Compras y proveedores" class="w-full h-full object-contain drop-shadow-2xl">
+        <img src="<?php echo e(asset('images/imagen-derecha.png')); ?>" alt="Compras y proveedores" class="w-full h-full object-contain drop-shadow-2xl">
     </div>
 </section>
 <!-- SECCIÓN DE GESTIÓN COMPLETA PARA TU EMPRESA CON ANIMACIONES -->
@@ -618,7 +618,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-finanzas.png') }}" alt="Finanzas" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-finanzas.png')); ?>" alt="Finanzas" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Finanzas</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -635,7 +635,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-inventario.png') }}" alt="Inventario" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-inventario.png')); ?>" alt="Inventario" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Inventario</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -652,7 +652,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-ventas.png') }}" alt="Ventas y Clientes" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-ventas.png')); ?>" alt="Ventas y Clientes" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Ventas y Clientes</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -669,7 +669,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-personal.png') }}" alt="Gestión de personal" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-personal.png')); ?>" alt="Gestión de personal" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Gestión de personal</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -686,7 +686,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-compras.png') }}" alt="Compras y proveedores" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-compras.png')); ?>" alt="Compras y proveedores" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Compras y proveedores</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -703,7 +703,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-reportes.png') }}" alt="Reportes" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-reportes.png')); ?>" alt="Reportes" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Reportes</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -720,7 +720,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-monitoreo.png') }}" alt="Monitoreos" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-monitoreo.png')); ?>" alt="Monitoreos" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Monitoreos</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -737,7 +737,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-perfiles.png') }}" alt="Perfiles de empresas" class="w-full h-full object-contain">
+                    <img src="<?php echo e(asset('images/icono-perfiles.png')); ?>" alt="Perfiles de empresas" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Perfiles de empresas</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -1404,5 +1404,6 @@
             <a href="#" class="transition-colors hover:text-white">Políticas de cookies</a>
         </div>
     </div>
+
 </footer>
-</html>
+</html><?php /**PATH C:\laragon\www\gintly_app\resources\views/landing.blade.php ENDPATH**/ ?>

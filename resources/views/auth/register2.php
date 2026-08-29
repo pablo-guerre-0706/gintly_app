@@ -29,7 +29,7 @@
         <!-- Panel Derecho: Formulario Paso 2 -->
         <main class="wizard-form-area">
             <header class="form-header">
-                <a href="{{ route('register.step1') }}" class="back-btn" aria-label="Volver">
+                <a href="{{ route('register.step2') }}" class="back-btn" aria-label="Volver">
                     <i data-lucide="arrow-left"></i>
                 </a>
                 <div class="brand-logo">
