@@ -113,13 +113,13 @@
 
                     <!-- Botones -->
                     <div class="flex flex-wrap items-center gap-6 pt-2">
-                        <a href="{{ route('register.step1') }}" 
-                           class="inline-flex items-center justify-center rounded-full bg-[#146F8A] px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#146F8A]/30 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-[#18809f] hover:shadow-xl hover:shadow-[#146F8A]/50 active:translate-y-0 active:scale-100">
+                        <a href="{{ route('register.index') }}" 
+                        class="inline-flex items-center justify-center rounded-full bg-[#146F8A] px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#146F8A]/30 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-[#18809f] hover:shadow-xl hover:shadow-[#146F8A]/50 active:translate-y-0 active:scale-100">
                             Regístrate
                         </a>
 
                         <a href="{{ route('login') }}" 
-                           class="inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[#146F8A] shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-slate-50 hover:text-[#125c73] hover:shadow-xl hover:shadow-white/30 active:translate-y-0 active:scale-100">
+                        class="inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[#146F8A] shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-slate-50 hover:text-[#125c73] hover:shadow-xl hover:shadow-white/30 active:translate-y-0 active:scale-100">
                             Iniciar sesión
                         </a>
                     </div>
