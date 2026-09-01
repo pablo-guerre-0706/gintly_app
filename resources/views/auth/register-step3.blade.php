@@ -40,7 +40,7 @@
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
       
       <!-- Imagen de fondo corporativa -->
-      <img src="{{ asset('images/merceria.png') }}" alt="Fachada de tienda" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
+      <img src="{{ asset('images/negocio.png') }}" alt="Fachada de tienda" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
 
       <!-- Degradados de lectura -->
       <div class="absolute inset-0 bg-[#0C4353]/30"></div>
@@ -123,7 +123,7 @@
             <!-- Opción 1: Ferretería -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="ferreteria">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/ferreteria-icon.png') }}" alt="Ferretería" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/ferreteria.png') }}" alt="Ferretería" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Ferretería</h3>
@@ -137,7 +137,7 @@
             <!-- Opción 2: Restaurante -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="restaurante">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/restaurante-icon.png') }}" alt="Restaurante" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/restaurante.png') }}" alt="Restaurante" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Restaurante</h3>
@@ -151,7 +151,7 @@
             <!-- Opción 3: Supermercado -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="supermercado">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/supermercado-icon.png') }}" alt="Supermercado" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/supermercado.png') }}" alt="Supermercado" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Supermercado</h3>
@@ -165,7 +165,7 @@
             <!-- Opción 4: Ropa y accesorios -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="ropa_accesorios">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/ropa-icon.png') }}" alt="Ropa y accesorios" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/ropaaccesorios.png') }}" alt="Ropa y accesorios" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Ropa y accesorios</h3>
@@ -179,7 +179,7 @@
             <!-- Opción 5: Farmacia -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="farmacia">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/farmacia-icon.png') }}" alt="Farmacia" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/farmacia.png') }}" alt="Farmacia" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Farmacia</h3>
@@ -193,7 +193,7 @@
             <!-- Opción 6: Tienda de electrónicos -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="electronicos">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/electronica-icon.png') }}" alt="Tienda de electrónicos" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/electronic.png') }}" alt="Tienda de electrónicos" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Tienda de electrónicos</h3>
@@ -207,7 +207,7 @@
             <!-- Opción 7: Cafetería -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="cafeteria">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/cafeteria-icon.png') }}" alt="Cafetería" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/cafeteria.png') }}" alt="Cafetería" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Cafetería</h3>
@@ -221,7 +221,7 @@
             <!-- Opción 8: Distribuidora -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="distribuidora">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-                <img src="{{ asset('images/distribuidora-icon.png') }}" alt="Distribuidora" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                <img src="{{ asset('images/distribuidora.png') }}" alt="Distribuidora" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div class="flex flex-col gap-0.5 flex-1 pr-6">
                 <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Distribuidora</h3>
@@ -237,7 +237,7 @@
           <!-- Opción 9: Otro (Ancho completo) -->
           <div class="business-card relative flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 w-full group" data-value="otro">
             <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
-              <img src="{{ asset('images/otro-icon.png') }}" alt="Otro" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
+              <img src="{{ asset('images/otro.png') }}" alt="Otro" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div class="flex flex-col gap-0.5 flex-1 pr-6">
               <h3 class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Otro</h3>

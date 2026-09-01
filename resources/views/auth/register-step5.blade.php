@@ -55,7 +55,7 @@
     
     <!-- Columna Izquierda: Panel Visual Único -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
-      <img src="{{ asset('images/merceria.png') }}" alt="Gestión a distancia" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
+      <img src="{{ asset('images/theoffice.png') }}" alt="Gestión a distancia" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
       <div class="absolute inset-0 bg-[#0C4353]/30"></div>
       <div class="absolute inset-0 bg-gradient-to-t from-[#0C4353]/95 via-[#0C4353]/40 to-transparent"></div>
 
@@ -130,7 +130,7 @@
           <button type="button" onclick="openModal()" class="flex items-center justify-between p-4 bg-white border border-slate-200 hover:border-[#146F8A] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group cursor-pointer">
             <div class="flex items-center gap-3.5">
               <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-[#146F8A]/10 transition-colors">
-                <img src="https://api.iconify.design/fluent-emoji:construction-worker.svg" alt="Avatar" class="w-6 h-6 object-contain" />
+                <img src="{{ asset('images/profesionales.png') }}" alt="Gintly Logo" class="h-7 w-auto object-contain" />
               </div>
               <div class="flex flex-col text-left">
                 <span class="text-xs font-bold text-slate-900 group-hover:text-[#146F8A] transition-colors">Agregar empleado</span>

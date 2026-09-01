@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\Validator;
 class RegisterWizardController extends Controller
 {
     /**
-     * Muestra la vista del paso correspondiente del asistente (1 al 9).
+     * Muestra la vista del paso correspondiente del asistente (1 al 7).
      */
     public function showStep($step)
     {
         $step = (int) $step;
-        $totalSteps = 9;
+        $totalSteps = 7;
 
         if ($step < 1 || $step > $totalSteps) {
             return redirect()->route('register.step', ['step' => 1]);
@@ -72,7 +72,6 @@ class RegisterWizardController extends Controller
             case 5:
             case 6:
             case 7:
-            case 8:
                 // Agrega las reglas correspondientes para los pasos intermedios restantes
                 break;
         }
@@ -97,15 +96,15 @@ class RegisterWizardController extends Controller
         $currentData = session('registration_wizard', []);
         session(['registration_wizard' => array_merge($currentData, $filteredData)]);
 
-        // Si es el paso 8 (antepenúltimo/último paso antes de guardar en BD)
-        if ($step === 8) {
+        // Si es el paso 6 (antepenúltimo/último paso antes de guardar en BD)
+        if ($step === 6) {
             $allData = session('registration_wizard', []);
 
             RegisterWizard::create($allData);
 
             session()->forget('registration_wizard');
 
-            return redirect()->route('register.step', ['step' => 9]);
+            return redirect()->route('register.step', ['step' => 7]);
         }
 
         // Avanzar al siguiente paso de forma automática mediante GET limpio

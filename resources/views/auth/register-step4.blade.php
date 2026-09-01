@@ -32,7 +32,7 @@
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
       
       <!-- Imagen de fondo corporativa -->
-      <img src="{{ asset('images/merceria.png') }}" alt="Tu negocio en orden" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
+      <img src="{{ asset('images/paso4.png') }}" alt="Tu negocio en orden" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
 
       <!-- Degradados de lectura -->
       <div class="absolute inset-0 bg-[#0C4353]/30"></div>
@@ -187,7 +187,7 @@
         <!-- Botón de envío fijo al pie -->
         <div class="shrink-0 pt-2">
           <button type="submit" form="regionalForm" id="submitBtn" class="w-full h-11 bg-[#146F8A] text-white hover:bg-[#10596e] font-bold text-sm tracking-wide rounded-2xl shadow-lg shadow-[#146F8A]/25 transition-all duration-300 ease-in-out cursor-pointer active:scale-[0.99]">
-            Ingresar
+            continuar
           </button>
         </div>
 

@@ -10,7 +10,7 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; overflow: hidden; height: 100vh; }
 
-        /* Contenedor principal con padding únicamente superior */
+        /* Contenedor principal */
         .signup-container {
             display: flex;
             flex-direction: column;
@@ -27,7 +27,7 @@
             overflow: hidden;
         }
 
-        /* Estilos HD profesionales para máxima nitidez en imágenes de fondo */
+        /*  imágenes de fondo */
         .dashboard-bg {
             background-size: cover;
             background-position: top center;
@@ -38,7 +38,7 @@
             backface-visibility: hidden;
         }
 
-        /* Animación de aparición suave superior */
+        /* Animación */
         @keyframes fadeInDown {
             from {
                 opacity: 0;
@@ -71,7 +71,7 @@
             <!-- Título y Descripción -->
             <div class="flex flex-col gap-1">
                 <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                    ¡Felicitaciones! Ya eres parte de Gintly 🚀
+                    ¡Felicitaciones! Ya eres parte de Gintly 
                 </h1>
                 <p class="text-xs text-slate-500 leading-relaxed max-w-[760px]">
                     Tu cuenta ha sido activada con éxito. Estás a un paso de transformar la gestión y el control de tu negocio. A partir de hoy, tienes el control total de tu inventario, tus ventas y tus cuentas por cobrar en un solo lugar. ¡Es momento de llevar tu negocio al siguiente nivel!
@@ -91,22 +91,22 @@
 
         </div>
 
-        <!-- Sección Inferior: Dashboards con rotaciones negativas y zoom sutil -->
+        <!-- Sección Inferior: Dashboards -->
         <div class="w-full flex-1 relative flex items-start justify-center overflow-hidden">
             
             <div class="absolute w-[1400px] h-[400px] mt-8 top-[35px] pointer-events-none">
                 
-                <!-- 1. Dashboard del Fondo / Central (Inventario) -->
+                <!-- 1. Dashboard del Fondo / Central (catalogo de productos) -->
                 <div class="absolute top-[0px] left-[200px] w-[1000px] h-[450px] bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden transform rotate-0 transition-all duration-500 ease-out hover:scale-[1.01] hover:z-25 origin-top pointer-events-auto cursor-pointer dashboard-bg"
                      style="background-image: url('{{ asset('images/catalogoproductos.png') }}');">
                 </div>
 
-                <!-- 2. Dashboard Izquierda (General / Ventas) - Rotación negativa -->
+                <!-- 2. Dashboard Izquierda (General / dashboard - Rotación negativa -->
                 <div class="absolute top-[75px] left-[-70px] w-[900px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden transform rotate-12 transition-all duration-500 ease-out hover:scale-[1.01] hover:rotate-12 hover:z-30 origin-top-left pointer-events-auto cursor-pointer dashboard-bg"
                      style="background-image: url('{{ asset('images/dashboard.png') }}');">
                 </div>
 
-                <!-- 3. Dashboard Derecha (Finanzas) - Rotación negativa -->
+                <!-- 3. Dashboard Derecha (cierre de caja) - Rotación negativa -->
                 <div class="absolute top-[75px] right-[-70px] w-[900px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden transform -rotate-12 transition-all duration-500 ease-out hover:scale-[1.01] hover:-rotate-12 hover:z-30 origin-top-right pointer-events-auto cursor-pointer dashboard-bg"
                      style="background-image: url('{{ asset('images/cierrecaja.png') }}');">
                 </div>

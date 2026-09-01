@@ -20,7 +20,7 @@ Route::get('/login', function () {
 })->name('login');
 
 // ==========================================
-// ASISTENTE DE REGISTRO MULTI-PASO (1-9)
+// ASISTENTE DE REGISTRO MULTI-PASO (1-7)
 // ==========================================
 Route::prefix('register')->name('register.')->group(function () {
     Route::get('/', function () {
@@ -29,12 +29,12 @@ Route::prefix('register')->name('register.')->group(function () {
 
     // Muestra la vista del paso correspondiente (Ej: /register/step/3)
     Route::get('/step/{step}', [RegisterWizardController::class, 'showStep'])
-        ->where('step', '[1-9]')
+        ->where('step', '[1-7]')
         ->name('step');
 
     // Procesa los datos enviados por GET desde el formulario y avanza de paso (Ej: /register/step/3/store)
     Route::get('/step/{step}/store', [RegisterWizardController::class, 'storeStep'])
-        ->where('step', '[1-9]')
+        ->where('step', '[1-7]')
         ->name('step.store');
 });
 

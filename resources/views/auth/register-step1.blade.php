@@ -104,7 +104,7 @@
         </div>
 
         <!-- Formulario Principal -->
-        <form id="profileForm" action="{{ route('register.step.store', ['step' => 2]) }}" method="GET" class="flex flex-col gap-3.5 w-full">
+        <form id="profileForm" action="{{ route('register.step.store', ['step' => 1]) }}" method="GET" class="flex flex-col gap-3.5 w-full">
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
@@ -143,9 +143,9 @@
           </div>
 
           <div class="flex flex-col gap-1">
-            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Valida la contraseña</label>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">confirmar la contraseña</label>
             <input type="password" id="confirmPassword" placeholder="Ej: 1234.team1" class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 hover:shadow-[inset_0_1px_2px_rgba(20,111,138,0.06)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300" required />
-            <span id="confirmMsg" class="text-[10px] text-slate-500 flex items-center gap-1">Confirma si la contraseña es correcta</span>
+            <span id="confirmMsg" class="text-[10px] text-slate-500 flex items-center gap-1">valida si la contraseña es correcta</span>
           </div>
 
           <!-- Botón de Continuar con animación suave de salida -->
