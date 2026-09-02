@@ -2,18 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 
-<<<<<<< HEAD
-=======
 
 // Web Routes - ERP Gintly App //
 
 // 1. La Landing Page oficial
->>>>>>> c702ac189ed7eb9a91dbf1ae4564f8983e80b0fa
 Route::get('/', function () {
     return view('landing'); // Carga resources/views/landing.blade.php
 })->name('landing');
 
-<<<<<<< HEAD
 Route::get('/landing', function () {
     return view('landing');
 })->name('landing');
@@ -45,7 +41,7 @@ Route::get('/dashboard', function () {
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
-=======
+
 // 2. Rutas temporales del asistente de registro, view:perfil de usuario
 Route::get('/register', function () {
     return view('singupprofile');
@@ -74,4 +70,3 @@ Route::post('/register/step2', function () {
 Route::get('/login', function () {
     return "Pantalla de Login (Pendiente de enlazar al backend)";
 })->name('login');
->>>>>>> c702ac189ed7eb9a91dbf1ae4564f8983e80b0fa
