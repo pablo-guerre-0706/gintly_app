@@ -1,14 +1,24 @@
-@import "./style.css";
-@import "./register-wizard.css";
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-
+/* 1. Fuentes y configuración de tema */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* 2. Importaciones de otros archivos locales de CSS */
+@import "./style.css";
+@import "./register-wizard.css";
+
+/* 3. Rutas de escaneo para Laravel / Blade */
+@source "../views";
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
+@source "../../storage/framework/views/*.php";
+
+/* ==========================================
+   4. TUS CLASES PERSONALIZADAS (Glassmorphism)
+   ========================================== */
+
 /* Contenedor Principal Cápsula */
 .liquid-glass-nav {
     background: rgba(10, 25, 30, 0.45);

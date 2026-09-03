@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('document_sequences', function (Blueprint $table) {
             $table->id();
             $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
-            $table->enum('document_type', ['invoice', 'credit_note']);
+            $table->enum('document_type', ['invoice', 'credit_note', 'sales_return']);
             $table->string('prefix', 10)->default('');
             $table->unsignedBigInteger('next_number')->default(1);
             $table->timestamps();
