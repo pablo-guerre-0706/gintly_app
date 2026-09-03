@@ -36,8 +36,12 @@ final class UserSeeder extends Seeder
         // BusinessObserver.
 
         // 3) Usuario de sistema (transversal, team NULL) → ROL-SYS. Nunca huérfano.
+        // Nivel Pro: Si el ROL-SYS opera de manera global, pasamos el contexto del negocio asignado para la relación intermedia.
         $system = $this->upsertUser('sistema@gintly.test', 'Sistema Gintly', $business->id);
-        $registrar->setPermissionsTeamId(null);
+        
+        // Ajuste Crítico: Para evitar el Integrity Constraint Violation, le pasamos el ID del negocio a Spatie
+        // para que la tabla intermedia model_has_roles no intente insertar un valor NULL.
+        $registrar->setPermissionsTeamId($business->id);
         $system->syncRoles([RoleName::System->value]); // Exactamente un rol activo (regla de dominio).
 
         // 4) Usuarios del negocio de prueba, uno por rol (team = business_id).

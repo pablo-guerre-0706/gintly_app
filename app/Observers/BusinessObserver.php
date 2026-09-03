@@ -57,6 +57,7 @@ final class BusinessObserver
         $sequences = [
             'invoice'     => 'F-',
             'credit_note' => 'NC-',
+            'sale'        => 'V-',
             'sales_return' => 'DV-',
         ];
 
