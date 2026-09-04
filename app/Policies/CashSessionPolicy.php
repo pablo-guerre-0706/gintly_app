@@ -14,41 +14,33 @@ final class CashSessionPolicy
 {
     use InteractsWithTenant;
 
-    public function viewAny(User $actor): Response
+    public function viewAny(User $user): bool
     {
-        return $this->hasAtLeast($actor, RoleName::Operator)
-            ? Response::allow()
-            : Response::deny('No tiene autorización para consultar las sesiones de caja.');
+        return $this->hasAtLeast($user, RoleName::Operator); // ROL-03
     }
 
-    public function view(User $actor, CashSession $session): Response
+    public function view(User $user, CashSession $session): bool
     {
-        if (! $this->sharesBusinessWith($actor, $session)) {
-            return Response::deny('La sesión solicitada no pertenece a su negocio.');
+        return $this->sharesBusinessWith($user, $session)
+            && $this->hasAtLeast($user, RoleName::Operator);
+    }
+
+    public function create(User $user): bool
+    {
+        return $this->hasAtLeast($user, RoleName::Operator); // abrir sesión: el cajero
+    }
+
+    public function close(User $user, CashSession $session): Response
+    {
+        if (! $this->sharesBusinessWith($user, $session)) {
+            return Response::denyWithStatus(404);
         }
 
-        return $this->hasAtLeast($actor, RoleName::Operator)
-            ? Response::allow()
-            : Response::deny('No tiene autorización para consultar esta sesión.');
-    }
+        $isOwner   = (int) $session->opened_by === (int) $user->id;
+        $isAuditor = $this->hasAtLeast($user, RoleName::Admin);
 
-    // El cajero (ROL-03) abre su propia sesión (RF-06-03).
-    public function open(User $actor): Response
-    {
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        return $isOwner || $isAuditor
             ? Response::allow()
-            : Response::deny('No tiene autorización para abrir sesiones de caja.');
-    }
-
-    // El cierre lo ejecuta el cajero que arquea. El servicio verifica que la sesión esté abierta.
-    public function close(User $actor, CashSession $session): Response
-    {
-        if (! $this->sharesBusinessWith($actor, $session)) {
-            return Response::deny('La sesión indicada no pertenece a su negocio.');
-        }
-
-        return $this->hasAtLeast($actor, RoleName::Operator)
-            ? Response::allow()
-            : Response::deny('No tiene autorización para cerrar sesiones de caja.');
+            : Response::denyWithStatus(403, 'Solo quien abrió la sesión o un Administrador puede cerrarla.');
     }
 }

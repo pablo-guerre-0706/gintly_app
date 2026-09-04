@@ -4,22 +4,40 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use RuntimeException;
 
-/**
- * HTTP 409. La caja ya tiene una sesión abierta (open_register_lock) o el
- * usuario ya tiene una sesión abierta en otra caja (open_user_lock). Traduce la
- * violación de unicidad de motor (1062) a un mensaje de negocio legible.
- */
 final class CashSessionConflictException extends RuntimeException
 {
+    private function __construct(
+        public readonly string $errorCode,
+        string $message,
+    ) {
+        parent::__construct($message);
+    }
+
     public static function registerBusy(): self
     {
-        return new self('La caja ya tiene una sesión abierta. Ciérrela antes de abrir otra.');
+        return new self(
+            'CASH_REGISTER_BUSY',
+            'La caja ya tiene una sesión abierta. Debe cerrarse antes de abrir otra.',
+        );
     }
 
     public static function userBusy(): self
     {
-        return new self('Usted ya tiene una sesión de caja abierta. Ciérrela antes de abrir otra.');
+        return new self(
+            'CASH_USER_BUSY',
+            'El usuario ya tiene una sesión de caja abierta. Debe cerrarla antes de abrir otra.',
+        );
+    }
+
+    public function render(Request $request): JsonResponse
+    {
+        return response()->json([
+            'error'   => $this->errorCode,
+            'message' => $this->getMessage(),
+        ], 409); // Conflict — simétrico para ambos candados de motor
     }
 }

@@ -19,9 +19,11 @@ use App\Http\Controllers\Api\V1\CancelStockTransferController;
 use App\Http\Controllers\Api\V1\CashMovementController;
 use App\Http\Controllers\Api\V1\CashRegisterController;
 use App\Http\Controllers\Api\V1\CashSessionController;
+use App\Http\Controllers\Api\V1\CashSessionMovementsController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CompleteStockTransferController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
+use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerCreditController; // Reutilizado de MOD-08.
@@ -36,6 +38,7 @@ use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
 use App\Http\Controllers\Api\V1\IssuePurchaseOrderController;
 use App\Http\Controllers\Api\V1\JustifyPhysicalCountController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
+use App\Http\Controllers\Api\V1\OpenCashSessionController;
 use App\Http\Controllers\Api\V1\PayAccountPayableController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -64,6 +67,8 @@ use App\Models\User;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
+
+
 
 
 
@@ -180,23 +185,17 @@ Route::prefix('v1')->group(function (): void {
         Route::model('address', \App\Models\CustomerAddress::class);
 
         // MOD-06 - Gestion de Caja
-        // Cajas — CRUD.
-        // Route::apiResource('cash-registers', CashRegisterController::class)
-            // ->parameters(['cash-registers' => 'cash_register']);
+        Route::apiResource('cash-registers', CashRegisterController::class);
 
-        // Sesiones — abrir, listar, ver, cerrar, movimientos.
-        // Route::get('cash-sessions', [CashSessionController::class, 'index']);
-        // Route::post('cash-sessions/open', [CashSessionController::class, 'open']);
-        // Route::get('cash-sessions/{cash_session}', [CashSessionController::class, 'show']);
-        // Route::post('cash-sessions/{cash_session}/close', [CashSessionController::class, 'close']);
-        // Route::get('cash-sessions/{cash_session}/movements', [CashSessionController::class, 'movements']);
+        Route::get('cash-sessions', [CashSessionController::class, 'index']);
+        Route::post('cash-sessions', OpenCashSessionController::class);
+        Route::get('cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
+        Route::post('cash-sessions/{cashSession}/close', CloseCashSessionController::class);
+        Route::get('cash-sessions/{cashSession}/movements', CashSessionMovementsController::class);
 
-        // Movimientos — listar (append-only), registrar manual.
-        // Route::get('cash-movements', [CashMovementController::class, 'index']);
-        // Route::post('cash-movements', [CashMovementController::class, 'store']);
+        Route::get('cash-movements', [CashMovementController::class, 'index']);
+        Route::post('cash-movements', [CashMovementController::class, 'store']);
 
-        // Route::model('cash_register', \App\Models\CashRegister::class);
-        // Route::model('cash_session', \App\Models\CashSession::class);
 
         // MOD-07 - Ventas, Facturacion e Inmutabilidad
         // Route::get('sales', [SaleController::class, 'index']);
