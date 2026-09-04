@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 namespace App\Exceptions;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 use RuntimeException;
 
@@ -12,6 +14,14 @@ use RuntimeException;
  */
 final class ImmutableInvoiceException extends RuntimeException
 {
+    public function render(Request $request): JsonResponse
+    {
+        return response()->json([
+            'error'   => 'IMMUTABLE_INVOICE',
+            'message' => $this->getMessage(),
+        ], 403);
+    }
+    
     public static function field(string $field): self
     {
         return new self("El campo \"{$field}\" es parte del núcleo fiscal inmutable de la factura y no puede modificarse.");

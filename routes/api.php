@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CashSessionMovementsController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CompleteStockTransferController;
+use App\Http\Controllers\Api\V1\ConfirmSaleController;
 use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
@@ -35,6 +36,7 @@ use App\Http\Controllers\Api\V1\InventoryAdjustmentController;
 use App\Http\Controllers\Api\V1\InventoryMovementController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\InvoiceDeliveryController;
+use App\Http\Controllers\Api\V1\InvoicePaymentsController;
 use App\Http\Controllers\Api\V1\IssuePurchaseOrderController;
 use App\Http\Controllers\Api\V1\JustifyPhysicalCountController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
@@ -51,9 +53,11 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportDefinitionController;
 use App\Http\Controllers\Api\V1\ResolveGoodsReceiptController;
 use App\Http\Controllers\Api\V1\SaleController;
+use App\Http\Controllers\Api\V1\SaleItemController;
 use App\Http\Controllers\Api\V1\SalesReturnController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
+use App\Http\Controllers\Api\V1\StoreInvoiceController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\SuspendSupplierController;
 use App\Http\Controllers\Api\V1\UnblockAccountPayableController;
@@ -61,13 +65,13 @@ use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UpdateUserEmailController; //
 use App\Http\Controllers\Api\V1\UpdateUserPasswordController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\VoidInvoiceController;
 use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
-
 
 
 
@@ -198,30 +202,20 @@ Route::prefix('v1')->group(function (): void {
 
 
         // MOD-07 - Ventas, Facturacion e Inmutabilidad
-        // Route::get('sales', [SaleController::class, 'index']);
-        // Route::post('sales', [SaleController::class, 'store']);
-        // Route::get('sales/{sale}', [SaleController::class, 'show']);
-        // Route::post('sales/{sale}/confirm', [SaleController::class, 'confirm']);
+        Route::get('sales', [SaleController::class, 'index']);
+        Route::post('sales', [SaleController::class, 'store']);
+        Route::get('sales/{sale}', [SaleController::class, 'show']);
+        Route::post('sales/{sale}/confirm', ConfirmSaleController::class);
 
-        // Ítems de venta — sub-recurso con scopeBindings (doble binding).
-        // Route::prefix('sales/{sale}/items')
-            // ->scopeBindings()
-            // ->group(function (): void {
-                // Route::post('/', [SaleController::class, 'addItem']);
-                // Route::delete('/{item}', [SaleController::class, 'removeItem']);
-            // });
+        Route::post('sales/{sale}/items', [SaleItemController::class, 'store'])->scopeBindings();
+        Route::delete('sales/{sale}/items/{item}', [SaleItemController::class, 'destroy'])->scopeBindings();
 
-        // Facturas — emitir, ver, pagos, anular. PUT devuelve 403 (inmutable).
-        // Route::get('invoices', [InvoiceController::class, 'index']);
-        // Route::post('invoices', [InvoiceController::class, 'store']);
-        // Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
-        // Route::get('invoices/{invoice}/payments', [InvoiceController::class, 'payments']);
-        // Route::put('invoices/{invoice}', [InvoiceController::class, 'update']);   // → 403 IMMUTABLE_INVOICE
-        // Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void']);
-
-        // Route::model('sale', \App\Models\Sale::class);
-        // Route::model('item', \App\Models\SaleItem::class);
-        // Route::model('invoice', \App\Models\Invoice::class);
+        Route::get('invoices', [InvoiceController::class, 'index']);
+        Route::post('invoices', StoreInvoiceController::class);
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
+        Route::put('invoices/{invoice}', [InvoiceController::class, 'update']); // ruta-lápida → 403
+        Route::post('invoices/{invoice}/void', VoidInvoiceController::class);
+        Route::get('invoices/{invoice}/payments', InvoicePaymentsController::class);
 
         // MOD-08 · Cuentas por Cobrar
         // Route::prefix('accounts-receivable')->group(function (): void {

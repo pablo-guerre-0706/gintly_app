@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use RuntimeException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * HTTP 422/409. Estado inválido en el flujo de venta o factura: venta vacía o
@@ -13,6 +15,14 @@ use RuntimeException;
  */
 final class InvalidInvoiceStateException extends RuntimeException
 {
+    public function render(Request $request): JsonResponse
+    {
+        return response()->json([
+            'error'   => 'INVALID_INVOICE_STATE',
+            'message' => $this->getMessage(),
+        ], 422);
+    }
+
     public static function saleNotEditable(int $saleId): self
     {
         return new self("La venta {$saleId} no está abierta y no admite cambios en sus ítems.");
@@ -46,10 +56,5 @@ final class InvalidInvoiceStateException extends RuntimeException
     public static function invoiceNotVoidable(int $invoiceId): self
     {
         return new self("La factura {$invoiceId} no está emitida y no puede anularse.");
-    }
-
-    public static function folioConflict(): self
-    {
-        return new self('Colisión de folio al emitir la factura. Reintente la operación.');
     }
 }
