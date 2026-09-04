@@ -25,6 +25,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
+  <div>
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
   <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
     
@@ -108,7 +109,7 @@
         <!-- Formulario con Scroll Interno -->
         <form id="regionalForm" action="{{ route('register.step.store', ['step' => 4]) }}" method="GET" class="flex flex-col gap-4 w-full overflow-y-auto custom-scroll pr-1 py-1 my-auto">
           
-          <!-- Campo 1: Zona Horaria (Ahora de primera) -->
+          <!-- Campo 1: Zona Horaria -->
           <div class="flex flex-col gap-1.5 w-full">
             <label for="zona_horaria" class="text-xs font-bold text-slate-900">Zona Horaria</label>
             <div class="relative flex items-center">
@@ -187,7 +188,7 @@
         <!-- Botón de envío fijo al pie -->
         <div class="shrink-0 pt-2">
           <button type="submit" form="regionalForm" id="submitBtn" class="w-full h-11 bg-[#146F8A] text-white hover:bg-[#10596e] font-bold text-sm tracking-wide rounded-2xl shadow-lg shadow-[#146F8A]/25 transition-all duration-300 ease-in-out cursor-pointer active:scale-[0.99]">
-            continuar
+            Continuar
           </button>
         </div>
 
@@ -223,6 +224,4 @@
     // Validación inicial al cargar la página
     checkFormValidity();
   </script>
-
-</body>
-</html>
+</div>

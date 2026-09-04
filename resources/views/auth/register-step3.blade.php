@@ -33,6 +33,7 @@
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
+ <div>
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
   <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
     
@@ -114,7 +115,7 @@
         </div>
 
         <!-- Formulario adaptado a GET sin directiva CSRF -->
-        <form id="businessTypeForm" action="{{ route('register.step.store', ['step' => 4]) }}" method="GET" class="flex flex-col gap-3 w-full overflow-y-auto custom-scroll pr-1 py-1">
+        <form id="businessTypeForm" action="{{ route('register.step.store', ['step' => 3]) }}" method="GET" class="flex flex-col gap-3 w-full overflow-y-auto custom-scroll pr-1 py-1">
           <input type="hidden" id="tipo_negocio" name="tipo_negocio" value="{{ old('tipo_negocio', $formData['tipo_negocio'] ?? '') }}" required />
 
           <!-- Opciones de Negocio (Grid de Tarjetas) -->
@@ -311,6 +312,4 @@
       }
     }
   </script>
-
-</body>
-</html>
+</div>

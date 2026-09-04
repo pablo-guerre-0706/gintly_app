@@ -119,7 +119,7 @@
           </div>
           <div class="flex flex-col gap-1">
             <div class="h-1.5 w-full bg-[#146F8A] rounded-full shadow-sm shadow-[#146F8A]/30"></div>
-            <span class="text-[10px] font-bold text-[#146F8A]">Creación de usuarios</span>
+            <span class="text-[10px] font-bold text-[#146F8A]">Creación de cuentas</span>
           </div>
         </div>
 
@@ -152,7 +152,7 @@
             Omitir
           </a>
           <!-- Confirmar: Deshabilitado por defecto hasta que exista al menos 1 empleado -->
-          <a id="confirmBtn" href="{{ route('register.step', ['step' => 6]) }}" onclick="handleConfirm(event)" class="w-2/3 h-11 flex items-center justify-center bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm pointer-events-none transition-all duration-300">
+          <a id="confirmBtn" href="{{ route('register.step', ['step' => 5]) }}" onclick="handleConfirm(event)" class="w-2/3 h-11 flex items-center justify-center bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm pointer-events-none transition-all duration-300">
             Confirmar
           </a>
         </div>

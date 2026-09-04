@@ -104,8 +104,16 @@
         </div>
 
         <!-- Formulario Principal -->
-        <form id="profileForm" action="{{ route('register.step.store', ['step' => 1]) }}" method="GET" class="flex flex-col gap-3.5 w-full">
-          
+        @php
+    $step = 1;
+@endphp
+
+<form id="profileForm" action="{{ route('register.step.store', ['step' => 1]) }}" method="GET" wire:submit.prevent="nextStep" class="flex flex-col gap-3.5 w-full">
+    @if($step === 1)
+        {{-- Tus campos aquí --}}
+    @endif
+</form>
+</form>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
               <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Nombres</label>
