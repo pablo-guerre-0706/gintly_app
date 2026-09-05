@@ -601,6 +601,3 @@
         if (e.target === checkoutModal) closeCheckoutModal();
     });
   </script>
-
-</body>
-</html>
