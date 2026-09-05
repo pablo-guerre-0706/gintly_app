@@ -1,64 +1,47 @@
-@php
-    /**
-     * SIMULADOR DE CONTEXTO TENANT (RBAC & SOC)
-     * Hereda el rol definido en la estructura superior para mantener consistencia.
-     */
-    $currentRole = $currentRole ?? 'rol-01'; 
-    $tenantName = $tenantName ?? 'Corporación Matriz S.A.';
-    $businessId = $businessId ?? 'TENANT-001';
-@endphp
-
-<div class="flex w-full items-center justify-between bg-white text-neutral-800">
+<div class="flex w-full h-16 items-center justify-between bg-white px-6 border-b border-neutral-100 font-sans select-none">
     
-    <!-- LADO IZQUIERDO: CONTEXTO DEL TENANT (AISLAMIENTO VISUAL) -->
-    <div class="flex items-center gap-4">
-        <!-- Indicador visual del Business ID del Tenant Actual -->
-        <div class="flex flex-col">
-            <span class="text-sm font-bold tracking-tight text-neutral-900">{{ $tenantName }}</span>
-            <div class="flex items-center gap-1.5 mt-0.5">
-                <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="text-[10px] font-mono font-semibold tracking-wider text-neutral-400 uppercase">ID: {{ $businessId }}</span>
-            </div>
+    <!-- LADO IZQUIERDO: RUTA DE NAVEGACIÓN (BREADCRUMBS) -->
+    <div class="flex items-center gap-2 text-sm font-medium">
+        <span class="text-neutral-400">Gintly</span>
+        <span class="text-neutral-300 text-xs"><i class="fa-solid fa-chevron-right"></i></span>
+        <span class="font-bold text-neutral-900">Dashboard</span>
+    </div>
+
+    <!-- CENTRO: NOTIFICACIÓN Y BARRA DE BÚSQUEDA -->
+    <div class="flex items-center gap-4 w-full max-w-lg mx-6">
+        <!-- Botón de Notificaciones con fondo circular gris suave -->
+        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-50 text-neutral-500 hover:bg-neutral-100 transition">
+            <i class="fa-regular fa-bell text-sm"></i>
+        </button>
+
+        <!-- Barra de Búsqueda Estilo Figma -->
+        <div class="relative w-full">
+            <span class="absolute inset-y-0 left-4 flex items-center text-neutral-400 text-xs">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input 
+                type="text" 
+                placeholder="Busca lo que necesites" 
+                class="h-9 w-full rounded-full bg-neutral-50 pl-10 pr-4 text-xs text-neutral-800 placeholder-neutral-400 border-none focus:bg-neutral-100 focus:outline-none focus:ring-0 transition"
+            >
         </div>
     </div>
 
-    <!-- LADO DERECHO: ACCIONES GLOBALES, ALERTAS Y PERFIL DE USUARIO -->
-    <div class="flex items-center gap-6">
-        
-        <!-- NOTIFICACIONES Y ALERTAS ACTIVAS (Visibilidad según Rol) -->
-        <div class="relative">
-            <button type="button" id="navbarNotificationsBtn" class="relative p-2 text-neutral-400 hover:text-neutral-600 transition" aria-label="Ver alertas">
-                <i class="fa-solid fa-bell text-lg"></i>
-                <!-- Punto de notificación dinámico (Simulado si hay alertas activas en el Dashboard) -->
-                <span class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white"></span>
-            </button>
+    <!-- LADO DERECHO: PERFIL DE USUARIO COMPACTO -->
+    <button type="button" class="flex items-center gap-3 focus:outline-none group">
+        <!-- Foto de Perfil Circular -->
+        <div class="h-9 w-9 overflow-hidden rounded-full ring-1 ring-neutral-200 group-hover:ring-neutral-300 transition">
+            <img 
+                src="https://unsplash.com" 
+                alt="Usuario autenticado" 
+                class="h-full w-full object-cover"
+            >
         </div>
-
-        <!-- Opciones de Soporte Técnico Directo -->
-        <a href="#support" class="p-2 text-neutral-400 hover:text-neutral-600 transition" title="Soporte del Sistema">
-            <i class="fa-solid fa-circle-question text-lg"></i>
-        </a>
-
-        <!-- DIVISOR VISUAL INTEGRADO -->
-        <span class="h-6 w-px bg-neutral-200" aria-hidden="true"></span>
-
-        <!-- PERFIL DEL USUARIO AUTENTICADO (RBAC DINÁMICO) -->
-        <div class="flex items-center gap-3">
-            <div class="flex flex-col text-right">
-                <span class="text-xs font-semibold text-neutral-900">Roberto Romero</span>
-                <!-- Badge dinámico de nivel de acceso basado en tus Policies/Roles del Backend -->
-                <span class="text-[9px] font-bold uppercase tracking-wider text-cyan-600 mt-0.5">
-                    @if($currentRole === 'rol-01') Propietario @endif
-                    @if($currentRole === 'rol-02') Administrador @endif
-                    @if($currentRole === 'rol-03') Operativo @endif
-                </span>
-            </div>
-            
-            <!-- Avatar / Iniciales del Usuario -->
-            <button type="button" id="navbarUserMenuBtn" class="flex h-9 w-9 items-center justify-between rounded-full bg-neutral-100 ring-1 ring-neutral-200 transition hover:ring-neutral-300 focus:outline-none" aria-label="Menú de usuario">
-                <span class="m-auto text-xs font-bold text-neutral-600">RG</span>
-            </button>
+        <!-- Flechas de Selector (Arriba/Abajo) -->
+        <div class="flex flex-col text-[8px] text-neutral-400 group-hover:text-neutral-600 transition gap-0.5">
+            <i class="fa-solid fa-chevron-up"></i>
+            <i class="fa-solid fa-chevron-down"></i>
         </div>
+    </button>
 
-    </div>
 </div>

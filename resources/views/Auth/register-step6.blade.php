@@ -49,11 +49,10 @@
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
   </style>
 </head>
-<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-5 overflow-hidden">
+<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-5 overflow-y-auto">
 
   <!-- Contenedor Principal -->
-  <div class="flex flex-col w-full max-w-(1240px) h-[94vh] max-h-(820px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white p-5 md:p-8 animate-fade-in justify-between">
-    
+  <div class="flex flex-col w-full max-w-(1240px) h-auto my-5 bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white p-5 md:p-8 animate-fade-in justify-between">    
     <!-- Header General -->
     <div class="flex flex-col gap-2.5">
       <div class="flex justify-between items-center">
@@ -601,6 +600,3 @@
         if (e.target === checkoutModal) closeCheckoutModal();
     });
   </script>
-
-</body>
-</html>

@@ -119,7 +119,7 @@
           </div>
           <div class="flex flex-col gap-1">
             <div class="h-1.5 w-full bg-[#146F8A] rounded-full shadow-sm shadow-[#146F8A]/30"></div>
-            <span class="text-[10px] font-bold text-[#146F8A]">Creación de usuarios</span>
+            <span class="text-[10px] font-bold text-[#146F8A]">Creación de cuentas</span>
           </div>
         </div>
 
@@ -224,8 +224,11 @@
           <label class="text-xs font-bold text-slate-900">Rol del usuario</label>
           <select id="emp_rol" required class="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-[#146F8A] focus:ring-2 focus:ring-[#146F8A]/20 transition-all cursor-pointer">
             <option value="" disabled selected>Selecciona un rol</option>
-            <option value="Rol de bodega">Rol de bodega</option>
+            <option value="Rol de bodega">Responsable de bodega</option>
+            <option value="Rol de compras">Responsable de compras</option>
             <option value="Cajero">Cajero</option>
+            <option value="Facturador">Facturador</option>
+            <option value="Despachador">Despachador</option>
             <option value="Administrador">Administrador</option>
           </select>
         </div>

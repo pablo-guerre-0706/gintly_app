@@ -26,7 +26,7 @@ $kpis = [
 @endphp
 
 <main class="mx-auto w-full max-w-6xl bg-white px-6 py-7 tracking-tight" data-dashboard-root>
-    
+   
     <!-- Encabezado Principal -->
     <header class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>

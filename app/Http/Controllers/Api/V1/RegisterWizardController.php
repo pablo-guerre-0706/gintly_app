@@ -96,18 +96,25 @@ class RegisterWizardController extends Controller
         $currentData = session('registration_wizard', []);
         session(['registration_wizard' => array_merge($currentData, $filteredData)]);
 
-        // Si es el paso 6 (antepenúltimo/último paso antes de guardar en BD)
+        // Si es el paso 6 (Confirma plan y avanza ala vista de exito, antes de guardar en la BD)
         if ($step === 6) {
             $allData = session('registration_wizard', []);
-
             RegisterWizard::create($allData);
-
             session()->forget('registration_wizard');
 
             return redirect()->route('register.step', ['step' => 7]);
         }
 
-        // Avanzar al siguiente paso de forma automática mediante GET limpio
+        // Si es el paso 7 (El paso final de felicitaciones y lo mandamos al login)
+        if ($step === 7) {
+            $allData = session('registration_wizard', []);
+            RegisterWizard::create($allData);
+            session()->forget('registration_wizard');
+
+            return redirect()->route('login')->with('success', '¡Registro completado! Ingresa con tus credenciales de prueba.');
+        }
+
+        // ESTE UNICO RETURN sirve de puente para los pasos 1, 2, 3, 4 y 5
         return redirect()->route('register.step', ['step' => $step + 1]);
     }
 }

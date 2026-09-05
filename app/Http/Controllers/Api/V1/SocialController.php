@@ -23,7 +23,7 @@ class SocialController extends Controller
         ]);
 
         // Detecta automáticamente si ingresó un email o un nombre de usuario
-        $loginField = filter_var($request->input('login'), FILTER_VALIDATE_EMAIL) ? 'correo' : 'nombre'; 
+        $loginField = filter_var($request->input('login'), FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
         // Nota: Asegúrate de que 'correo' y 'nombre' coincidan con los nombres de tus columnas en la base de datos.
 
         if (Auth::attempt([$loginField => $request->input('login'), 'password' => $request->input('password')])) {

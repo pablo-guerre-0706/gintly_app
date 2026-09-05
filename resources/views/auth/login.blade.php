@@ -25,10 +25,10 @@
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
+<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
   <!-- Contenedor Principal con animación de entrada -->
-  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
+  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-(1380px) h-[92vh] max-h-(860px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
     
     <!-- Columna Izquierda: Panel Visual y de Marca -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -36,7 +36,7 @@
       <img src="{{ asset('images/bussy.png') }}" alt="Fondo empresarial" class="absolute inset-0 w-full h-full object-cover object-center scale-105 opacity-90 transition-transform duration-700 hover:scale-100" />
 
       <div class="absolute inset-0 bg-[#0C4353]/30"></div>
-      <div class="absolute inset-0 bg-gradient-to-t from-[#0C4353]/95 via-[#0C4353]/40 to-transparent"></div>
+      <div class="absolute inset-0 bg-linear-to-t from-[#0C4353]/95 via-[#0C4353]/40 to-transparent"></div>
 
       <div class="relative z-10 flex items-center gap-3">
         <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide text-white shadow-sm">
@@ -61,7 +61,7 @@
     <!-- Columna Derecha: Formulario de Login -->
     <div class="flex flex-col justify-center w-full lg:w-[58%] h-full p-6 md:p-10 bg-white overflow-y-auto">
       
-      <div class="w-full max-w-[560px] mx-auto flex flex-col gap-6">
+      <div class="w-full max-w-(560px) mx-auto flex flex-col gap-6">
         
         <!-- Header: Volver y Logo -->
         <div class="flex flex-col gap-3 w-full">

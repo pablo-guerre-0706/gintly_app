@@ -152,7 +152,7 @@
             Omitir
           </a>
           <!-- Confirmar: Deshabilitado por defecto hasta que exista al menos 1 empleado -->
-          <a id="confirmBtn" href="{{ route('register.step', ['step' => 5]) }}" onclick="handleConfirm(event)" class="w-2/3 h-11 flex items-center justify-center bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm pointer-events-none transition-all duration-300">
+          <a id="confirmBtn" href="{{ route('register.step', ['step' => 6]) }}" onclick="handleConfirm(event)" class="w-2/3 h-11 flex items-center justify-center bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm pointer-events-none transition-all duration-300">
             Confirmar
           </a>
         </div>
@@ -224,8 +224,11 @@
           <label class="text-xs font-bold text-slate-900">Rol del usuario</label>
           <select id="emp_rol" required class="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-[#146F8A] focus:ring-2 focus:ring-[#146F8A]/20 transition-all cursor-pointer">
             <option value="" disabled selected>Selecciona un rol</option>
-            <option value="Rol de bodega">Rol de bodega</option>
+            <option value="Rol de bodega">Responsable de bodega</option>
+            <option value="Rol de compras">Responsable de compras</option>
             <option value="Cajero">Cajero</option>
+            <option value="Facturador">Facturador</option>
+            <option value="Despachador">Despachador</option>
             <option value="Administrador">Administrador</option>
           </select>
         </div>

@@ -39,7 +39,11 @@ Principios arquitectónicos clave:
 **Autorización:** spatie/laravel-permission (modo *teams*)
 **Entorno local:** Laragon (Apache + MySQL) o equivalente
 **Control de versiones:** Git + GitHub
-**Estándar de código:**: PSR-12
+**Estándar de código:** PSR-12
+**Frontend Base:** HTML5 · JavaScript ES6+ (Vanilla)
+**Estilos y UI:** Tailwind CSS v4.0 (vía CDN)
+**Interactividad:** Alpine.js v3.x (vía CDN script diferido)
+**Tipografía:** Plus Jakarta Sans (vía Google Fonts)
 
 ---
 
