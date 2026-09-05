@@ -157,8 +157,8 @@ Con los servicios de Laragon (Apache y MySQL) activos en Laragon, ingresa desde 
 
 **Usuario de demostración (generado por el seeder):**
 * **Rol:** Propietario
-* **Usuario:** `demo@gintly.test`
-* **Contraseña:** `password`
+* **Usuario:** `propietario@gintly.test`
+* **Contraseña:** `GintlyDev#2026`
 
 ---
 

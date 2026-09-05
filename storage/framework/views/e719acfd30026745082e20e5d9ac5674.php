@@ -16,7 +16,7 @@
         <!-- Logotipo -->
         <div class="flex justify-center mb-6">
             <div class="w-12 h-12 flex items-center justify-center">
-                <img src="{{ asset('images/gintlylogo.png') }}" alt="Gintly Logo" class="w-full h-full object-contain">
+                <img src="<?php echo e(asset('images/gintlylogo.png')); ?>" alt="Gintly Logo" class="w-full h-full object-contain">
             </div>
         </div>
 
@@ -28,7 +28,7 @@
 
         <!-- Formulario -->
         <form id="loginForm" class="space-y-4">
-            @csrf
+            <?php echo csrf_field(); ?>
             <div>
                 <label for="email" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Correo Electrónico</label>
                 <input type="email" id="email" name="email" required placeholder="propietario@gintly.test"
@@ -51,6 +51,7 @@
         </form>
     </div>
 
-    {{-- Inyección nativa con Vite para compilar el JavaScript que procesa la API --}}
+    
 </body>
 </html>
+<?php /**PATH C:\laragon\www\gintly_app\resources\views/auth/login.blade.php ENDPATH**/ ?>
