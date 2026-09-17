@@ -29,7 +29,6 @@ final class LoginRequest extends FormRequest
             'business_slug' => ['required', 'string', 'max:160'],
             'email'         => ['required', 'string', 'email:rfc', 'max:180'],
             'password'      => ['required', 'string'],
-            'remember'      => ['sometimes', 'boolean'],
         ];
     }
 
@@ -46,7 +45,6 @@ final class LoginRequest extends FormRequest
             'email.email'            => 'El correo electrónico no tiene un formato válido.',
             'email.max'              => 'El correo electrónico no puede exceder los 180 caracteres.',
             'password.required'      => 'La contraseña es obligatoria.',
-            'remember.boolean'       => 'El indicador de sesión persistente debe ser verdadero o falso.',
         ];
     }
 
@@ -59,7 +57,6 @@ final class LoginRequest extends FormRequest
             'business_slug' => 'negocio',
             'email'         => 'correo electrónico',
             'password'      => 'contraseña',
-            'remember'      => 'recordar sesión',
         ];
     }
 

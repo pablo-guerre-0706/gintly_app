@@ -177,12 +177,13 @@ Route::prefix('v1')->group(function (): void {
             ->parameters(['customers' => 'customer']);
 
         // Direcciones — sub-recurso del cliente con scopeBindings automático y nombres correctos
-        Route::apiResource('customers.addresses', CustomerAddressController::class)
-            ->parameters([
-                'customers' => 'customer',
-                'addresses' => 'address'
-            ])
-            ->scopeBindings();
+        Route::scopeBindings()->group(function () {
+            Route::apiResource('customers.addresses', CustomerAddressController::class)
+                ->parameters([
+                    'customers' => 'customer',
+                    'addresses' => 'address'
+                ]);
+        });
 
         // Explicit Model Binding (Garantiza que Laravel resuelva los strings como modelos)
         Route::model('customer', \App\Models\Customer::class);

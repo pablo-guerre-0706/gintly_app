@@ -187,12 +187,37 @@ final class AppServiceProvider extends ServiceProvider
     // Bloqueo por intentos fallidos mediante limitación de tasa.
     private function registerRateLimiters(): void
     {
+        RateLimiter::for('api', function (Request $request): Limit {
+            return Limit::perMinute(60)->by(
+                $request->user('web')?->getAuthIdentifier()
+                    ?? $request->ip()
+                    ?? 'unknown'
+            );
+        });
+
         RateLimiter::for('login', function (Request $request): Limit {
             $key = mb_strtolower(trim((string) $request->input('business_slug')))
                 .'|'.mb_strtolower(trim((string) $request->input('email')))
-                .'|'.$request->ip();
+                .'|'.($request->ip() ?? 'unknown');
 
-            return Limit::perMinute(5)->by($key);
+            $maxAttempts = max(
+                1,
+                (int) config('gintly.auth.max_attempts', 5)
+            );
+            $decaySeconds = max(
+                1,
+                (int) config('gintly.auth.decay_seconds', 60)
+            );
+
+            return Limit::perSecond($maxAttempts, $decaySeconds)
+                ->by($key)
+                ->response(static fn (Request $_request, array $headers) =>
+                    response()->json([
+                        'message' => 'Demasiados intentos de acceso. Reintente en '
+                            .($headers['Retry-After'] ?? 0)
+                            .' segundos.',
+                    ], 429, $headers)
+                );
         });
     }
 

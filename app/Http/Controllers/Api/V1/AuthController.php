@@ -23,7 +23,6 @@ final class AuthController extends Controller
             $request->validated('business_slug'),
             $request->validated('email'),
             $request->validated('password'),
-            $request->ip() ?? '0.0.0.0',
         );
 
         // Anti-fijación de sesión: puramente HTTP/sesión, corresponde al controlador.

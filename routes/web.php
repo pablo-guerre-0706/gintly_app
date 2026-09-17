@@ -3,7 +3,7 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\RegisterWizardController;
-use App\Http\Controllers\Api\V1\SocialController; 
+
 
 // ==========================================
 // RUTAS PÚBLICAS Y LANDING PAGE
@@ -20,17 +20,6 @@ Route::get('/landing', function () {
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
-
-// Procesar el inicio de sesión tradicional (Base de datos: Correo o Usuario)
-Route::post('/login', [SocialController::class, 'loginStore'])->name('login.store');
-
-// Rutas para Google
-Route::get('auth/google', [SocialController::class, 'redirectToGoogle'])->name('auth.google');
-Route::get('auth/google/callback', [SocialController::class, 'handleGoogleCallback']);
-
-// Rutas para Facebook
-Route::get('auth/facebook', [SocialController::class, 'redirectToFacebook'])->name('auth.facebook');
-Route::get('auth/facebook/callback', [SocialController::class, 'handleFacebookCallback']);
 
 // ==========================================
 // ASISTENTE DE REGISTRO MULTI-PASO (1-7)
