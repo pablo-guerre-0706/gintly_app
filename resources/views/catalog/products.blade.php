@@ -81,17 +81,17 @@
 
             <div class="flex flex-wrap gap-3">
                 <button type="button" data-create-category
-                    class="h-11 rounded-xl bg-neutral-100 px-5 text-xs font-medium text-neutral-600"
+                    class="h-11 rounded-xl bg-neutral-100 px-5 text-xs font-medium text-neutral-600">
                     <span class="mr-2 text-[20px] font-light">＋</span> Agregar categoría de producto
                 </button>
 
                 <button type="button" data-export
-                    class="h-11 rounded-xl border border-cyan-800 bg-white px-5 text-xs font-semibold text-cyan-900"
+                    class="h-11 rounded-xl border border-cyan-800 bg-white px-5 text-xs font-semibold text-cyan-900">
                     <span class="mr-2">⇩</span> Exportar para Excel
                 </button>
 
                 <button type="button" data-create-product
-                    class="h-11 rounded-xl bg-cyan-800 px-5 text-xs font-semibold text-white hover:bg-cyan-900"
+                    class="h-11 rounded-xl bg-cyan-800 px-5 text-xs font-semibold text-white hover:bg-cyan-900">
                     <span class="mr-2 text-[19px] font-light">＋</span> Agregar nuevo producto
                 </button>
             </div>
@@ -124,7 +124,7 @@
                             <td class="px-6"><x-status-badge :type="$product['is_active'] ? 'success' : 'danger'" :text="$product['is_active'] ? 'Activo' : 'Inactivo'" /></td>
                             <td class="px-6">
                                 <button type="button" data-edit-product="{{ $product['id'] }}"
-                                    class="h-9 rounded-md border border-cyan-800 px-3 text-xs font-medium text-cyan-900"
+                                    class="h-9 rounded-md border border-cyan-800 px-3 text-xs font-medium text-cyan-900">
                                     Editar
                                 </button>
                             </td>

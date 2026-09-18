@@ -1,22 +1,26 @@
-import $ from 'jquery';
 import { api, ApiError } from '@/core/api-client';
+import { escapeHtml } from '@/core/dom';
 import { withLoading, setButtonLoading } from '@/core/loading';
 import { notify } from '@/core/notifications';
 import { add, subtract, multiply, money, quantity, SCALE } from '@/core/money';
 
 let products = [], cart = new Map();
-const esc = value => $('<div>').text(value ?? '').html();
+let submitting = false;
+const esc = value => escapeHtml(value);
 const fmt = value => `C$ ${money(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 function renderProducts(list = products) {
-    $('#posProducts').html(list.map(p => `
+    const container = document.querySelector('#posProducts');
+    if (!container) return;
+
+    container.innerHTML = list.map(p => `
         <button type="button" data-product="${p.id}"
             class="min-h-36 rounded-xl border border-neutral-300 bg-white p-3 text-left transition hover:border-cyan-800/50 hover:shadow-sm">
             <div class="grid h-12 w-12 place-items-center rounded-full bg-[#F3F3F3] text-xl">📦</div>
             <p class="mt-3 truncate text-[10px] font-semibold text-[#282828]">${esc(p.name)}</p>
             <p class="mt-1 text-[8px] text-[#888]">${esc(p.sku)}</p>
             <p class="mt-2 text-[11px] font-bold text-[#222]">${fmt(p.sale_price)}</p>
-        </button>`).join(''));
+        </button>`).join('');
 }
 
 function totals() {
@@ -26,15 +30,20 @@ function totals() {
         subtotal = add(subtotal, line);
         if (product.is_taxable) taxable = add(taxable, line);
     });
-    const tax = multiply(taxable, $('#posRoot').data('tax-rate').toString(), SCALE.MONEY);
+    const taxRate = document.querySelector('#posRoot')?.dataset.taxRate ?? '0';
+    const tax = multiply(taxable, taxRate, SCALE.MONEY);
     return { subtotal: money(subtotal), tax, total: add(subtotal, tax) };
 }
 
 function renderCart() {
     const rows = [...cart.values()];
-    $('#posEmpty').toggle(!rows.length);
-    $('#posCart [data-cart-row]').remove();
-    rows.forEach(({ product: p, qty }) => $('#posCart').prepend(`
+    const empty = document.querySelector('#posEmpty');
+    const cartContainer = document.querySelector('#posCart');
+    if (!cartContainer) return;
+
+    if (empty) empty.hidden = rows.length > 0;
+    cartContainer.querySelectorAll('[data-cart-row]').forEach((row) => row.remove());
+    rows.forEach(({ product: p, qty }) => cartContainer.insertAdjacentHTML('afterbegin', `
         <div data-cart-row="${p.id}" class="flex items-center gap-2 rounded-lg border border-[#E4E4E4] p-2">
             <div class="min-w-0 flex-1"><p class="truncate text-[9px] font-semibold">${esc(p.name)}</p>
             <p class="text-[8px] text-[#777]">${fmt(p.sale_price)}</p></div>
@@ -44,18 +53,26 @@ function renderCart() {
             <button type="button" data-remove class="ml-1 text-[12px] text-red-500">×</button>
         </div>`));
     const t = totals();
-    $('#posSubtotal').text(fmt(t.subtotal)); $('#posTax').text(fmt(t.tax)); $('#posTotal').text(fmt(t.total));
-    $('#posItemCount').text(`${rows.length} artículos`);
+    const values = {
+        posSubtotal: fmt(t.subtotal),
+        posTax: fmt(t.tax),
+        posTotal: fmt(t.total),
+        posItemCount: `${rows.length} artículos`,
+    };
+    Object.entries(values).forEach(([id, value]) => {
+        const element = document.querySelector(`#${id}`);
+        if (element) element.textContent = value;
+    });
 }
 
 function payload() {
-    const t = totals(), root = $('#posRoot');
+    const t = totals();
     return {
-        branch_id: $('#posForm [name="branch_id"]').val(),
-        customer_id: $('#posForm [name="customer_id"]').val(),
+        branch_id: document.querySelector('#posForm [name="branch_id"]')?.value,
+        customer_id: document.querySelector('#posForm [name="customer_id"]')?.value,
         payment_type: 'contado',
         items: [...cart.values()].map(({ product, qty }) => ({ product_id: product.id, quantity: quantity(qty) })),
-        payments: [{ payment_method: $('#paymentMethod').val(), amount: t.total }],
+        payments: [{ payment_method: document.querySelector('#paymentMethod')?.value, amount: t.total }],
     };
 }
 
@@ -68,8 +85,11 @@ async function loadProducts() {
 }
 
 async function checkout(button) {
-    const endpoint = $('#posRoot').data('checkout-url');
+    if (submitting) return;
+
+    const endpoint = document.querySelector('#posRoot')?.dataset.checkoutUrl;
     if (!endpoint || !cart.size) return notify({ type: 'warning', message: !cart.size ? 'Agregue productos al ticket.' : 'Endpoint POS no configurado.' });
+    submitting = true;
     setButtonLoading(button, true, { label: 'Procesando...' });
     try {
         const response = await api.post(endpoint, payload());
@@ -78,30 +98,82 @@ async function checkout(button) {
     } catch (error) {
         if (error instanceof ApiError && ![401, 403].includes(error.status))
             notify({ type: error.status === 422 ? 'warning' : 'error', message: error.message });
-    } finally { setButtonLoading(button, false); }
+    } finally {
+        setButtonLoading(button, false);
+        submitting = false;
+    }
 }
 
 export default function init() {
-    if (!$('#posRoot').length) return;
+    const root = document.querySelector('#posRoot');
+    if (!root || root.dataset.initialized === 'true') return;
+
+    root.dataset.initialized = 'true';
     loadProducts().catch(error => console.error('[Gintly POS]', error));
 
-    $(document).on('click', '[data-product]', function () {
-        const p = products.find(x => String(x.id) === String($(this).data('product')));
-        if (!p) return;
-        const row = cart.get(p.id); cart.set(p.id, { product: p, qty: row ? add(row.qty, '1', SCALE.QUANTITY) : '1.000' }); renderCart();
-    }).on('click', '[data-cart-row] [data-qty]', function () {
-        const id = Number($(this).closest('[data-cart-row]').data('cart-row')), row = cart.get(id);
-        const qty = $(this).data('qty') > 0 ? add(row.qty, '1', SCALE.QUANTITY) : subtract(row.qty, '1', SCALE.QUANTITY);
-        money(qty) === '0.00' ? cart.delete(id) : cart.set(id, { ...row, qty }); renderCart();
-    }).on('click', '[data-remove]', function () {
-        cart.delete(Number($(this).closest('[data-cart-row]').data('cart-row'))); renderCart();
-    }).on('click', '[data-payment]', function () {
-        $('#paymentMethod').val($(this).data('payment'));
-        $('[data-payment]').attr('class', 'h-10 rounded-lg border border-[#DDD] bg-[#F8F8F8] text-[9px] text-[#555]');
-        $(this).attr('class', 'h-10 rounded-lg border border-[#72C98D] bg-[#DDF6E5] text-[9px] font-medium text-[#258446]');
-    }).on('input', '#posSearch', function () {
-        const q = this.value.trim().toLowerCase(); renderProducts(products.filter(p => `${p.name} ${p.sku}`.toLowerCase().includes(q)));
-    }).on('submit', '#posForm', function (e) {
-        e.preventDefault(); checkout($(this).find('[data-submit]').get(0));
+    root.addEventListener('click', (event) => {
+        const productButton = event.target.closest('[data-product]');
+        const quantityButton = event.target.closest('[data-cart-row] [data-qty]');
+        const removeButton = event.target.closest('[data-remove]');
+        const paymentButton = event.target.closest('[data-payment]');
+
+        if (productButton && root.contains(productButton)) {
+            const product = products.find(item => String(item.id) === productButton.dataset.product);
+            if (!product) return;
+
+            const row = cart.get(product.id);
+            cart.set(product.id, {
+                product,
+                qty: row ? add(row.qty, '1', SCALE.QUANTITY) : '1.000',
+            });
+            renderCart();
+            return;
+        }
+
+        if (quantityButton && root.contains(quantityButton)) {
+            const cartRow = quantityButton.closest('[data-cart-row]');
+            const id = Number(cartRow?.dataset.cartRow);
+            const row = cart.get(id);
+            if (!row) return;
+
+            const qty = Number(quantityButton.dataset.qty) > 0
+                ? add(row.qty, '1', SCALE.QUANTITY)
+                : subtract(row.qty, '1', SCALE.QUANTITY);
+            if (money(qty) === '0.00') cart.delete(id);
+            else cart.set(id, { ...row, qty });
+            renderCart();
+            return;
+        }
+
+        if (removeButton && root.contains(removeButton)) {
+            const id = Number(removeButton.closest('[data-cart-row]')?.dataset.cartRow);
+            cart.delete(id);
+            renderCart();
+            return;
+        }
+
+        if (paymentButton && root.contains(paymentButton)) {
+            const paymentMethod = root.querySelector('#paymentMethod');
+            if (paymentMethod) paymentMethod.value = paymentButton.dataset.payment;
+
+            root.querySelectorAll('[data-payment]').forEach((button) => {
+                button.className = 'h-10 rounded-lg border border-[#DDD] bg-[#F8F8F8] text-[9px] text-[#555]';
+            });
+            paymentButton.className = 'h-10 rounded-lg border border-[#72C98D] bg-[#DDF6E5] text-[9px] font-medium text-[#258446]';
+        }
+    });
+
+    root.addEventListener('input', (event) => {
+        if (event.target.matches('#posSearch')) {
+            const query = event.target.value.trim().toLowerCase();
+            renderProducts(products.filter(product =>
+                `${product.name} ${product.sku}`.toLowerCase().includes(query),
+            ));
+        }
+    });
+
+    root.querySelector('#posForm')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void checkout(event.currentTarget.querySelector('[data-submit]'));
     });
 }

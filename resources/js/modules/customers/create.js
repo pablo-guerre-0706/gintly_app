@@ -1,65 +1,94 @@
-$(function () {
-    const $form = $('#formStoreCustomer');
-    if (!$form.length) return;
+import { api, ApiError } from '@/core/api-client';
+import { setButtonLoading } from '@/core/loading';
+import { notify } from '@/core/notifications';
 
-    // Lógica liviana de cálculo: Formatea el límite de crédito a 2 decimales reales en el desenfoque
-    $form.find('input[name="credit_limit"]').on('blur', function () {
-        let val = parseFloat($(this).val());
-        if (isNaN(val) || val < 0) val = 0;
-        $(this).val(val.toFixed(2));
+function renderValidationErrors(form, errors) {
+    Object.entries(errors).forEach(([field, messages]) => {
+        const input = form.elements.namedItem(field);
+
+        if (!(input instanceof HTMLElement)) return;
+
+        input.classList.add('border-red-500');
+        const errorElement = input.closest('.form-group')?.querySelector('.error-field');
+
+        if (errorElement) {
+            errorElement.textContent = messages[0] ?? '';
+            errorElement.classList.remove('hidden');
+        }
     });
+}
 
-    // Interceptar envío del formulario
-    $form.on('submit', function (e) {
-        e.preventDefault();
-        clearValidationErrors();
+function clearValidationErrors(form) {
+    form.querySelectorAll('input, select, textarea').forEach((input) => {
+        input.classList.remove('border-red-500');
+    });
+    form.querySelectorAll('.error-field').forEach((errorElement) => {
+        errorElement.classList.add('hidden');
+        errorElement.textContent = '';
+    });
+}
 
-        // Conversión limpia de FormData a Objeto JSON para la API
-        let data = {};
-        $form.serializeArray().forEach(item => {
-            data[item.name] = item.value;
-        });
+function payload(form) {
+    const data = Object.fromEntries(new FormData(form).entries());
 
-        // Limpieza de documento en blanco de acuerdo a la restricción parcial del backend
-        if (!data.document_number || $.trim(data.document_number) === '') {
-            data.document_number = null;
+    if (!data.document_number?.trim()) {
+        data.document_number = null;
+    }
+
+    return data;
+}
+
+async function submitCustomer(form) {
+    if (form.dataset.submitting === 'true') return;
+
+    const endpoint = form.dataset.url;
+    const submit = form.querySelector('button[type="submit"]');
+
+    if (!endpoint) {
+        notify({ type: 'error', message: 'Endpoint de clientes no configurado.' });
+        return;
+    }
+
+    form.dataset.submitting = 'true';
+    clearValidationErrors(form);
+    setButtonLoading(submit, true, { label: 'Guardando...' });
+
+    try {
+        await api.post(endpoint, payload(form));
+
+        const destination = form.querySelector('a[href]')?.href;
+        if (destination) window.location.assign(destination);
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 422) {
+            renderValidationErrors(form, error.errors);
+            notify({ type: 'warning', message: error.message });
+            return;
         }
 
-        $.ajax({
-            url: $form.data('url'),
-            method: 'POST',
-            dataType: 'json',
-            contentType: 'application/json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-                'Accept': 'application/json'
-            },
-            data: JSON.stringify(data),
-            success: function () {
-                window.location.href = $form.find('a').attr('href'); // Redirección al index
-            },
-            error: function (xhr) {
-                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    renderValidationErrors(xhr.responseJSON.errors);
-                } else {
-                    alert('Ocurrió un error inesperado al procesar la solicitud.');
-                }
-            }
-        });
+        if (!(error instanceof ApiError)) {
+            notify({ type: 'error', message: 'Ocurrió un error inesperado al procesar la solicitud.' });
+        }
+    } finally {
+        setButtonLoading(submit, false);
+        form.dataset.submitting = 'false';
+    }
+}
+
+function init() {
+    const form = document.querySelector('#formStoreCustomer');
+    if (!form || form.dataset.initialized === 'true') return;
+
+    form.dataset.initialized = 'true';
+    form.querySelector('input[name="credit_limit"]')?.addEventListener('blur', (event) => {
+        let value = Number.parseFloat(event.currentTarget.value);
+        if (!Number.isFinite(value) || value < 0) value = 0;
+        event.currentTarget.value = value.toFixed(2);
     });
 
-    function renderValidationErrors(errors) {
-        Object.keys(errors).forEach(field => {
-            const $input = $form.find(`[name="${field}"]`);
-            if ($input.length) {
-                $input.addClass('border-red-500');
-                $input.closest('.form-group').find('.error-field').text(errors[field][0]).removeClass('hidden');
-            }
-        });
-    }
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void submitCustomer(form);
+    });
+}
 
-    function clearValidationErrors() {
-        $form.find('input, select, textarea').removeClass('border-red-500');
-        $form.find('.error-field').addClass('hidden').text('');
-    }
-});
+init();

@@ -1,15 +1,15 @@
-import $ from 'jquery';
 import { api, ApiError } from '@/core/api-client';
+import { escapeHtml } from '@/core/dom';
 import { withLoading } from '@/core/loading';
 import { notify } from '@/core/notifications';
 import { money, subtract } from '@/core/money';
 
 let debounceTimer;
-const esc = value => $('<div>').text(value ?? '—').html();
+const esc = value => escapeHtml(value, '—');
 const fmt = value => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
-function customerFrom($card) {
-    try { return JSON.parse($card.attr('data-customer')); }
+function customerFrom(card) {
+    try { return JSON.parse(card.dataset.customer); }
     catch { return null; }
 }
 
@@ -30,11 +30,13 @@ function cardTemplate(c) {
 }
 
 function renderCustomers(customers = []) {
-    $('#customersList').html(
-        customers.length
+    const list = document.querySelector('#customersList');
+
+    if (list) {
+        list.innerHTML = customers.length
             ? customers.map(cardTemplate).join('')
-            : '<p class="py-16 text-center text-[10px] text-[#888]">No se encontraron clientes.</p>',
-    );
+            : '<p class="py-16 text-center text-[10px] text-[#888]">No se encontraron clientes.</p>';
+    }
 }
 
 function renderDetail(customer) {
@@ -43,7 +45,11 @@ function renderDetail(customer) {
         String(customer.balance ?? '0'),
     );
 
-    $('#customerDetail').html(`
+    const detail = document.querySelector('#customerDetail');
+
+    if (!detail) return;
+
+    detail.innerHTML = `
         <div class="w-full max-w-xs text-left">
             <div class="border-b border-[#E8E8E8] pb-5">
                 <p class="text-[17px] font-bold text-[#202020]">${esc(customer.name)}</p>
@@ -60,11 +66,16 @@ function renderDetail(customer) {
                 <p class="mt-1 text-[18px] font-bold text-[#087F98]">${fmt(available)}</p>
             </div>
             <p class="mt-5 text-[9px] leading-5 text-[#777]">${esc(customer.address ?? 'Sin dirección registrada')}</p>
-        </div>`);
+        </div>`;
 }
 
 async function searchCustomers(search) {
-    const endpoint = $('#customersRoot').data('customers-url');
+    const endpoint = document.querySelector('#customersRoot')?.dataset.customersUrl;
+
+    if (!endpoint) {
+        notify({ type: 'error', message: 'Endpoint de clientes no configurado.' });
+        return;
+    }
 
     try {
         const response = await withLoading(
@@ -79,29 +90,52 @@ async function searchCustomers(search) {
 }
 
 export default function init() {
-    const $root = $('#customersRoot');
-    if (!$root.length) return;
+    const root = document.querySelector('#customersRoot');
+    if (!root || root.dataset.initialized === 'true') return;
 
-    $root
-        .on('click keydown', '[data-customer-card]', function (event) {
-            if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
-            event.preventDefault();
-            $('[data-customer-card]').removeClass('border-[#087F98] bg-[#F8FCFD] ring-1 ring-[#087F98]/20');
-            $(this).addClass('border-[#087F98] bg-[#F8FCFD] ring-1 ring-[#087F98]/20');
-            const customer = customerFrom($(this));
-            if (customer) renderDetail(customer);
-        })
-        .on('click', '[data-profile-filter]', function () {
-            $('[data-profile-filter]').removeClass('border-[#087F98] bg-[#087F98] text-white');
-            $(this).addClass('border-[#087F98] bg-[#087F98] text-white');
-            const type = $(this).data('profile-filter');
-            $('[data-customer-card]').each(function () {
-                $(this).toggle(type === 'all' || $(this).data('type') === type);
-            });
-        })
-        .on('input', '#customerSearch', function () {
-            clearTimeout(debounceTimer);
-            const query = this.value.trim();
-            debounceTimer = setTimeout(() => searchCustomers(query), 350);
+    root.dataset.initialized = 'true';
+
+    const selectCustomer = (event) => {
+        const card = event.target.closest('[data-customer-card]');
+
+        if (!card || !root.contains(card)) return;
+        if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
+
+        event.preventDefault();
+        root.querySelectorAll('[data-customer-card]').forEach((element) => {
+            element.classList.remove('border-[#087F98]', 'bg-[#F8FCFD]', 'ring-1', 'ring-[#087F98]/20');
         });
+        card.classList.add('border-[#087F98]', 'bg-[#F8FCFD]', 'ring-1', 'ring-[#087F98]/20');
+
+        const customer = customerFrom(card);
+        if (customer) renderDetail(customer);
+    };
+
+    root.addEventListener('click', (event) => {
+        const filter = event.target.closest('[data-profile-filter]');
+
+        if (filter && root.contains(filter)) {
+            root.querySelectorAll('[data-profile-filter]').forEach((button) => {
+                button.classList.remove('border-[#087F98]', 'bg-[#087F98]', 'text-white');
+            });
+            filter.classList.add('border-[#087F98]', 'bg-[#087F98]', 'text-white');
+
+            const type = filter.dataset.profileFilter;
+            root.querySelectorAll('[data-customer-card]').forEach((card) => {
+                card.hidden = type !== 'all' && card.dataset.type !== type;
+            });
+            return;
+        }
+
+        selectCustomer(event);
+    });
+
+    root.addEventListener('keydown', selectCustomer);
+    root.addEventListener('input', (event) => {
+        if (event.target.matches('#customerSearch')) {
+            clearTimeout(debounceTimer);
+            const query = event.target.value.trim();
+            debounceTimer = setTimeout(() => searchCustomers(query), 350);
+        }
+    });
 }

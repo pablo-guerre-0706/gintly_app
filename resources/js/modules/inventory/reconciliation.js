@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import { api, ApiError } from '@/core/api-client';
 import { withLoading, setButtonLoading } from '@/core/loading';
 import { notify } from '@/core/notifications';
@@ -11,35 +10,39 @@ const fmtMoney = value =>
     `C$ ${money(cost(String(value ?? '0'))).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 function refreshMath() {
-    $('[data-reconciliation-row]').each(function () {
-        const $row = $(this);
-        const system = quantity(String($row.data('system')));
-        const counted = quantity(String($row.data('counted')));
+    document.querySelectorAll('[data-reconciliation-row]').forEach((row) => {
+        const system = quantity(String(row.dataset.system));
+        const counted = quantity(String(row.dataset.counted));
         const difference = subtract(counted, system, SCALE.QUANTITY);
 
-        $row.find('[data-difference]')
-            .text(difference)
-            .toggleClass('bg-red-100 text-red-700', difference.startsWith('-'))
-            .toggleClass('bg-emerald-100 text-emerald-700', !difference.startsWith('-'));
+        const differenceElement = row.querySelector('[data-difference]');
+        if (differenceElement) {
+            differenceElement.textContent = difference;
+            differenceElement.classList.toggle('bg-red-100', difference.startsWith('-'));
+            differenceElement.classList.toggle('text-red-700', difference.startsWith('-'));
+            differenceElement.classList.toggle('bg-emerald-100', !difference.startsWith('-'));
+            differenceElement.classList.toggle('text-emerald-700', !difference.startsWith('-'));
+        }
 
-        $row.find('[data-cost-display]').text(fmtMoney($row.data('cost')));
+        const costDisplay = row.querySelector('[data-cost-display]');
+        if (costDisplay) costDisplay.textContent = fmtMoney(row.dataset.cost);
     });
 }
 
 function applyFilters() {
-    const query = $('#inventorySearch').val().trim().toLowerCase();
+    const query = document.querySelector('#inventorySearch')?.value.trim().toLowerCase() ?? '';
 
-    $('[data-reconciliation-row]').each(function () {
-        const $row = $(this);
-        const matchesText = !$row.data('name') || String($row.data('name')).includes(query);
-        const matchesLevel = activeFilter === 'all' || $row.data('level') === activeFilter;
+    document.querySelectorAll('[data-reconciliation-row]').forEach((row) => {
+        const matchesText = !row.dataset.name || row.dataset.name.includes(query);
+        const matchesLevel = activeFilter === 'all' || row.dataset.level === activeFilter;
 
-        $row.toggle(matchesText && matchesLevel);
+        row.hidden = !(matchesText && matchesLevel);
     });
 }
 
 async function applyPhysicalCount(id, button) {
     setButtonLoading(button, true, { label: 'Ajustando...' });
+    let applied = false;
 
     try {
         const response = await withLoading(
@@ -48,7 +51,7 @@ async function applyPhysicalCount(id, button) {
         );
 
         notify({ type: 'success', message: 'Conteo aplicado y stock conciliado correctamente.' });
-        $(button).prop('disabled', true).text('Ajustado');
+        applied = true;
         document.dispatchEvent(new CustomEvent('gintly:physical-count-applied', { detail: response?.data ?? response }));
     } catch (error) {
         if (!(error instanceof ApiError)) throw error;
@@ -67,11 +70,15 @@ async function applyPhysicalCount(id, button) {
         if (![401, 403].includes(error.status)) throw error;
     } finally {
         setButtonLoading(button, false);
+        if (applied && button) {
+            button.disabled = true;
+            button.textContent = 'Ajustado';
+        }
     }
 }
 
 async function exportInventory() {
-    const endpoint = $('#inventoryReconciliationRoot').data('export-url');
+    const endpoint = document.querySelector('#inventoryReconciliationRoot')?.dataset.exportUrl;
 
     if (!endpoint) {
         notify({ type: 'warning', message: 'Endpoint de exportación no configurado.' });
@@ -88,24 +95,40 @@ async function exportInventory() {
 }
 
 export default function init() {
-    const $root = $('#inventoryReconciliationRoot');
-    if (!$root.length) return;
+    const root = document.querySelector('#inventoryReconciliationRoot');
+    if (!root || root.dataset.initialized === 'true') return;
 
+    root.dataset.initialized = 'true';
     refreshMath();
 
-    $root
-        .on('input', '#inventorySearch', function () {
+    root.addEventListener('input', (event) => {
+        if (event.target.matches('#inventorySearch')) {
             clearTimeout(timer);
             timer = setTimeout(applyFilters, 300);
-        })
-        .on('click', '[data-stock-filter]', function () {
-            activeFilter = String($(this).data('stock-filter'));
-            $('[data-stock-filter]').removeClass('border-[#087F98] bg-[#087F98] text-white');
-            $(this).addClass('border-[#087F98] bg-[#087F98] text-white');
+        }
+    });
+
+    root.addEventListener('click', (event) => {
+        const filter = event.target.closest('[data-stock-filter]');
+        const apply = event.target.closest('[data-apply-count]');
+
+        if (filter && root.contains(filter)) {
+            activeFilter = filter.dataset.stockFilter;
+            root.querySelectorAll('[data-stock-filter]').forEach((button) => {
+                button.classList.remove('border-[#087F98]', 'bg-[#087F98]', 'text-white');
+            });
+            filter.classList.add('border-[#087F98]', 'bg-[#087F98]', 'text-white');
             applyFilters();
-        })
-        .on('click', '[data-apply-count]', function () {
-            applyPhysicalCount($(this).data('apply-count'), this);
-        })
-        .on('click', '[data-export]', exportInventory);
+            return;
+        }
+
+        if (apply && root.contains(apply)) {
+            void applyPhysicalCount(apply.dataset.applyCount, apply);
+            return;
+        }
+
+        if (event.target.closest('[data-export]')) {
+            void exportInventory();
+        }
+    });
 }

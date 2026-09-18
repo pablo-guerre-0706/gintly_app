@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'ERP Multitenant') - Sistema</title>
 
-    <!-- Metadatos de Infraestructura para el Cliente HTTP (jQuery/AJAX) -->
+    <!-- Metadatos de infraestructura para el cliente HTTP Fetch -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="api-base-url" content="{{ url('/api/v1') }}">
     <meta name="login-url" content="{{ url('/login') }}">

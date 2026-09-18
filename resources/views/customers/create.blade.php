@@ -75,7 +75,7 @@
 
             <!-- Botones -->
             <div class="flex justify-end gap-3 pt-4 border-t border-neutral-200">
-                <a href="{{ route('customers.view.index') }}" class="flex h-9 items-center px-4 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition">
+                <a href="{{ route('customers.index') }}" class="flex h-9 items-center px-4 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition">
                     Cancelar
                 </a>
                 <button type="submit" class="h-9 px-5 rounded-lg bg-cyan-800 text-xs font-semibold text-white hover:bg-cyan-900 transition">
@@ -86,7 +86,6 @@
     </div>
 </main>
 @endsection
-@section('scripts')
+@push('scripts')
     @vite(['resources/js/modules/customers/create.js'])
-@endsection
-
+@endpush

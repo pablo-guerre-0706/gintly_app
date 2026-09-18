@@ -1,5 +1,5 @@
-import $ from 'jquery';
 import { api, ApiError } from '@/core/api-client';
+import { escapeHtml } from '@/core/dom';
 import { withLoading } from '@/core/loading';
 import { notify } from '@/core/notifications';
 import { money, cost } from '@/core/money';
@@ -7,8 +7,8 @@ import { money, cost } from '@/core/money';
 let debounceTimer;
 let activeCategory = '';
 
-const $root = () => $('#catalogProductsRoot');
-const esc = value => $('<div>').text(value ?? '—').html();
+const root = () => document.querySelector('#catalogProductsRoot');
+const esc = value => escapeHtml(value, '—');
 const fmtMoney = value => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 const fmtCost = value => fmtMoney(cost(String(value ?? '0')));
 
@@ -22,7 +22,7 @@ function row(product) {
     const category = product.category?.name ?? product.category_name ?? '—';
     const brand = product.brand?.name ?? product.brand_name ?? '—';
     const unit = product.unit?.abbreviation ?? product.abbreviation ?? '—';
-    const tax = product.is_taxable ? $root().data('tax-label') : 'Exento';
+    const tax = product.is_taxable ? root()?.dataset.taxLabel : 'Exento';
 
     return `<tr class="h-20 border-b border-neutral-200 text-xs text-neutral-600" data-product-row="${product.id}">
         <td class="px-6 text-[14px] font-bold text-[#171717]">${esc(product.sku)}</td>
@@ -39,7 +39,7 @@ function row(product) {
 
 function params() {
     return {
-        search: $('#productSearch').val().trim() || undefined,
+        search: document.querySelector('#productSearch')?.value.trim() || undefined,
         category_id: activeCategory || undefined,
         is_active: true,
         per_page: 25,
@@ -54,11 +54,18 @@ async function loadProducts() {
         );
 
         const products = response?.data ?? [];
-        $('#productsTableBody').html(products.length
-            ? products.map(row).join('')
-            : '<tr><td colspan="11" class="py-16 text-center text-[11px] text-[#888]">No se encontraron productos.</td></tr>');
+        const tableBody = document.querySelector('#productsTableBody');
+        const count = document.querySelector('#productsCount');
 
-        $('#productsCount').text(`${response?.meta?.total ?? products.length} productos`);
+        if (tableBody) {
+            tableBody.innerHTML = products.length
+                ? products.map(row).join('')
+                : '<tr><td colspan="11" class="py-16 text-center text-[11px] text-[#888]">No se encontraron productos.</td></tr>';
+        }
+
+        if (count) {
+            count.textContent = `${response?.meta?.total ?? products.length} productos`;
+        }
     } catch (error) {
         if (error instanceof ApiError && [401, 403].includes(error.status)) return;
         notify({ type: 'error', message: 'No fue posible consultar el catálogo.' });
@@ -66,7 +73,7 @@ async function loadProducts() {
 }
 
 async function exportProducts() {
-    const endpoint = $root().data('export-url');
+    const endpoint = root()?.dataset.exportUrl;
 
     if (!endpoint) {
         notify({ type: 'warning', message: 'Endpoint de exportación no configurado.' });
@@ -83,23 +90,41 @@ async function exportProducts() {
 }
 
 export default function init() {
-    if (!$root().length) return;
+    const container = root();
 
-    $root()
-        .on('input', '#productSearch', function () {
+    if (!container || container.dataset.initialized === 'true') return;
+
+    container.dataset.initialized = 'true';
+    container.addEventListener('input', (event) => {
+        if (event.target.matches('#productSearch')) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(loadProducts, 350);
-        })
-        .on('click', '[data-category-filter]', function () {
-            activeCategory = String($(this).data('category-filter') ?? '');
-            $('[data-category-filter]').removeClass('border-[#087F98] bg-[#087F98] text-white');
-            $(this).addClass('border-[#087F98] bg-[#087F98] text-white');
-            loadProducts();
-        })
-        .on('click', '[data-edit-product]', function () {
+        }
+    });
+
+    container.addEventListener('click', (event) => {
+        const category = event.target.closest('[data-category-filter]');
+        const edit = event.target.closest('[data-edit-product]');
+
+        if (category && container.contains(category)) {
+            activeCategory = category.dataset.categoryFilter ?? '';
+            container.querySelectorAll('[data-category-filter]').forEach((button) => {
+                button.classList.remove('border-[#087F98]', 'bg-[#087F98]', 'text-white');
+            });
+            category.classList.add('border-[#087F98]', 'bg-[#087F98]', 'text-white');
+            void loadProducts();
+            return;
+        }
+
+        if (edit && container.contains(edit)) {
             document.dispatchEvent(new CustomEvent('gintly:product-edit', {
-                detail: { id: Number($(this).data('edit-product')) },
+                detail: { id: Number(edit.dataset.editProduct) },
             }));
-        })
-        .on('click', '[data-export]', exportProducts);
+            return;
+        }
+
+        if (event.target.closest('[data-export]')) {
+            void exportProducts();
+        }
+    });
 }
