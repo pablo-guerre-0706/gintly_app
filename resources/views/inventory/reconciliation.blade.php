@@ -1,7 +1,7 @@
 @extends('layouts.panel')
 
 @section('title', 'Conciliación y stocks')
-@section('page-script', 'modules/inventory/reconciliation')
+@section('page-script', 'inventory/reconciliation')
 
 @section('content')
 @php

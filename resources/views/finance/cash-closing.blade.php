@@ -1,7 +1,7 @@
 @extends('layouts.panel')
 
 @section('title', 'Cierre de caja')
-@section('page-script', 'modules/finance/cash-closing')
+@section('page-script', 'finance/cash-closing')
 
 @section('content')
 @php

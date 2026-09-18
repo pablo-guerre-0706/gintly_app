@@ -1,7 +1,7 @@
 @extends('layouts.panel')
 
 @section('title', 'Catálogo de productos y datos maestros')
-@section('page-script', 'modules/catalog/products')
+@section('page-script', 'catalog/products')
 
 @section('content')
 @php

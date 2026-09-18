@@ -1,7 +1,7 @@
 @extends('layouts.panel')
 
 @section('title', 'Clientes y Fidelidad')
-@section('page-script', 'modules/customers/index')
+@section('page-script', 'customers/index')
 
 @section('content')
 

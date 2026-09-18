@@ -1,7 +1,7 @@
 @extends('layouts.panel')
 
 @section('title', 'Puntos de venta')
-@section('page-script', 'modules/pos/index')
+@section('page-script', 'pos/index')
 
 @section('content')
 @php

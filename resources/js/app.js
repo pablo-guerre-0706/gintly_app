@@ -1,7 +1,13 @@
 import { initNotifications } from './core/notifications';
 import { initLoading } from './core/loading';
 
-const modules = import.meta.glob('./modules/*/.js');
+const modules = import.meta.glob([
+    './modules/catalog/products.js',
+    './modules/customers/index.js',
+    './modules/finance/cash-closing.js',
+    './modules/inventory/reconciliation.js',
+    './modules/pos/index.js',
+]);
 
 initNotifications();
 initLoading();
@@ -17,7 +23,7 @@ async function bootPage() {
     const loader = modules[key];
 
     if (!loader) {
-        console.error(`[Gintly] Módulo JS no encontrado: ${key}`);
+        console.warn(`[Gintly] Página sin módulo JS registrado: ${page}`);
         return;
     }
 
@@ -41,4 +47,3 @@ if (document.readyState === 'loading') {
 } else {
     bootPage();
 }
-
