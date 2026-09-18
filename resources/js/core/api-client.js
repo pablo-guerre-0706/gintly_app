@@ -1,7 +1,5 @@
-import $ from 'jquery';
-
 const meta = (name) =>
-    document.querySelector(meta[name="${name}"])?.content?.trim() || null;
+    document.querySelector(`meta[name="${name}"]`)?.content?.trim() || null;
 
 const kindFromStatus = (status) => {
     if (status === 0) return 'network';
@@ -28,7 +26,7 @@ const defaultMessage = (status) => ({
 }[status] ?? 'No fue posible completar la solicitud.');
 
 export class ApiError extends Error {
-    constructor({ status, code, message, errors, payload }) {
+    constructor({ status, code = null, message, errors = {}, payload = null }) {
         super(message);
 
         this.name = 'ApiError';
@@ -60,41 +58,175 @@ function apiUrl(path) {
     return new URL(
         path.replace(/^\/+/, ''),
         normalizedBase,
-    ).toString();
+    );
 }
 
-function responsePayload(xhr) {
-    if (xhr.responseJSON && typeof xhr.responseJSON === 'object') {
-        return xhr.responseJSON;
+function csrfUrl() {
+    return new URL('/sanctum/csrf-cookie', window.location.origin);
+}
+
+function cookie(name) {
+    const prefix = `${encodeURIComponent(name)}=`;
+    const value = document.cookie
+        .split('; ')
+        .find((entry) => entry.startsWith(prefix))
+        ?.slice(prefix.length);
+
+    if (!value) {
+        return null;
     }
 
     try {
-        return JSON.parse(xhr.responseText || '{}');
+        return decodeURIComponent(value);
     } catch {
-        return {};
+        return value;
     }
 }
 
-function normalizeError(xhr) {
-    const payload = responsePayload(xhr);
+function appendQuery(url, query) {
+    Object.entries(query ?? {}).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === '') {
+            return;
+        }
+
+        if (Array.isArray(value)) {
+            value.forEach((item) => url.searchParams.append(key, String(item)));
+            return;
+        }
+
+        url.searchParams.set(key, String(value));
+    });
+}
+
+async function responsePayload(response) {
+    if (response.status === 204 || response.status === 205) {
+        return null;
+    }
+
+    const text = await response.text();
+
+    if (!text) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        return text;
+    }
+}
+
+function normalizeResponseError(response, payload) {
+    const data = payload && typeof payload === 'object'
+        ? payload
+        : {};
 
     return new ApiError({
-        status: xhr.status ?? 0,
-        code:
-            payload.code ??
-            payload.error?.code ??
-            null,
-        message:
-            payload.message ??
-            defaultMessage(xhr.status ?? 0),
-        errors:
-            payload.errors ??
-            {},
+        status: response.status,
+        code: data.code ?? data.error?.code ?? null,
+        message: data.message ?? defaultMessage(response.status),
+        errors: data.errors ?? {},
         payload,
     });
 }
 
-export function request(
+function networkError(error) {
+    const timedOut = error?.name === 'AbortError';
+
+    return new ApiError({
+        status: 0,
+        message: timedOut
+            ? 'La solicitud tardó demasiado tiempo. Intente nuevamente.'
+            : defaultMessage(0),
+        payload: null,
+    });
+}
+
+function dispatchError(error) {
+    if (error.kind === 'server') {
+        console.error('[Gintly API]', error);
+    }
+
+    document.dispatchEvent(
+        new CustomEvent('gintly:http-error', {
+            detail: error,
+        }),
+    );
+}
+
+async function fetchJson(
+    url,
+    {
+        method = 'GET',
+        data = null,
+        headers = {},
+        timeout = 30000,
+    } = {},
+) {
+    const verb = method.toUpperCase();
+    const hasBody = !['GET', 'HEAD'].includes(verb) && data !== null;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeout);
+    const requestHeaders = new Headers({
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...headers,
+    });
+    const xsrfToken = cookie('XSRF-TOKEN') ?? meta('csrf-token');
+
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(verb) && xsrfToken) {
+        requestHeaders.set('X-XSRF-TOKEN', xsrfToken);
+    }
+
+    let body;
+
+    if (hasBody && data instanceof FormData) {
+        body = data;
+    } else if (hasBody) {
+        requestHeaders.set('Content-Type', 'application/json');
+        body = JSON.stringify(data);
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: verb,
+            headers: requestHeaders,
+            body,
+            credentials: 'same-origin',
+            signal: controller.signal,
+        });
+        const payload = await responsePayload(response);
+
+        if (!response.ok) {
+            throw normalizeResponseError(response, payload);
+        }
+
+        return payload;
+    } catch (error) {
+        if (error instanceof ApiError) {
+            throw error;
+        }
+
+        throw networkError(error);
+    } finally {
+        window.clearTimeout(timer);
+    }
+}
+
+export async function initializeCsrf({ timeout = 30000 } = {}) {
+    try {
+        return await fetchJson(csrfUrl(), { timeout });
+    } catch (error) {
+        const normalized = error instanceof ApiError
+            ? error
+            : networkError(error);
+
+        dispatchError(normalized);
+        throw normalized;
+    }
+}
+
+export async function request(
     path,
     {
         method = 'GET',
@@ -105,73 +237,35 @@ export function request(
     } = {},
 ) {
     const verb = method.toUpperCase();
-    const hasBody = !['GET', 'HEAD'].includes(verb);
-    const csrf = meta('csrf-token');
+    const url = apiUrl(path);
 
-    let ajaxData = data;
-    let processData = true;
-    let contentType;
-
-    if (hasBody && data instanceof FormData) {
-        processData = false;
-        contentType = false;
-    } else if (hasBody && data !== null) {
-        ajaxData = JSON.stringify(data);
-        processData = false;
-        contentType = 'application/json; charset=UTF-8';
+    if (['GET', 'HEAD'].includes(verb)) {
+        appendQuery(url, data);
     }
 
-    return new Promise((resolve, reject) => {
-        $.ajax({
-            url: apiUrl(path),
+    try {
+        return await fetchJson(url, {
             method: verb,
-            data: ajaxData ?? undefined,
-            processData,
-            contentType,
+            data: ['GET', 'HEAD'].includes(verb) ? null : data,
+            headers,
             timeout,
+        });
+    } catch (error) {
+        const normalized = error instanceof ApiError
+            ? error
+            : networkError(error);
 
-            xhrFields: {
-                withCredentials: true,
-            },
+        if (normalized.status === 401 && redirectOn401) {
+            const loginUrl = meta('login-url');
 
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
+            if (loginUrl) {
+                window.location.assign(loginUrl);
+            }
+        }
 
-                ...(csrf && hasBody
-                    ? { 'X-CSRF-TOKEN': csrf }
-                    : {}),
-
-                ...headers,
-            },
-        })
-            .done((payload) => {
-                resolve(payload ?? null);
-            })
-            .fail((xhr) => {
-                const error = normalizeError(xhr);
-
-                if (error.status === 401 && redirectOn401) {
-                    const loginUrl = meta('login-url');
-
-                    if (loginUrl) {
-                        window.location.assign(loginUrl);
-                    }
-                }
-
-                if (error.kind === 'server') {
-                    console.error('[Gintly API]', error);
-                }
-
-                document.dispatchEvent(
-                    new CustomEvent('gintly:http-error', {
-                        detail: error,
-                    }),
-                );
-
-                reject(error);
-            });
-    });
+        dispatchError(normalized);
+        throw normalized;
+    }
 }
 
 export const api = Object.freeze({

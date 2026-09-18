@@ -1,60 +1,170 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('loginForm');
-    const feedback = document.getElementById('loginFeedback');
-    const submitBtn = document.getElementById('submitBtn');
+import { api, ApiError, initializeCsrf } from '@/core/api-client';
+import { setButtonLoading } from '@/core/loading';
 
-    if (!loginForm) return;
+const fields = ['business_slug', 'email', 'password'];
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+function meta(name) {
+    return document.querySelector(`meta[name="${name}"]`)?.content?.trim() || null;
+}
 
-        // 1. Efecto visual de carga
-        feedback.classList.add('hidden');
-        submitBtn.disabled = true;
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = `<span>Validando credenciales...</span>`;
+function clearErrors(form, feedback) {
+    feedback.textContent = '';
+    feedback.classList.add('hidden');
 
-        const formData = new FormData(loginForm);
-        const credentials = Object.fromEntries(formData.entries());
+    fields.forEach((field) => {
+        const input = form.elements.namedItem(field);
+        const error = form.querySelector(`[data-field-error="${field}"]`);
 
-        try {
-            // 2. Autenticación en tu API REST (Ajusta la URL a tu endpoint real de autenticación)
-            const response = await fetch('/api/v1/login', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': credentials._token // Protección CSRF obligatoria
-                },
-                body: JSON.stringify({
-                    email: credentials.email,
-                    password: credentials.password
-                })
-            });
+        input?.removeAttribute('aria-invalid');
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'El correo o la contraseña son incorrectos.');
-            }
-
-            // 3. Almacenar el Bearer Token en el navegador para que index.js del dashboard pueda leerlo
-            if (data.token || data.access_token) {
-                localStorage.setItem('auth_token', data.token || data.access_token);
-            }
-
-            // 4. Redirección limpia e inmediata al Dashboard
-            window.location.href = '/dashboard';
-
-        } catch (error) {
-            console.error('Login Error:', error);
-            // Mostrar error de credenciales inválidas en pantalla
-            feedback.textContent = error.message;
-            feedback.classList.remove('hidden');
-            
-            // Reestablecer botón
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
+        if (error) {
+            error.textContent = '';
+            error.classList.add('hidden');
         }
     });
-});
+}
+
+function showFieldErrors(form, errors) {
+    let firstInvalid = null;
+    let displayed = false;
+
+    fields.forEach((field) => {
+        const messages = errors?.[field];
+
+        if (!Array.isArray(messages) || messages.length === 0) {
+            return;
+        }
+
+        const input = form.elements.namedItem(field);
+        const error = form.querySelector(`[data-field-error="${field}"]`);
+
+        input?.setAttribute('aria-invalid', 'true');
+
+        if (error) {
+            error.textContent = messages[0];
+            error.classList.remove('hidden');
+            displayed = true;
+        }
+
+        firstInvalid ??= input;
+    });
+
+    firstInvalid?.focus();
+
+    return displayed;
+}
+
+function generalMessage(error) {
+    if (!(error instanceof ApiError)) {
+        return 'No fue posible completar el inicio de sesión.';
+    }
+
+    if (error.status === 0) {
+        return 'No fue posible conectar con el servidor. Revise su conexión e intente nuevamente.';
+    }
+
+    if (error.status === 401) {
+        return error.message || 'El negocio, correo o contraseña no son válidos.';
+    }
+
+    if (error.status === 419) {
+        return 'La sesión de seguridad expiró. Intente iniciar sesión nuevamente.';
+    }
+
+    if (error.status === 429) {
+        return error.message || 'Demasiados intentos. Espere un momento antes de volver a intentar.';
+    }
+
+    if (error.status >= 500) {
+        return 'El servidor no pudo procesar el inicio de sesión. Intente nuevamente más tarde.';
+    }
+
+    return error.message || 'No fue posible completar el inicio de sesión.';
+}
+
+function showGeneralError(feedback, message) {
+    feedback.textContent = message;
+    feedback.classList.remove('hidden');
+    feedback.focus();
+}
+
+function credentials(form) {
+    const data = new FormData(form);
+
+    return {
+        business_slug: String(data.get('business_slug') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        password: String(data.get('password') ?? ''),
+    };
+}
+
+export default function initLogin() {
+    const form = document.getElementById('loginForm');
+    const feedback = document.getElementById('loginFeedback');
+    const submitButton = document.getElementById('submitBtn');
+    const dashboardUrl = meta('dashboard-url');
+
+    if (!form || !feedback || !submitButton || !dashboardUrl) {
+        console.error('[Gintly Login] No se encontró la configuración requerida.');
+        return;
+    }
+
+    let submitting = false;
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (submitting) {
+            return;
+        }
+
+        submitting = true;
+        clearErrors(form, feedback);
+        setButtonLoading(submitButton, true, {
+            label: 'Validando credenciales...',
+        });
+
+        try {
+            await initializeCsrf();
+
+            const response = await api.post(
+                '/auth/login',
+                credentials(form),
+                { redirectOn401: false },
+            );
+
+            if (!response?.data || typeof response.data !== 'object') {
+                throw new ApiError({
+                    status: 500,
+                    message: 'El servidor devolvió una respuesta de autenticación inválida.',
+                    payload: response,
+                });
+            }
+
+            document
+                .getElementById('mainContainer')
+                ?.classList.add('page-transition-out');
+
+            window.location.assign(dashboardUrl);
+        } catch (error) {
+            if (error instanceof ApiError && error.status === 422) {
+                const displayed = showFieldErrors(form, error.errors);
+
+                if (!displayed) {
+                    showGeneralError(feedback, error.message);
+                }
+            } else {
+                showGeneralError(feedback, generalMessage(error));
+            }
+
+            submitting = false;
+            setButtonLoading(submitButton, false);
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLogin, { once: true });
+} else {
+    initLogin();
+}

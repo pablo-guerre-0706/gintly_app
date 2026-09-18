@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gintly App - Iniciar Sesión</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="api-base-url" content="{{ url('/api/v1') }}">
+  <meta name="dashboard-url" content="{{ route('dashboard') }}">
+  @vite([
+    'resources/css/app.css',
+    'resources/js/modules/security/auth.js',
+  ])
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -25,7 +26,7 @@
     }
   </style>
 </head>
-<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
+<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden font-sans">
 
   <!-- Contenedor Principal con animación de entrada -->
   <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-(1380px) h-[92vh] max-h-(860px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
@@ -77,56 +78,48 @@
           <div class="flex flex-col gap-1">
             <h2 class="text-xl md:text-2xl font-bold tracking-tight text-slate-900">¡Qué bueno verte de nuevo!</h2>
             <p class="text-xs md:text-sm text-slate-500 leading-relaxed">
-              Ingresa tus credenciales o accede mediante tus redes sociales para entrar a tu panel de Gintly.
+              Ingresa las credenciales de tu negocio para entrar a tu panel de Gintly.
             </p>
           </div>
         </div>
 
-        <!-- Alertas de Error -->
-        @if ($errors->any())
-          <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-medium">
-            <ul>
-              @foreach ($errors->all() as $error)
-                <li>• {{ $error }}</li>
-              @endforeach
-            </ul>
+        <div
+          id="loginFeedback"
+          class="hidden p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium"
+          role="alert"
+          tabindex="-1"
+        ></div>
+
+        <form id="loginForm" class="flex flex-col gap-4 w-full" novalidate>
+          <div class="flex flex-col gap-1">
+            <label for="business_slug" class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Identificador del negocio</label>
+            <input
+              type="text"
+              id="business_slug"
+              name="business_slug"
+              placeholder="mi-negocio"
+              autocomplete="organization"
+              aria-describedby="business_slug-error"
+              class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300 aria-invalid:border-rose-400 aria-invalid:ring-rose-200"
+              required
+            />
+            <p id="business_slug-error" data-field-error="business_slug" class="hidden text-xs font-medium text-rose-600" aria-live="polite"></p>
           </div>
-        @endif
-
-        <!-- Botones de Redes Sociales (Google / Facebook) -->
-        <div class="grid grid-cols-2 gap-3 w-full">
-          <a href="{{ route('auth.google') }}" class="flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 rounded-xl text-xs font-semibold text-slate-700 shadow-sm transition-all duration-300 active:scale-95">
-            <svg class="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            Google
-          </a>
-
-          <a href="{{ route('auth.facebook') }}" class="flex items-center justify-center gap-2.5 py-2.5 px-4 bg-[#1877F2] hover:bg-[#166fe5] rounded-xl text-xs font-semibold text-white shadow-sm transition-all duration-300 active:scale-95">
-            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            Facebook
-          </a>
-        </div>
-
-        <!-- Divisor -->
-        <div class="flex items-center gap-4 my-1">
-          <div class="flex-1 h-px bg-slate-200"></div>
-          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">o con tus datos</span>
-          <div class="flex-1 h-px bg-slate-200"></div>
-        </div>
-
-        <!-- Formulario de inicio de sesión (Correo o Nombre de Usuario) -->
-        <form id="loginForm" action="{{ route('login.store') }}" method="POST" class="flex flex-col gap-4 w-full">
-          @csrf
 
           <div class="flex flex-col gap-1">
-            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Correo electrónico o Nombre de usuario</label>
-            <input type="text" id="login" name="login" value="{{ old('login') }}" placeholder="ejemplo@correo.com o tu usuario" class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300" required />
+            <label for="email" class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Correo electrónico</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="ejemplo@correo.com"
+              autocomplete="username"
+              inputmode="email"
+              aria-describedby="email-error"
+              class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300 aria-invalid:border-rose-400 aria-invalid:ring-rose-200"
+              required
+            />
+            <p id="email-error" data-field-error="email" class="hidden text-xs font-medium text-rose-600" aria-live="polite"></p>
           </div>
 
           <div class="flex flex-col gap-1">
@@ -135,7 +128,17 @@
               <!-- Si no usas ruta de recuperar contraseña, puedes cambiar el href="#" -->
               <a href="#" class="text-[11px] font-semibold text-[#146F8A] hover:underline">¿Olvidaste tu contraseña?</a>
             </div>
-            <input type="password" id="password" name="password" placeholder="••••••••••••" class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300" required />
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="••••••••••••"
+              autocomplete="current-password"
+              aria-describedby="password-error"
+              class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300 aria-invalid:border-rose-400 aria-invalid:ring-rose-200"
+              required
+            />
+            <p id="password-error" data-field-error="password" class="hidden text-xs font-medium text-rose-600" aria-live="polite"></p>
           </div>
 
           <!-- Botón de Entrar -->
@@ -155,14 +158,6 @@
     </div>
 
   </div>
-
-  <script>
-    const form = document.getElementById('loginForm');
-    form.addEventListener('submit', (e) => {
-      const mainContainer = document.getElementById('mainContainer');
-      mainContainer.classList.add('page-transition-out');
-    });
-  </script>
 
 </body>
 </html>
