@@ -6,6 +6,7 @@ const modules = import.meta.glob([
     './modules/customers/index.js',
     './modules/finance/cash-closing.js',
     './modules/inventory/reconciliation.js',
+    './modules/landing/index.js',
     './modules/pos/index.js',
 ]);
 

@@ -4,30 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gintly App - Configura tus datos regionales</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    /* Scroll personalizado y limpio exclusivamente para el contenedor del formulario */
-    .custom-scroll::-webkit-scrollbar { width: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-  </style>
+  @vite([
+    'resources/css/app.css',
+    'resources/js/modules/registration/wizard.js',
+  ])
 </head>
-<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
+<body data-registration-step="4" class="registration-page bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
   <div>
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
-  <div class="flex flex-col lg:flex-row items-center w-full max-w-(1380px) h-[92vh] max-h-(860px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
+  <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
     
     <!-- Columna Izquierda: Panel Visual Único del Paso Regional -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -64,7 +50,7 @@
     <!-- Columna Derecha: Formulario de Preferencias Regionales con Scroll Interno -->
     <div class="flex flex-col justify-between w-full lg:w-[58%] h-full p-6 md:p-8 bg-white overflow-hidden">
       
-      <div class="w-full max-w-(620px) mx-auto flex flex-col gap-3 h-full">
+      <div class="w-full max-w-[620px] mx-auto flex flex-col gap-3 h-full">
         
         <!-- Header: Regresar al paso 3 y Logo -->
         <div class="flex flex-col gap-2 w-full shrink-0">
@@ -196,31 +182,4 @@
     </div>
 
   </div>
-
-  <!-- Lógica de validación dinámica -->
-  <script>
-    const monedaSelect = document.getElementById('moneda');
-    const fechaInput = document.getElementById('fecha_creacion');
-    const zonaHorariaSelect = document.getElementById('zona_horaria');
-    const submitBtn = document.getElementById('submitBtn');
-
-    function checkFormValidity() {
-      if (monedaSelect.value !== "" && fechaInput.value !== "" && zonaHorariaSelect.value !== "") {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed', 'shadow-sm');
-        submitBtn.classList.add('bg-[#146F8A]', 'text-white', 'hover:bg-[#10596e]', 'shadow-lg', 'shadow-[#146F8A]/25', 'cursor-pointer', 'active:scale-[0.99]');
-      } else {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed', 'shadow-sm');
-        submitBtn.classList.remove('bg-[#146F8A]', 'text-white', 'hover:bg-[#10596e]', 'shadow-lg', 'shadow-[#146F8A]/25', 'cursor-pointer', 'active:scale-[0.99]');
-      }
-    }
-
-    monedaSelect.addEventListener('change', checkFormValidity);
-    fechaInput.addEventListener('input', checkFormValidity);
-    zonaHorariaSelect.addEventListener('change', checkFormValidity);
-
-    // Validación inicial al cargar la página
-    checkFormValidity();
-  </script>
 </div>

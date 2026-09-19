@@ -32,7 +32,7 @@
         <!-- Foto de Perfil Circular -->
         <div class="h-9 w-9 overflow-hidden rounded-full ring-1 ring-neutral-200 group-hover:ring-neutral-300 transition">
             <img 
-                src="https://unsplash.com" 
+                src="{{ asset('images/gintlylogo.png') }}"
                 alt="Usuario autenticado" 
                 class="h-full w-full object-cover"
             >

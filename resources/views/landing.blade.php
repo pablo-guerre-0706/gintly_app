@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html
     lang="es"
-    data-page="@yield('page-script')"
+    data-page="landing/index"
     class="scroll-smooth"
 >
 <head>
@@ -18,9 +18,8 @@
         'resources/js/app.js',
     ])
 </head>
-<body 
-    style="background-image: url('{{ asset('images/backgroundhero.png') }}');" 
-    class="bg-cover bg-center bg-no-repeat bg-fixed font-sans text-white antialiased min-h-screen selection:bg-[#146F8A] selection:text-white"
+<body
+    class="bg-[url('/images/backgroundhero.png')] bg-cover bg-center bg-no-repeat bg-fixed font-sans text-white antialiased min-h-screen selection:bg-[#146F8A] selection:text-white"
 >
 
     <!-- CONTENEDOR PRINCIPAL HERO -->
@@ -35,7 +34,7 @@
                         src="{{ asset('images/logo.png') }}" 
                         alt="Logo" 
                         class="h-full w-full object-contain"
-                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                        data-image-fallback
                     >
                     <svg class="hidden h-6 w-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -43,7 +42,7 @@
                 </div>
             </a>
 
-            <nav class="flex h-14 flex-1 items-center justify-between rounded-full border border-white/20 bg-white/4] p-1.5 pl-6 pr-1.5 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] transition-all duration-300">
+            <nav class="flex h-14 flex-1 items-center justify-between rounded-full border border-white/20 bg-white/[0.04] p-1.5 pl-6 pr-1.5 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] transition-all duration-300">
                 <ul class="flex flex-1 items-center justify-evenly text-sm font-medium text-slate-200 max-w-3xl mx-auto px-4">
                     
                     <li>
@@ -98,16 +97,16 @@
 
         <!-- SECCIÓN HERO -->
         <main>
-            <section class="grid grid-cols-1 items-center gap-10 pb-16 lg:grid-cols-12 min-h-(696px)">
+            <section class="grid grid-cols-1 items-center gap-10 pb-16 lg:grid-cols-12 min-h-[696px]">
 
                 <!-- Columna Izquierda: Textos y Botones -->
                 <div class="flex flex-col justify-center space-y-8 lg:col-span-6">
                     
-                    <h1 class="text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl lg:text-[56px] lg:leading-(64px) transition-all duration-500">
+                    <h1 class="text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl lg:text-[56px] lg:leading-[64px] transition-all duration-500">
                         El sistema de facturación y gestión empresarial diseñado para Nicaragua.
                     </h1>
 
-                    <p class="text-base font-normal leading-relaxed text-slate-200 sm:text-lg lg:text-[18px] lg:leading-(26px) transition-all duration-500">
+                    <p class="text-base font-normal leading-relaxed text-slate-200 sm:text-lg lg:text-[18px] lg:leading-[26px] transition-all duration-500">
                         Gestiona. Impulsa. Crece, Centraliza la administración de tu negocio con contabilidad automatizada, facturación, cobros, gestión de clientes e inventario en una sola plataforma en la nube.
                     </p>
 
@@ -133,22 +132,22 @@
                     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         
                         <!-- Tarjeta 1: Personal -->
-                        <div class="relative overflow-hidden rounded-(24px) bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
+                        <div class="relative overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
                             <div class="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-[#3988A0]/20 blur-sm"></div>
                             <div class="relative z-10 flex items-center justify-between gap-4">
                                 <div class="flex flex-col space-y-2">
                                     <span class="text-xs font-normal text-[#333333] opacity-70">Gestiona tu personal</span>
                                     <h3 class="text-xl font-semibold leading-snug text-black">Une a todo tu equipo de trabajo</h3>
                                 </div>
-                                <img src="{{ asset('images/profesionales.png') }}" alt="Profesionales" class="h-(70px) w-17.5 shrink-0 object-contain transition-transform duration-300 hover:scale-110">
+                                <img src="{{ asset('images/profesionales.png') }}" alt="Profesionales" class="h-[70px] w-17.5 shrink-0 object-contain transition-transform duration-300 hover:scale-110">
                             </div>
                         </div>
 
                         <!-- Tarjeta 2: Inventario -->
-                        <div class="relative overflow-hidden rounded-(24px) bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
+                        <div class="relative overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
                             <div class="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#3988A0]/20 blur-sm"></div>
                             <div class="relative z-10 flex items-center justify-between gap-4">
-                                <img src="{{ asset('images/cash.png') }}" alt="Inventario" class="h-(70px) w-(70px) shrink-0 object-contain transition-transform duration-300 hover:scale-110">
+                                <img src="{{ asset('images/cash.png') }}" alt="Inventario" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
                                 <div class="flex flex-col space-y-2 text-right">
                                     <span class="text-xs font-normal text-[#333333] opacity-70">Maneja tu inventario</span>
                                     <h3 class="text-xl font-semibold leading-snug text-black">Las mejores herramientas</h3>
@@ -159,15 +158,15 @@
                     </div>
 
                     <!-- Tarjeta Inferior Modelo Con Ondas -->
-                    <div class="relative flex min-h-(420px) w-full items-end justify-center overflow-hidden rounded-(24px) bg-linear-to-b from-[#A9D5E2] to-white shadow-xl transition-all duration-300 hover:shadow-2xl">
-                        <div class="absolute top-1/2 left-1/2 h-(300px) w-(300px) -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/20 bg-[#146F8A]/10"></div>
-                        <div class="absolute top-1/2 left-1/2 h-(450px) w-(450px) -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/15 bg-[#146F8A]/10"></div>
-                        <div class="absolute top-1/2 left-1/2 h-(600px) w-(600px) -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/10 bg-transparent"></div>
+                    <div class="relative flex min-h-[420px] w-full items-end justify-center overflow-hidden rounded-[24px] bg-linear-to-b from-[#A9D5E2] to-white shadow-xl transition-all duration-300 hover:shadow-2xl">
+                        <div class="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/20 bg-[#146F8A]/10"></div>
+                        <div class="absolute top-1/2 left-1/2 h-[450px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/15 bg-[#146F8A]/10"></div>
+                        <div class="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/10 bg-transparent"></div>
 
                         <img 
                             src="{{ asset('images/men_hero.png') }}" 
                             alt="Gestión Hero" 
-                            class="relative z-10 max-h-(460px) w-auto object-contain pt-4 transition-transform duration-500 ease-out hover:scale-105"
+                            class="relative z-10 max-h-[460px] w-auto object-contain pt-4 transition-transform duration-500 ease-out hover:scale-105"
                         >
                     </div>
 
@@ -229,12 +228,11 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                 
                 <div class="lg:col-span-6">
-                    <div class="relative overflow-hidden rounded-(24px) shadow-lg transition-transform duration-500 hover:scale-[1.02]">
+                    <div class="relative overflow-hidden rounded-[24px] shadow-lg transition-transform duration-500 hover:scale-[1.02]">
                         <img 
                             src="{{ asset('images/about_office.png') }}" 
                             alt="Maneja las finanzas" 
-                            class="w-full h-auto object-cover max-h-(460px) transition-transform duration-700 hover:scale-105"
-                            onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1000&auto=format&fit=crop';"
+                            class="w-full h-auto object-cover max-h-[460px] transition-transform duration-700 hover:scale-105"
                         >
                     </div>
                 </div>
@@ -296,30 +294,27 @@
 
                 <div class="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
                     
-                    <div class="relative overflow-hidden rounded-(24px) shadow-lg h-full transition-transform duration-500 hover:scale-[1.02]">
+                    <div class="relative overflow-hidden rounded-[24px] shadow-lg h-full transition-transform duration-500 hover:scale-[1.02]">
                         <img 
                             src="{{ asset('images/mission_team.png') }}" 
                             alt="Nuestra misión equipo" 
-                            class="w-full h-full min-h-(380px) object-cover transition-transform duration-700 hover:scale-105"
-                            onerror="this.src='https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop';"
+                            class="w-full h-full min-h-[380px] object-cover transition-transform duration-700 hover:scale-105"
                         >
                     </div>
 
                     <div class="flex flex-col gap-6">
-                        <div class="relative overflow-hidden rounded-(24px) shadow-md transition-transform duration-500 hover:scale-[1.02]">
+                        <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
                                 src="{{ asset('images/mission_dashboard.png') }}" 
                                 alt="Dashboard Financiero" 
-                                class="w-full h-(175px) object-cover transition-transform duration-700 hover:scale-105"
-                                onerror="this.src='https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop';"
+                                class="w-full h-[175px] object-cover transition-transform duration-700 hover:scale-105"
                             >
                         </div>
-                        <div class="relative overflow-hidden rounded-(24px) shadow-md transition-transform duration-500 hover:scale-[1.02]">
+                        <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
                                 src="{{ asset('images/mission_business.png') }}" 
                                 alt="Business News" 
-                                class="w-full h-(175px) object-cover transition-transform duration-700 hover:scale-105"
-                                onerror="this.src='https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop';"
+                                class="w-full h-[175px] object-cover transition-transform duration-700 hover:scale-105"
                             >
                         </div>
                     </div>
@@ -331,7 +326,7 @@
     </section>
 
     <div class="max-w-7xl w-full mx-auto px-4">
-    <div class="w-full h-(91px) bg-gray-200"></div>
+    <div class="w-full h-[91px] bg-gray-200"></div>
 </div>
 
 <!-- SECCIÓN: LOS VALORES QUE NOS DEFINEN (FONDO BLANCO) -->
@@ -357,7 +352,7 @@
                 <!-- Columna Izquierda: Línea de Tiempo de Valores -->
                 <div class="lg:col-span-6 flex flex-col relative">
                     <!-- Línea vertical conectora -->
-                    <div class="absolute left-(27px) top-6 bottom-6 w-0.5 bg-linear-to-b from-[#146F8A] via-[#146F8A]/40 to-transparent"></div>
+                    <div class="absolute left-[27px] top-6 bottom-6 w-0.5 bg-linear-to-b from-[#146F8A] via-[#146F8A]/40 to-transparent"></div>
 
                     <!-- Ítem 1: Claridad -->
                     <div class="relative flex items-start gap-6 pb-12 group">
@@ -424,30 +419,27 @@
                 <!-- Columna Derecha: Imágenes Bloque 1 -->
                 <div class="lg:col-span-6 flex flex-col gap-6">
                     <!-- Imagen Superior Grande -->
-                    <div class="relative overflow-hidden rounded-(24px) shadow-lg transition-transform duration-500 hover:scale-[1.02]">
+                    <div class="relative overflow-hidden rounded-[24px] shadow-lg transition-transform duration-500 hover:scale-[1.02]">
                         <img 
-                            src="{{ asset('images/value_teamwork.png') }}" 
+                            src="{{ asset('images/mission_team.png') }}" 
                             alt="Trabajo en equipo" 
-                            class="w-full h-(260px) object-cover transition-transform duration-700 hover:scale-105"
-                            onerror="this.src='https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop';"
+                            class="w-full h-[260px] object-cover transition-transform duration-700 hover:scale-105"
                         >
                     </div>
                     <!-- Fila Inferior con Dos Imágenes -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div class="relative overflow-hidden rounded-(24px) shadow-md transition-transform duration-500 hover:scale-[1.02]">
+                        <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_idea.png') }}" 
+                                src="{{ asset('images/mission_business.png') }}" 
                                 alt="Idea Innovadora" 
-                                class="w-full h-(200px) object-cover transition-transform duration-700 hover:scale-105"
-                                onerror="this.src='https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=600&auto=format&fit=crop';"
+                                class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                             >
                         </div>
-                        <div class="relative overflow-hidden rounded-(24px) shadow-md transition-transform duration-500 hover:scale-[1.02]">
+                        <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_metrics.png') }}" 
+                                src="{{ asset('images/mission_dashboard.png') }}" 
                                 alt="Métricas y Gráficas" 
-                                class="w-full h-(200px) object-cover transition-transform duration-700 hover:scale-105"
-                                onerror="this.src='https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop';"
+                                class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                             >
                         </div>
                     </div>
@@ -461,30 +453,27 @@
                 <!-- Columna Izquierda: Imágenes Bloque 2 -->
                 <div class="lg:col-span-6 flex flex-col gap-6 order-2 lg:order-1">
                     <!-- Imagen Superior Grande -->
-                    <div class="relative overflow-hidden rounded-(24px) shadow-lg transition-transform duration-500 hover:scale-[1.02]">
+                    <div class="relative overflow-hidden rounded-[24px] shadow-lg transition-transform duration-500 hover:scale-[1.02]">
                         <img 
-                            src="{{ asset('images/value_hands.png') }}" 
+                            src="{{ asset('images/about_office.png') }}" 
                             alt="Confianza y Soporte" 
-                            class="w-full h-(260px) object-cover transition-transform duration-700 hover:scale-105"
-                            onerror="this.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000&auto=format&fit=crop';"
+                            class="w-full h-[260px] object-cover transition-transform duration-700 hover:scale-105"
                         >
                     </div>
                     <!-- Fila Inferior con Dos Imágenes -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div class="relative overflow-hidden rounded-(24px) shadow-md transition-transform duration-500 hover:scale-[1.02]">
+                        <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_laptop.png') }}" 
+                                src="{{ asset('images/mission_dashboard.png') }}" 
                                 alt="Laptop y Operaciones" 
-                                class="w-full h-(200px) object-cover transition-transform duration-700 hover:scale-105"
-                                onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=600&auto=format&fit=crop';"
+                                class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                             >
                         </div>
-                        <div class="relative overflow-hidden rounded-(24px) shadow-md transition-transform duration-500 hover:scale-[1.02]">
+                        <div class="relative overflow-hidden rounded-[24px] shadow-md transition-transform duration-500 hover:scale-[1.02]">
                             <img 
-                                src="{{ asset('images/value_meeting.png') }}" 
+                                src="{{ asset('images/mission_team.png') }}" 
                                 alt="Reunión de Negocios" 
-                                class="w-full h-(200px) object-cover transition-transform duration-700 hover:scale-105"
-                                onerror="this.src='https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=600&auto=format&fit=crop';"
+                                class="w-full h-[200px] object-cover transition-transform duration-700 hover:scale-105"
                             >
                         </div>
                     </div>
@@ -493,7 +482,7 @@
                 <!-- Columna Derecha: Línea de Tiempo de Valores Parte 2 -->
                 <div class="lg:col-span-6 flex flex-col relative order-1 lg:order-2">
                     <!-- Línea vertical conectora -->
-                    <div class="absolute left-(27px) top-6 bottom-6 w-0.5 bg-linear-to-b from-[#146F8A] via-[#146F8A]/40 to-transparent"></div>
+                    <div class="absolute left-[27px] top-6 bottom-6 w-0.5 bg-linear-to-b from-[#146F8A] via-[#146F8A]/40 to-transparent"></div>
 
                     <!-- Ítem 5: Autonomía -->
                     <div class="relative flex items-start gap-6 pb-12 group">
@@ -563,7 +552,7 @@
     </section>
 
   <!-- SECCIÓN HERO PRINCIPAL CON FONDO PNG Y CAPA OSCURA -->
-<section id="inicio" class="relative w-full h-(760px) bg-[#146F8A] overflow-hidden flex flex-col justify-center items-center">
+<section id="inicio" class="relative w-full h-[760px] bg-[#146F8A] overflow-hidden flex flex-col justify-center items-center">
     
     <!-- Fondo PNG personalizado -->
     <div class="absolute inset-0 pointer-events-none opacity-40 select-none">
@@ -572,7 +561,7 @@
 
     
     <!-- Contenido Central: Títulos y Textos -->
-    <div class="relative z-20 flex flex-col items-center max-w-4xl px-4 text-center gap-4 mt-(-60px)">
+    <div class="relative z-20 flex flex-col items-center max-w-4xl px-4 text-center gap-4 mt-[-60px]">
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-semibold text-[#FFFDFD] tracking-tight leading-[1.14]">
             Gestiona a distancia. Controla tus finanzas. Protege tu patrimonio.
         </h1>
@@ -584,17 +573,17 @@
     <!-- Elementos Decorativos Flotantes (Imágenes 3D ajustadas exactamente como en la referencia) -->
     
     <!-- 1. Esquina inferior izquierda (Monitoreo / Pantalla) -->
-    <div class="absolute left-(-60px) bottom-(-40px) w-(380px) sm:w-(440px) h-(380px) sm:h-(440px) z-30 pointer-events-none transform -rotate-(12deg)">
+    <div class="absolute left-[-60px] bottom-[-40px] w-[380px] sm:w-[440px] h-[380px] sm:h-[440px] z-30 pointer-events-none transform -rotate-[12deg]">
         <img src="{{ asset('images/imagen-izquierda.png') }}" alt="Monitoreo" class="w-full h-full object-contain drop-shadow-2xl">
     </div>
 
     <!-- 2. Centro (Portapapeles - Ajustado al doble de tamaño) -->
-    <div class="absolute left-1/2 transform -translate-x-1/2 bottom-1/2 w-(560px) h-(480px) z-30 pointer-events-none translate-y-100">
+    <div class="absolute left-1/2 transform -translate-x-1/2 bottom-1/2 w-[560px] h-[480px] z-30 pointer-events-none translate-y-100">
         <img src="{{ asset('images/imagen-centro.png') }}" alt="Trabajo social" class="w-full h-full object-contain object-bottom drop-shadow-2xl">
     </div>
 
     <!-- 3. Esquina inferior derecha (Finanzas / Monedas y Calculadora) -->
-    <div class="absolute right-(-40px) bottom-(-50px) w-(380px) sm:w-(440px) h-(380px) sm:h-(440px) z-30 pointer-events-none transform rotate-[8deg]">
+    <div class="absolute right-[-40px] bottom-[-50px] w-[380px] sm:w-[440px] h-[380px] sm:h-[440px] z-30 pointer-events-none transform rotate-[8deg]">
         <img src="{{ asset('images/imagen-derecha.png') }}" alt="Compras y proveedores" class="w-full h-full object-contain drop-shadow-2xl">
     </div>
 </section>
@@ -618,7 +607,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-finanzas.png') }}" alt="Finanzas" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/cash.png') }}" alt="Finanzas" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Finanzas</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -635,7 +624,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-inventario.png') }}" alt="Inventario" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/catalogoproductos.png') }}" alt="Inventario" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Inventario</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -652,7 +641,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-ventas.png') }}" alt="Ventas y Clientes" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/cierrecaja.png') }}" alt="Ventas y Clientes" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Ventas y Clientes</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -669,7 +658,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-personal.png') }}" alt="Gestión de personal" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/profesionales.png') }}" alt="Gestión de personal" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Gestión de personal</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -686,7 +675,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-compras.png') }}" alt="Compras y proveedores" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/imagen-derecha.png') }}" alt="Compras y proveedores" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Compras y proveedores</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -703,7 +692,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-reportes.png') }}" alt="Reportes" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/mission_dashboard.png') }}" alt="Reportes" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Reportes</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -720,7 +709,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-monitoreo.png') }}" alt="Monitoreos" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/imagen-izquierda.png') }}" alt="Monitoreos" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Monitoreos</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -737,7 +726,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-[#146F8A] transition-all duration-300 ease-out group">
             <div>
                 <div class="w-14 h-14 mb-6 transform group-hover:scale-110 transition-transform duration-300">
-                    <img src="{{ asset('images/icono-perfiles.png') }}" alt="Perfiles de empresas" class="w-full h-full object-contain">
+                    <img src="{{ asset('images/negocio.png') }}" alt="Perfiles de empresas" class="w-full h-full object-contain">
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Perfiles de empresas</h3>
                 <p class="text-sm text-gray-500 leading-relaxed mb-6">
@@ -754,7 +743,7 @@
 </section>
 
 <div class="max-w-7xl w-full mx-auto px-4">
-    <div class="w-full h-(1px) bg-gray-200"></div>
+    <div class="w-full h-[1px] bg-gray-200"></div>
 </div>
 <!-- SECCIÓN DE PREGUNTAS FRECUENTES (FAQ) -->
 <section class="w-full py-20 bg-white flex flex-col items-center justify-center">
@@ -773,13 +762,13 @@
     <div class="max-w-7xl w-full mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 relative items-start">
 
         <!-- Línea divisoria vertical -->
-        <div class="hidden lg:block absolute left-1/2 top-0 bottom-0 w-(1px) bg-gray-200 transform -translate-x-1/2"></div>
+        <div class="hidden lg:block absolute left-1/2 top-0 bottom-0 w-[1px] bg-gray-200 transform -translate-x-1/2"></div>
         <!-- Columna Izquierda -->
         <div class="flex flex-col gap-6 w-full">
 
             <!-- FAQ Item 1 -->
             <div class="border-b border-gray-200 pb-6 w-full flex flex-col">
-                <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
+                <button type="button" data-faq-toggle aria-expanded="false" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
                     <span class="text-lg font-semibold text-gray-900 group-hover:text-[#146F8A] transition-colors pr-4">
                         ¿Qué es Gintly y cómo funciona?
                     </span>
@@ -796,7 +785,7 @@
 
             <!-- FAQ Item 2 -->
             <div class="border-b border-gray-200 pb-6 w-full flex flex-col">
-                <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
+                <button type="button" data-faq-toggle aria-expanded="false" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
                     <span class="text-lg font-semibold text-gray-900 group-hover:text-[#146F8A] transition-colors pr-4">
                         ¿Tengo que comprar infraestructura especial o realizar configuraciones complejas?
                     </span>
@@ -813,7 +802,7 @@
 
             <!-- FAQ Item 3 -->
             <div class="border-b border-gray-200 pb-6 w-full flex flex-col">
-                <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
+                <button type="button" data-faq-toggle aria-expanded="false" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
                     <span class="text-lg font-semibold text-gray-900 group-hover:text-[#146F8A] transition-colors pr-4">
                         ¿Es difícil de configurar e implementar en mi equipo?
                     </span>
@@ -835,7 +824,7 @@
 
             <!-- FAQ Item 4 -->
             <div class="border-b border-gray-200 pb-6 w-full flex flex-col">
-                <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
+                <button type="button" data-faq-toggle aria-expanded="false" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
                     <span class="text-lg font-semibold text-gray-900 group-hover:text-[#146F8A] transition-colors pr-4">
                         ¿Puedo personalizar los módulos según las necesidades de mi negocio?
                     </span>
@@ -852,7 +841,7 @@
 
             <!-- FAQ Item 5 -->
             <div class="border-b border-gray-200 pb-6 w-full flex flex-col">
-                <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
+                <button type="button" data-faq-toggle aria-expanded="false" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
                     <span class="text-lg font-semibold text-gray-900 group-hover:text-[#146F8A] transition-colors pr-4">
                         ¿Puedo invitar a colaboradores y definir permisos?
                     </span>
@@ -869,7 +858,7 @@
 
             <!-- FAQ Item 6 -->
             <div class="border-b border-gray-200 pb-6 w-full flex flex-col">
-                <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
+                <button type="button" data-faq-toggle aria-expanded="false" class="w-full flex items-center justify-between text-left py-2 group focus:outline-none">
                     <span class="text-lg font-semibold text-gray-900 group-hover:text-[#146F8A] transition-colors pr-4">
                         ¿Qué tan segura está la información de mi negocio?
                     </span>
@@ -889,366 +878,305 @@
     </div>
 </section>
 
-<!-- Script interactivo ajustado -->
-<script>
-    function toggleFaq(button) {
-        const content = button.nextElementSibling;
-        const iconSvg = button.querySelector('svg');
-
-        if (content.style.maxHeight && content.style.maxHeight !== '0px') {
-            content.style.maxHeight = '0px';
-            iconSvg.style.transform = 'rotate(0deg)';
-        } else {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            iconSvg.style.transform = 'rotate(180deg)';
-        }
-    }
-</script>
-
 <div class="max-w-7xl w-full mx-auto px-4">
-    <div class="w-full h-(1px) bg-gray-200"></div>
+    <div class="w-full h-[1px] bg-gray-200"></div>
 </div>
 <!-- SECCIÓN DE SUSCRIPCIONES Y PLANES INTERACTIVA -->
-<section class="w-full py-(80px) bg-white flex flex-col items-center justify-center font-sans">
+<section class="w-full py-[80px] bg-white flex flex-col items-center justify-center font-sans">
     
-    <div class="max-w-(1320px) w-full px-6 md:px-12 mb-(40px) flex flex-col items-center text-center gap-(12px)">
-        <h2 class="text-[32px] font-semibold leading-(40px) tracking-[-0.5px] text-black">
+    <div class="max-w-[1320px] w-full px-6 md:px-12 mb-[40px] flex flex-col items-center text-center gap-[12px]">
+        <h2 class="text-[32px] font-semibold leading-[40px] tracking-[-0.5px] text-black">
             Suscripción y Planes
         </h2>
-        <p class="text-[18px] font-normal leading-(26px) text-[#666666] max-w-(900px)">
+        <p class="text-[18px] font-normal leading-[26px] text-[#666666] max-w-[900px]">
             Elige el plan que mejor se adapte a las necesidades de tu negocio y disfruta de las herramientas que Gintly tiene para ayudarte a gestionar y administrar tu empresa de manera más sencilla y eficiente.
         </p>
     </div>
 
-    <div class="relative flex flex-row items-center p-1.5 bg-[#EAEAEA] rounded-(16px) mb-(48px) border border-[#D9D9D9] w-(460px) max-w-full select-none cursor-pointer" id="billing-switch">
-        <div class="absolute left-1.5 top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-[#146F8A] rounded-(12px) transition-transform duration-300 ease-in-out shadow-sm" id="switch-indicator"></div>
+    <div class="relative flex flex-row items-center p-1.5 bg-[#EAEAEA] rounded-[16px] mb-[48px] border border-[#D9D9D9] w-[460px] max-w-full select-none cursor-pointer" id="billing-switch">
+        <div class="absolute left-1.5 top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-[#146F8A] rounded-[12px] transition-transform duration-300 ease-in-out shadow-sm" id="switch-indicator"></div>
         
-        <button onclick="setBilling('monthly')" class="relative z-10 w-1/2 py-3 text-center text-[14px] font-medium transition-colors duration-300 text-white" id="btn-monthly">
+        <button type="button" data-landing-billing="monthly" class="relative z-10 w-1/2 py-3 text-center text-[14px] font-medium transition-colors duration-300 text-white" id="btn-monthly">
             Pago mensual
         </button>
-        <button onclick="setBilling('annual')" class="relative z-10 w-1/2 py-3 text-center text-[14px] font-medium transition-colors duration-300 text-[#555555] hover:text-black" id="btn-annual">
+        <button type="button" data-landing-billing="annual" class="relative z-10 w-1/2 py-3 text-center text-[14px] font-medium transition-colors duration-300 text-[#555555] hover:text-black" id="btn-annual">
             Pago anual (ahorra hasta un 20%)
         </button>
     </div>
 
-    <div class="max-w-(1320px) w-full mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-3 gap-(32px) items-stretch">
+    <div class="max-w-[1320px] w-full mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-3 gap-[32px] items-stretch">
 
-        <div class="group bg-white border border-[#CCCCCC] rounded-(24px) p-(32px) flex flex-col justify-between w-full shadow-sm transition-all duration-300 hover:shadow-xl hover:border-[#146F8A]/50">
+        <div class="group bg-white border border-[#CCCCCC] rounded-[24px] p-[32px] flex flex-col justify-between w-full shadow-sm transition-all duration-300 hover:shadow-xl hover:border-[#146F8A]/50">
             <div>
-                <div class="flex flex-col items-start gap-(12px) w-full mb-(20px)">
-                    <h3 class="text-[24px] font-semibold leading-(32px) tracking-[-0.5px] text-black">
+                <div class="flex flex-col items-start gap-[12px] w-full mb-[20px]">
+                    <h3 class="text-[24px] font-semibold leading-[32px] tracking-[-0.5px] text-black">
                         Plan inicial
                     </h3>
-                    <div class="w-full h-(1px) bg-[#CCCCCC]"></div>
-                    <p class="text-[16px] font-normal leading-(24px) text-[#666666] min-h-(48px)">
+                    <div class="w-full h-[1px] bg-[#CCCCCC]"></div>
+                    <p class="text-[16px] font-normal leading-[24px] text-[#666666] min-h-[48px]">
                         Pulperías pequeñas o en etapa de digitalización
                     </p>
                 </div>
 
-                <div class="flex flex-col items-start gap-(8px) w-full mb-(24px)">
-                    <div class="flex flex-row items-baseline gap-(2px)">
-                        <span class="text-[32px] font-bold leading-(40px) tracking-[-0.5px] text-black price-main" 
+                <div class="flex flex-col items-start gap-[8px] w-full mb-[24px]">
+                    <div class="flex flex-row items-baseline gap-[2px]">
+                        <span class="text-[32px] font-bold leading-[40px] tracking-[-0.5px] text-black price-main" 
                               data-monthly="C$ 1,160.00" data-annual="C$ 928.00">C$ 1,160.00</span>
                         <span class="text-[16px] font-normal text-[#666666]">/mes</span>
                     </div>
                     <p class="text-[14px] text-[#666666] price-usd" 
                        data-monthly="$32 USD por mes" data-annual="$25.60 USD por mes">$32 USD por mes</p>
                     
-                    <div class="inline-flex items-center px-2 py-1 bg-[#CCEBD6] border border-[#009933] rounded-(4px)">
+                    <div class="inline-flex items-center px-2 py-1 bg-[#CCEBD6] border border-[#009933] rounded-[4px]">
                         <span class="text-[10px] font-medium text-[#009933] price-billing"
                               data-monthly="C$ 13,920.00 facturado anualmente" 
                               data-annual="C$ 11,136.00 facturado anualmente">C$ 13,920.00 facturado anualmente</span>
                     </div>
                 </div>
 
-                <div class="flex flex-col items-start gap-(14px) w-full mb-(32px)">
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">1 Caja / POS activo</span>
+                <div class="flex flex-col items-start gap-[14px] w-full mb-[32px]">
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-(3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">1 Caja / POS activo</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">1 Sucursal</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">1 Sucursal</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">POS de cobro en vivo</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">POS de cobro en vivo</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Catálogo e Inventario completo</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Catálogo e Inventario completo</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Cierre de caja con Arqueo Ciego</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Cierre de caja con Arqueo Ciego</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Devoluciones y Mermas</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Devoluciones y Mermas</span>
                     </div>
                 </div>
             </div>
 
-            <button onclick="handlePlanClick(this)" class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-(16px) transition-all duration-300 active:scale-95 shadow-sm">
+            <button type="button" data-plan-action class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-[16px] transition-all duration-300 active:scale-95 shadow-sm">
                 Seleccionar Plan Inicial
             </button>
         </div>
 
-        <div class="group bg-white border-2 border-[#146F8A] rounded-(24px) p-(32px) flex flex-col justify-between w-full shadow-lg relative transition-all duration-300 hover:shadow-2xl">
+        <div class="group bg-white border-2 border-[#146F8A] rounded-[24px] p-[32px] flex flex-col justify-between w-full shadow-lg relative transition-all duration-300 hover:shadow-2xl">
             <div>
-                <div class="flex flex-col items-start gap-(12px) w-full mb-(20px)">
+                <div class="flex flex-col items-start gap-[12px] w-full mb-[20px]">
                     <span class="text-[12px] font-semibold text-[#146F8A] tracking-wide uppercase">Más Popular — Plan Comercio</span>
-                    <h3 class="text-[24px] font-semibold leading-(32px) tracking-[-0.5px] text-black">
+                    <h3 class="text-[24px] font-semibold leading-[32px] tracking-[-0.5px] text-black">
                         Plan Comercio
                     </h3>
-                    <div class="w-full h-(1px) bg-[#CCCCCC]"></div>
-                    <p class="text-[16px] font-normal leading-(24px) text-[#666666] min-h-(48px)">
+                    <div class="w-full h-[1px] bg-[#CCCCCC]"></div>
+                    <p class="text-[16px] font-normal leading-[24px] text-[#666666] min-h-[48px]">
                         Minisúper, pulperías grandes y comercios consolidados
                     </p>
                 </div>
 
-                <div class="flex flex-col items-start gap-(8px) w-full mb-(24px)">
-                    <div class="flex flex-row items-baseline gap-(2px)">
-                        <span class="text-[32px] font-bold leading-(40px) tracking-[-0.5px] text-black price-main"
+                <div class="flex flex-col items-start gap-[8px] w-full mb-[24px]">
+                    <div class="flex flex-row items-baseline gap-[2px]">
+                        <span class="text-[32px] font-bold leading-[40px] tracking-[-0.5px] text-black price-main"
                               data-monthly="C$ 2,280.00" data-annual="C$ 1,824.00">C$ 2,280.00</span>
                         <span class="text-[16px] font-normal text-[#666666]">/mes</span>
                     </div>
                     <p class="text-[14px] text-[#666666] price-usd"
                        data-monthly="$62 USD por mes" data-annual="$49.60 USD por mes">$62 USD por mes</p>
                     
-                    <div class="inline-flex items-center px-2 py-1 bg-[#CCEBD6] border border-[#009933] rounded-(4px)">
+                    <div class="inline-flex items-center px-2 py-1 bg-[#CCEBD6] border border-[#009933] rounded-[4px]">
                         <span class="text-[10px] font-medium text-[#009933] price-billing"
                               data-monthly="C$ 27,360.00 facturado anualmente" 
                               data-annual="C$ 21,888.00 facturado anualmente">C$ 27,360.00 facturado anualmente</span>
                     </div>
                 </div>
 
-                <div class="flex flex-col items-start gap-(14px) w-full mb-(32px)">
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Hasta 3 Cajas simultáneas</span>
+                <div class="flex flex-col items-start gap-[14px] w-full mb-[32px]">
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Hasta 3 Cajas simultáneas</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">1 Sucursal</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">1 Sucursal</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Todo lo del Plan Inicial</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Todo lo del Plan Inicial</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Cuentas por Cobrar (Fiados)</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Cuentas por Cobrar (Fiados)</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Verificación 3-Way Match</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Verificación 3-Way Match</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Centro de Alertas y Anomalías</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Centro de Alertas y Anomalías</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Mapa de Proveedores integrado</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Mapa de Proveedores integrado</span>
                     </div>
                 </div>
             </div>
 
-            <button onclick="handlePlanClick(this)" class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-(16px) transition-all duration-300 active:scale-95 shadow-sm">
+            <button type="button" data-plan-action class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-[16px] transition-all duration-300 active:scale-95 shadow-sm">
                 Comenzar Prueba Gratis de 7 Días
             </button>
         </div>
 
-        <div class="group bg-white border border-[#CCCCCC] rounded-(24px) p-(32px) flex flex-col justify-between w-full shadow-sm transition-all duration-300 hover:shadow-xl hover:border-[#146F8A]/50">
+        <div class="group bg-white border border-[#CCCCCC] rounded-[24px] p-[32px] flex flex-col justify-between w-full shadow-sm transition-all duration-300 hover:shadow-xl hover:border-[#146F8A]/50">
             <div>
-                <div class="flex flex-col items-start gap-(12px) w-full mb-(20px)">
-                    <h3 class="text-[24px] font-semibold leading-(32px) tracking-[-0.5px] text-black">
+                <div class="flex flex-col items-start gap-[12px] w-full mb-[20px]">
+                    <h3 class="text-[24px] font-semibold leading-[32px] tracking-[-0.5px] text-black">
                         Plan Cadena
                     </h3>
-                    <div class="w-full h-(1px) bg-[#CCCCCC]"></div>
-                    <p class="text-[16px] font-normal leading-(24px) text-[#666666] min-h-(48px)">
+                    <div class="w-full h-[1px] bg-[#CCCCCC]"></div>
+                    <p class="text-[16px] font-normal leading-[24px] text-[#666666] min-h-[48px]">
                         Comerciantes con múltiples puntos de venta o bodega central
                     </p>
                 </div>
 
-                <div class="flex flex-col items-start gap-(8px) w-full mb-(24px)">
-                    <div class="flex flex-row items-baseline gap-(2px)">
-                        <span class="text-[32px] font-bold leading-(40px) tracking-[-0.5px] text-black price-main"
+                <div class="flex flex-col items-start gap-[8px] w-full mb-[24px]">
+                    <div class="flex flex-row items-baseline gap-[2px]">
+                        <span class="text-[32px] font-bold leading-[40px] tracking-[-0.5px] text-black price-main"
                               data-monthly="C$ 4,400.00" data-annual="C$ 3,520.00">C$ 4,400.00</span>
                         <span class="text-[16px] font-normal text-[#666666]">/mes</span>
                     </div>
                     <p class="text-[14px] text-[#666666] price-usd"
                        data-monthly="$120 USD por mes" data-annual="$96 USD por mes">$120 USD por mes</p>
                     
-                    <div class="inline-flex items-center px-2 py-1 bg-[#CCEBD6] border border-[#009933] rounded-(4px)">
+                    <div class="inline-flex items-center px-2 py-1 bg-[#CCEBD6] border border-[#009933] rounded-[4px]">
                         <span class="text-[10px] font-medium text-[#009933] price-billing"
                               data-monthly="C$ 52,800.00 facturado anualmente" 
                               data-annual="C$ 42,240.00 facturado anualmente">C$ 52,800.00 facturado anualmente</span>
                     </div>
                 </div>
 
-                <div class="flex flex-col items-start gap-(14px) w-full mb-(32px)">
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(916px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Cajas ilimitadas</span>
+                <div class="flex flex-col items-start gap-[14px] w-full mb-[32px]">
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[916px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Cajas ilimitadas</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Hasta 5 Sucursales conectadas</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Hasta 5 Sucursales conectadas</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Todo lo del Plan Comercio</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Todo lo del Plan Comercio</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Reportes y Analítica avanzada</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Reportes y Analítica avanzada</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Gestión de Personal y Roles</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Gestión de Personal y Roles</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px) text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Transferencia entre bodegas</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Transferencia entre bodegas</span>
                     </div>
-                    <div class="flex flex-row items-start gap-(10px)">
-                        <svg class="w-(16px) h-(16px)] text-[#009933] shrink-0 mt-(3px)" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
-                        <span class="text-[13px] font-normal leading-(18px) text-[#666666]">Asesor dedicado</span>
+                    <div class="flex flex-row items-start gap-[10px]">
+                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Asesor dedicado</span>
                     </div>
                 </div>
             </div>
 
-            <button onclick="handlePlanClick(this)" class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-(16px) transition-all duration-300 active:scale-95 shadow-sm">
+            <button type="button" data-plan-action class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-[16px] transition-all duration-300 active:scale-95 shadow-sm">
                 Seleccionar Plan Cadena
             </button>
         </div>
 
     </div>
 
-    <script>
-        function setBilling(type) {
-            const indicator = document.getElementById('switch-indicator');
-            const btnMonthly = document.getElementById('btn-monthly');
-            const btnAnnual = document.getElementById('btn-annual');
-            const priceMains = document.querySelectorAll('.price-main');
-            const priceUsds = document.querySelectorAll('.price-usd');
-            const priceBillings = document.querySelectorAll('.price-billing');
-
-            if (type === 'annual') {
-                indicator.style.transform = 'translateX(100%)';
-                btnAnnual.classList.remove('text-[#555555]');
-                btnAnnual.classList.add('text-white');
-                btnMonthly.classList.remove('text-white');
-                btnMonthly.classList.add('text-[#555555]');
-
-                // Actualizar precios y texto facturado anualmente con descuento
-                priceMains.forEach(el => el.textContent = el.getAttribute('data-annual'));
-                priceUsds.forEach(el => el.textContent = el.getAttribute('data-annual'));
-                priceBillings.forEach(el => el.textContent = el.getAttribute('data-annual'));
-            } else {
-                indicator.style.transform = 'translateX(0%)';
-                btnMonthly.classList.remove('text-[#555555]');
-                btnMonthly.classList.add('text-white');
-                btnAnnual.classList.remove('text-white');
-                btnAnnual.classList.add('text-[#555555]');
-
-                // Actualizar precios y texto facturado anualmente a mensual
-                priceMains.forEach(el => el.textContent = el.getAttribute('data-monthly'));
-                priceUsds.forEach(el => el.textContent = el.getAttribute('data-monthly'));
-                priceBillings.forEach(el => el.textContent = el.getAttribute('data-monthly'));
-            }
-        }
-
-        function handlePlanClick(button) {
-            // Animación elegante de clic y cambio a azul fijo momentáneo
-            button.style.transform = 'scale(0.96)';
-            button.style.backgroundColor = '#0f556b';
-            button.style.color = '#ffffff';
-            
-            setTimeout(() => {
-                button.style.transform = 'scale(1)';
-            }, 150);
-        }
-    </script>
 </section>
 <div class="max-w-7xl w-full mx-auto px-4">
-    <div class="w-full h-(1px) bg-gray-200"></div>
+    <div class="w-full h-[1px] bg-gray-200"></div>
 </div>
 <!-- SECCIÓN DE TESTIMONIOS  -->
-<section class="w-full py-(80px) bg-white flex flex-col items-center justify-center font-sans overflow-hidden">
+<section class="w-full py-[80px] bg-white flex flex-col items-center justify-center font-sans overflow-hidden">
     
     <!-- Encabezado de la sección -->
-    <div class="max-w-(1320px) w-full px-6 md:px-12 mb-(36px) flex flex-col items-center text-center gap-(12px)">
+    <div class="max-w-[1320px] w-full px-6 md:px-12 mb-[36px] flex flex-col items-center text-center gap-[12px]">
         <span class="text-[14px] font-semibold text-[#146F8A] tracking-wide uppercase">Testimonios</span>
-        <h2 class="text-[32px] md:text-[36px] font-semibold leading-(40px) tracking-[-0.5px] text-black">
+        <h2 class="text-[32px] md:text-[36px] font-semibold leading-[40px] tracking-[-0.5px] text-black">
             Observa las calificaciones y comentarios de nuestros clientes
         </h2>
         <p class="text-[14px] text-[#777777]">Pasa el cursor para hacer zoom y leer, o usa las flechas laterales</p>
     </div>
 
     <!-- Contenedor general con controles de flechas -->
-    <div class="relative max-w-(1320px) w-full px-6 md:px-12 flex items-center justify-center">
+    <div class="relative max-w-[1320px] w-full px-6 md:px-12 flex items-center justify-center">
         
         <!-- Botón de Flecha Izquierda -->
-        <button onclick="prevTestimonial()" class="absolute left-0 md:left-2 z-20 w-(44px) h-(44px) bg-white border border-[#E5E5E5] rounded-full shadow-md flex items-center justify-center text-black hover:bg-[#146F8A] hover:text-white hover:border-[#146F8A] transition-all duration-300 focus:outline-none cursor-pointer active:scale-95" aria-label="Anterior">
+        <button type="button" data-testimonial-prev class="absolute left-0 md:left-2 z-20 w-[44px] h-[44px] bg-white border border-[#E5E5E5] rounded-full shadow-md flex items-center justify-center text-black hover:bg-[#146F8A] hover:text-white hover:border-[#146F8A] transition-all duration-300 focus:outline-none cursor-pointer active:scale-95" aria-label="Anterior">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </button>
 
         <!-- Contenedor Desplazable con ancho visible fijo para 3 elementos -->
-        <div class="w-full max-w-(1140px) overflow-hidden flex select-none py-6 px-2" id="testimonials-container">
+        <div class="w-full max-w-[1140px] overflow-hidden flex select-none py-6 px-2" id="testimonials-container">
             
             <!-- Pista de elementos -->
-            <div class="flex gap-(32px) shrink-0 items-stretch transition-transform duration-500 ease-out" id="testimonials-track">
+            <div class="flex gap-[32px] shrink-0 items-stretch transition-transform duration-500 ease-out" id="testimonials-track">
                 
                 <!-- TESTIMONIO 1 -->
-                <div class="testimonial-card w-(356px) shrink-0 flex flex-col items-center text-center p-6 rounded-(24px) transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
-                    <div class="w-(72px) h-(72px) rounded-full overflow-hidden mb-(16px) shadow-md ring-4 ring-[#146F8A]/10 shrink-0">
-                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" alt="Carlos Mendoza" class="w-full h-full object-cover">
+                <div class="testimonial-card w-[356px] shrink-0 flex flex-col items-center text-center p-6 rounded-[24px] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
+                    <div class="w-[72px] h-[72px] rounded-full mb-[16px] shadow-md ring-4 ring-[#146F8A]/10 shrink-0 bg-[#146F8A] text-white flex items-center justify-center text-xl font-semibold" aria-hidden="true">
+                        CM
                     </div>
-                    <span class="text-[14px] font-medium text-[#146F8A] mb-(4px)">Testimonios</span>
-                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-(12px)">Carlos Mendoza</h3>
-                    <p class="text-[14px] font-normal leading-(22px) text-[#555555] italic mb-(16px) grow">
+                    <span class="text-[14px] font-medium text-[#146F8A] mb-[4px]">Testimonios</span>
+                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-[12px]">Carlos Mendoza</h3>
+                    <p class="text-[14px] font-normal leading-[22px] text-[#555555] italic mb-[16px] grow">
                         "Antes perdíamos horas cruzando datos entre hojas de cálculo y mensajes sueltos. Con Gintly visualizamos las finanzas, el inventario y las tareas del equipo en un solo lugar. La diferencia en nuestra eficiencia fue inmediata"
                     </p>
                     <div class="flex flex-row gap-1 text-[#FFC107] text-[15px]">★★★★★</div>
                 </div>
 
                 <!-- TESTIMONIO 2 -->
-                <div class="testimonial-card w-(356px) shrink-0 flex flex-col items-center text-center p-6 rounded-(24px) transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
-                    <div class="w-(72px) h-(72px) rounded-full overflow-hidden mb-(16px) shadow-md ring-4 ring-[#146F8A]/10 shrink-0">
-                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop" alt="Valeria Rostrán" class="w-full h-full object-cover">
+                <div class="testimonial-card w-[356px] shrink-0 flex flex-col items-center text-center p-6 rounded-[24px] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
+                    <div class="w-[72px] h-[72px] rounded-full mb-[16px] shadow-md ring-4 ring-[#146F8A]/10 shrink-0 bg-[#146F8A] text-white flex items-center justify-center text-xl font-semibold" aria-hidden="true">
+                        VR
                     </div>
-                    <span class="text-[14px] font-medium text-[#146F8A] mb-(4px)">Testimonios</span>
-                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-(12px)">Valeria Rostrán</h3>
-                    <p class="text-[14px] font-normal leading-(22px) text-[#555555] italic mb-(16px) grow">
+                    <span class="text-[14px] font-medium text-[#146F8A] mb-[4px]">Testimonios</span>
+                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-[12px]">Valeria Rostrán</h3>
+                    <p class="text-[14px] font-normal leading-[22px] text-[#555555] italic mb-[16px] grow">
                         "Probamos varias herramientas complejas que solo ralentizaban el trabajo diario. Gintly es intuitivo desde el día uno: la curva de aprendizaje fue casi nula y la adopción del equipo fue total"
                     </p>
                     <div class="flex flex-row gap-1 text-[#FFC107] text-[15px]">★★★★★</div>
                 </div>
 
                 <!-- TESTIMONIO 3 -->
-                <div class="testimonial-card w-(356px) shrink-0 flex flex-col items-center text-center p-6 rounded-(24px) transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
-                    <div class="w-(72px) h-(72px) rounded-full overflow-hidden mb-(16px) shadow-md ring-4 ring-[#146F8A]/10 shrink-0">
-                        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=200&auto=format&fit=crop" alt="Andrea Espinoza" class="w-full h-full object-cover">
+                <div class="testimonial-card w-[356px] shrink-0 flex flex-col items-center text-center p-6 rounded-[24px] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
+                    <div class="w-[72px] h-[72px] rounded-full mb-[16px] shadow-md ring-4 ring-[#146F8A]/10 shrink-0 bg-[#146F8A] text-white flex items-center justify-center text-xl font-semibold" aria-hidden="true">
+                        AE
                     </div>
-                    <span class="text-[14px] font-medium text-[#146F8A] mb-(4px)">Testimonios</span>
-                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-(12px)">Andrea Espinoza</h3>
-                    <p class="text-[14px] font-normal leading-(22px) text-[#555555] italic mb-(16px) grow">
+                    <span class="text-[14px] font-medium text-[#146F8A] mb-[4px]">Testimonios</span>
+                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-[12px]">Andrea Espinoza</h3>
+                    <p class="text-[14px] font-normal leading-[22px] text-[#555555] italic mb-[16px] grow">
                         "Tener métricas claras en tiempo real nos permitió recortar gastos innecesarios e identificar nuestros productos más rentables. Gintly se pagó solo en el primer mes"
                     </p>
                     <div class="flex flex-row gap-1 text-[#FFC107] text-[15px]">★★★★★</div>
                 </div>
 
                 <!-- TESTIMONIO 4 -->
-                <div class="testimonial-card w-(356px) shrink-0 flex flex-col items-center text-center p-6 rounded-(24px) transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
-                    <div class="w-(72px) h-(72px) rounded-full overflow-hidden mb-(16px) shadow-md ring-4 ring-[#146F8A]/10 shrink-0">
-                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop" alt="Marcos Urey" class="w-full h-full object-cover">
+                <div class="testimonial-card w-[356px] shrink-0 flex flex-col items-center text-center p-6 rounded-[24px] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] bg-white">
+                    <div class="w-[72px] h-[72px] rounded-full mb-[16px] shadow-md ring-4 ring-[#146F8A]/10 shrink-0 bg-[#146F8A] text-white flex items-center justify-center text-xl font-semibold" aria-hidden="true">
+                        MU
                     </div>
-                    <span class="text-[14px] font-medium text-[#146F8A] mb-(4px)">Testimonios</span>
-                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-(12px)">Marcos Urey</h3>
-                    <p class="text-[14px] font-normal leading-(22px) text-[#555555] italic mb-(16px) grow">
+                    <span class="text-[14px] font-medium text-[#146F8A] mb-[4px]">Testimonios</span>
+                    <h3 class="text-[18px] font-semibold text-black tracking-tight mb-[12px]">Marcos Urey</h3>
+                    <p class="text-[14px] font-normal leading-[22px] text-[#555555] italic mb-[16px] grow">
                         "El soporte y la facilidad de uso superaron todas nuestras expectativas. Recomiendo Gintly a cualquier empresa que busque escalar sin complicaciones."
                     </p>
                     <div class="flex flex-row gap-1 text-[#FFC107] text-[15px]">★★★★★</div>
@@ -1258,82 +1186,29 @@
         </div>
 
         <!-- Botón de Flecha Derecha -->
-        <button onclick="nextTestimonial()" class="absolute right-0 md:right-2 z-20 w-(44px) h-(44px) bg-white border border-[#E5E5E5] rounded-full shadow-md flex items-center justify-center text-black hover:bg-[#146F8A] hover:text-white hover:border-[#146F8A] transition-all duration-300 focus:outline-none cursor-pointer active:scale-95" aria-label="Siguiente">
+        <button type="button" data-testimonial-next class="absolute right-0 md:right-2 z-20 w-[44px] h-[44px] bg-white border border-[#E5E5E5] rounded-full shadow-md flex items-center justify-center text-black hover:bg-[#146F8A] hover:text-white hover:border-[#146F8A] transition-all duration-300 focus:outline-none cursor-pointer active:scale-95" aria-label="Siguiente">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </button>
 
     </div>
 
-    <!-- Script JavaScript para bucle automático y pausas al pasar el cursor -->
-    <script>
-        const track = document.getElementById('testimonials-track');
-        const container = document.getElementById('testimonials-container');
-        let currentIndex = 0;
-        const totalItems = track.children.length; 
-        const visibleCards = 3; 
-        const maxIndex = totalItems - visibleCards; 
-        let autoPlayInterval;
-
-        function updateSlider() {
-            const cardWidth = track.children[0].offsetWidth + 32; 
-            track.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
-        }
-
-        function nextTestimonial() {
-            if (currentIndex < maxIndex) {
-                currentIndex++;
-            } else {
-                currentIndex = 0; // Regresa suavemente al principio cuando se muestra el último completo
-            }
-            track.style.transition = 'transform 0.5s ease-out';
-            updateSlider();
-        }
-
-        function prevTestimonial() {
-            if (currentIndex > 0) {
-                currentIndex--;
-            } else {
-                currentIndex = maxIndex;
-            }
-            track.style.transition = 'transform 0.5s ease-out';
-            updateSlider();
-        }
-
-        // Iniciar desplazamiento automático cada 4 segundos
-        function startAutoPlay() {
-            autoPlayInterval = setInterval(nextTestimonial, 4000);
-        }
-
-        function stopAutoPlay() {
-            clearInterval(autoPlayInterval);
-        }
-
-        startAutoPlay();
-
-        // Pausar el carrusel automáticamente al poner el cursor encima para que el usuario haga zoom y lea con calma
-        container.addEventListener('mouseenter', stopAutoPlay);
-        container.addEventListener('mouseleave', startAutoPlay);
-    </script>
-
-
-
 <!--Footer-->
-    <footer class="w-full bg-[#0C4353] text-white py-20 px-6 md:px-24 flex flex-col items-start gap-10 font-inter shrink-0 grow-0" style="min-height: 638px;">
+    <footer class="w-full min-h-[638px] bg-[#0C4353] text-white py-20 px-6 md:px-24 flex flex-col items-start gap-10 font-inter shrink-0 grow-0">
     
-    <div class="w-full max-w-(1320px) mx-auto flex flex-col md:flex-row justify-between items-start gap-12 md:gap-6">
+    <div class="w-full max-w-[1320px] mx-auto flex flex-col md:flex-row justify-between items-start gap-12 md:gap-6">
         
-        <div class="flex flex-col items-start gap-8 w-full md:w-(458px)">
+        <div class="flex flex-col items-start gap-8 w-full md:w-[458px]">
             
             <div class="flex flex-col items-start gap-6 self-stretch">
-                <h2 class="font-semibold text-[24px] leading-(32px) tracking-[-0.5px] text-white self-stretch">
+                <h2 class="font-semibold text-[24px] leading-[32px] tracking-[-0.5px] text-white self-stretch">
                     Potenciando la gestión de tu negocio
                 </h2>
-                <p class="font-normal text-[16px] leading-(24px) text-white self-stretch opacity-90" style="font-family: 'Poppins', sans-serif;">
+                <p class="font-normal text-[16px] leading-[24px] text-white self-stretch opacity-90">
                     Acompañamos a pequeñas empresas, emprendedores y equipos en la optimización de sus operaciones diarias con herramientas simples, claras y eficientes.
                 </p>
             </div>
 
-            <a href="#prueba" class="inline-flex items-center justify-center px-6 py-2.5 gap-3 bg-[#146F8A] text-white rounded-full text-[12px] font-medium leading-(16px) transition-all duration-300 hover:bg-[#115b71] active:scale-95 shadow-sm">
+            <a href="#prueba" class="inline-flex items-center justify-center px-6 py-2.5 gap-3 bg-[#146F8A] text-white rounded-full text-[12px] font-medium leading-[16px] transition-all duration-300 hover:bg-[#115b71] active:scale-95 shadow-sm">
                 <span>Prueba Gintly</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M4.5 9L7.5 6L4.5 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1341,16 +1216,16 @@
             </a>
 
             <div class="flex flex-row items-start gap-4 pt-2">
-                <a href="#" class="flex justify-center items-center w-11.5 h-(38px) border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 1">
+                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 1">
                     <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
                 </a>
-                <a href="#" class="flex justify-center items-center w-11.5 h-(38px) border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 2">
+                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 2">
                     <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
                 </a>
-                <a href="#" class="flex justify-center items-center w-11.5 h-(38px) border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 3">
+                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 3">
                     <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
                 </a>
-                <a href="#" class="flex justify-center items-center w-11.5 h-(38px) border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 4">
+                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 4">
                     <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
                 </a>
             </div>
@@ -1359,8 +1234,8 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-12 w-full md:w-auto md:grow">
     
             <div class="flex flex-col items-start gap-6">
-                <h4 class="font-semibold text-[18px] leading-(26px) text-white h-(26px)">Producto</h4>
-                <ul class="flex flex-col items-start gap-4 text-[16px] leading-(24px) text-[#C5D8DE]">
+                <h4 class="font-semibold text-[18px] leading-[26px] text-white h-[26px]">Producto</h4>
+                <ul class="flex flex-col items-start gap-4 text-[16px] leading-[24px] text-[#C5D8DE]">
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Módulos</a></li>
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Funcionalidades</a></li>
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Integraciones</a></li>
@@ -1369,8 +1244,8 @@
             </div>
 
             <div class="flex flex-col items-start gap-6">
-                <h4 class="font-semibold text-[18px] leading-(26px) text-white h-(26px)">Soluciones</h4>
-                <ul class="flex flex-col items-start gap-4 text-[16px] leading-(24px) text-[#C5D8DE]">
+                <h4 class="font-semibold text-[18px] leading-[26px] text-white h-[26px]">Soluciones</h4>
+                <ul class="flex flex-col items-start gap-4 text-[16px] leading-[24px] text-[#C5D8DE]">
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Control Financiero</a></li>
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Gestión de Inventario</a></li>
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Flujos de Trabajo</a></li>
@@ -1379,8 +1254,8 @@
             </div>
 
             <div class="flex flex-col items-start gap-6 col-span-2 sm:col-span-1">
-                <h4 class="font-semibold text-[18px] leading-(26px) text-white h-(26px)">Recursos y Soporte</h4>
-                <ul class="flex flex-col items-start gap-4 text-[16px] leading-(24px) text-[#C5D8DE]">
+                <h4 class="font-semibold text-[18px] leading-[26px] text-white h-[26px]">Recursos y Soporte</h4>
+                <ul class="flex flex-col items-start gap-4 text-[16px] leading-[24px] text-[#C5D8DE]">
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Centro de Ayuda</a></li>
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Guías de Uso</a></li>
                     <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Atención a Clientes</a></li>
@@ -1391,11 +1266,11 @@
         </div>
     </div>
 
-    <div class="w-full max-w-(1320px) mx-auto border-t border-white/50"></div>
+    <div class="w-full max-w-[1320px] mx-auto border-t border-white/50"></div>
 
-    <div class="w-full max-w-(1320px) mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-[16px] leading-(24px) text-white/80">
+    <div class="w-full max-w-[1320px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-[16px] leading-[24px] text-white/80">
 
-        <p class="font-semibold text-[18px] leading-(26px)">
+        <p class="font-semibold text-[18px] leading-[26px]">
             Journey Map creador de Gintly, un sitio <a href="https://www.gintly.com" target="_blank" class="hover:underline">https://www.gintly.com</a>
         </p>
         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 font-normal">

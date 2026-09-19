@@ -10,26 +10,11 @@
     'resources/css/app.css',
     'resources/js/modules/security/auth.js',
   ])
-  <style>
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .page-transition-out {
-      opacity: 0;
-      transform: translateX(-15px);
-      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-  </style>
 </head>
-<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden font-sans">
+<body class="login-page bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden font-sans">
 
   <!-- Contenedor Principal con animación de entrada -->
-  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-(1380px) h-[92vh] max-h-(860px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
+  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
     
     <!-- Columna Izquierda: Panel Visual y de Marca -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -62,7 +47,7 @@
     <!-- Columna Derecha: Formulario de Login -->
     <div class="flex flex-col justify-center w-full lg:w-[58%] h-full p-6 md:p-10 bg-white overflow-y-auto">
       
-      <div class="w-full max-w-(560px) mx-auto flex flex-col gap-6">
+      <div class="w-full max-w-[560px] mx-auto flex flex-col gap-6">
         
         <!-- Header: Volver y Logo -->
         <div class="flex flex-col gap-3 w-full">

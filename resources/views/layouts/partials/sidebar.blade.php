@@ -9,7 +9,7 @@
 @endphp
 
 <!-- Contenedor Principal: Ancho fijo de 64 (w-64) o ajustable a tus 337px de Figma -->
-<div class="flex h-(880px) w-(337px) flex-col justify-between bg-[#041d26] p-6 text-slate-300 font-sans select-none border-r border-[#082d3b]">
+<div class="flex h-[880px] w-[337px] flex-col justify-between bg-[#041d26] p-6 text-slate-300 font-sans select-none border-r border-[#082d3b]">
  
     <!-- CONTENEDOR SUPERIOR -->
     <div class="flex flex-col gap-6">
@@ -134,7 +134,7 @@
                 <span class="flex items-center"><i class="fa-solid fa-moon mr-3 w-4 text-center"></i> Modo oscuro</span>
                 <label class="relative inline-flex cursor-pointer items-center">
                     <input type="checkbox" checked class="peer sr-only">
-                    <div class="h-5 w-9 rounded-full bg-slate-800 border border-slate-700 after:absolute after:top-(4px) after:left-(4px) after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-all peer-checked:bg-cyan-500 peer-checked:after:translate-x-4"></div>
+                    <div class="h-5 w-9 rounded-full bg-slate-800 border border-slate-700 after:absolute after:top-[4px] after:left-[4px] after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-all peer-checked:bg-cyan-500 peer-checked:after:translate-x-4"></div>
                 </label>
             </div>
 

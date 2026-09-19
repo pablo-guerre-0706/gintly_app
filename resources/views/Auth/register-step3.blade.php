@@ -4,38 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gintly App - Configura el tipo de tu negocio</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    @keyframes scaleUp {
-      0% { transform: scale(0.95); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .animate-scale-up {
-      animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    /* Scroll personalizado y limpio exclusivamente para el contenedor del formulario */
-    .custom-scroll::-webkit-scrollbar { width: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-  </style>
+  @vite([
+    'resources/css/app.css',
+    'resources/js/modules/registration/wizard.js',
+  ])
 </head>
-<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
+<body data-registration-step="3" class="registration-page bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
  <div>
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
-  <div class="flex flex-col lg:flex-row items-center w-full max-w-(1380px) h-[92vh] max-h-(860px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
+  <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
     
     <!-- Columna Izquierda: Panel Visual Único del Paso de Negocio -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -73,7 +51,7 @@
     <!-- Columna Derecha: Selección de Tipo de Negocio con Scroll Interno -->
     <div class="flex flex-col justify-between w-full lg:w-[58%] h-full p-6 md:p-8 bg-white overflow-hidden">
       
-      <div class="w-full max-w-(620px) mx-auto flex flex-col gap-3 h-full">
+      <div class="w-full max-w-[620px] mx-auto flex flex-col gap-3 h-full">
         
         <!-- Header: Regresar y Logo -->
         <div class="flex flex-col gap-2 w-full shrink-0">
@@ -263,53 +241,4 @@
     </div>
 
   </div>
-
-  <!-- Lógica de selección y animaciones interactivas -->
-  <script>
-    const cards = document.querySelectorAll('.business-card');
-    const hiddenInput = document.getElementById('tipo_negocio');
-    const submitBtn = document.getElementById('submitBtn');
-
-    cards.forEach(card => {
-      card.addEventListener('click', () => {
-        // Remover estado seleccionado de todas con transición suave
-        cards.forEach(c => {
-          c.classList.remove('border-[#146F8A]', 'bg-sky-50/40', 'ring-2', 'ring-[#146F8A]/25', 'shadow-md');
-          c.classList.add('border-slate-200', 'bg-white');
-          const box = c.querySelector('.check-box');
-          const icon = c.querySelector('.check-icon');
-          box.classList.remove('bg-[#146F8A]', 'border-[#146F8A]');
-          box.classList.add('bg-white', 'border-slate-300');
-          icon.classList.add('hidden');
-        });
-
-        // Activar la tarjeta clickeada con animación de selección
-        card.classList.remove('border-slate-200', 'bg-white');
-        card.classList.add('border-[#146F8A]', 'bg-sky-50/40', 'ring-2', 'ring-[#146F8A]/25', 'shadow-md', 'animate-scale-up');
-        
-        setTimeout(() => card.classList.remove('animate-scale-up'), 300);
-
-        const activeBox = card.querySelector('.check-box');
-        const activeIcon = card.querySelector('.check-icon');
-        activeBox.classList.remove('bg-white', 'border-slate-300');
-        activeBox.classList.add('bg-[#146F8A]', 'border-[#146F8A]');
-        activeIcon.classList.remove('hidden');
-
-        // Asignar valor y habilitar botón de forma dinámica
-        hiddenInput.value = card.getAttribute('data-value');
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed', 'shadow-sm');
-        submitBtn.classList.add('bg-[#146F8A]', 'text-white', 'hover:bg-[#10596e]', 'shadow-lg', 'shadow-[#146F8A]/25', 'cursor-pointer', 'active:scale-[0.99]');
-      });
-    });
-
-    // Restaurar selección previa si existe (old() de Laravel)
-    const initialValue = hiddenInput.value;
-    if (initialValue) {
-      const targetCard = document.querySelector(`.business-card[data-value="${initialValue}"]`);
-      if (targetCard) {
-        targetCard.click();
-      }
-    }
-  </script>
 </div>

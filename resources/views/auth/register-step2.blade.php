@@ -4,29 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gintly App - Creación del Perfil de Tienda</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    /* Scroll personalizado y limpio exclusivamente para el contenedor del formulario */
-    .custom-scroll::-webkit-scrollbar { width: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-  </style>
+  @vite([
+    'resources/css/app.css',
+    'resources/js/modules/registration/wizard.js',
+  ])
 </head>
-<body class="bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
+<body data-registration-step="2" class="registration-page bg-linear-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
-  <div class="flex flex-col lg:flex-row items-center w-full max-w-(1380px) h-[92vh] max-h-(860px) bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
+  <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
     
     <!-- Columna Izquierda: Panel Visual Único del Paso de Negocio -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -64,7 +50,7 @@
     <!-- Columna Derecha: Formulario Individual de Negocio con Scroll Interno -->
     <div class="flex flex-col justify-between w-full lg:w-[58%] h-full p-6 md:p-10 bg-white overflow-hidden">
       
-      <div class="w-full max-w-(580px) mx-auto flex flex-col gap-3 h-full">
+      <div class="w-full max-w-[580px] mx-auto flex flex-col gap-3 h-full">
         
         <!-- Header: Regresar al Paso 1 y Logo -->
         <div class="flex flex-col gap-2 w-full shrink-0">
@@ -191,96 +177,5 @@
   </div>
 
   <!-- Lógica de validación y restricción de caracteres -->
-  <script>
-    const state = {
-      nombre_tienda: false,
-      pais_region: false,
-      ciudad: false,
-      codigo_postal: false,
-      direccion: false,
-      correo_tienda: true,
-      numero_convencional: true,
-      numero_sucursales: true,
-      ruc: false
-    };
-
-    const updateSubmitButton = () => {
-      const btn = document.getElementById('submitBtn');
-      const allValid = Object.values(state).every(val => val === true);
-
-      if (allValid) {
-        btn.disabled = false;
-        btn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed', 'shadow-sm');
-        btn.classList.add('bg-[#146F8A]', 'text-white', 'hover:bg-[#10596e]', 'shadow-lg', 'shadow-[#146F8A]/25', 'cursor-pointer', 'active:scale-[0.99]');
-      } else {
-        btn.disabled = true;
-        btn.classList.remove('bg-[#146F8A]', 'text-white', 'hover:bg-[#10596e]', 'shadow-lg', 'shadow-[#146F8A]/25', 'cursor-pointer', 'active:scale-[0.99]');
-        btn.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed', 'shadow-sm');
-      }
-    };
-
-    const ejecutarValidacion = (key, input, msg, condicion, textoError, textoValido, msgObligatorio = "Es de carácter obligatorio", esOpcional = false) => {
-      if (input.value.trim() === "") {
-        input.classList.remove('border-rose-400', 'border-emerald-500', 'ring-2', 'ring-rose-400/20', 'ring-emerald-500/20');
-        input.classList.add('border-slate-200');
-        if (esOpcional) {
-          msg.textContent = "Opcional, pero recomendado como contacto";
-          msg.className = "text-[10px] text-slate-400 flex items-center gap-1 transition-all duration-300";
-          state[key] = true;
-        } else {
-          msg.textContent = msgObligatorio;
-          msg.className = "text-[10px] text-slate-500 flex items-center gap-1 transition-all duration-300";
-          state[key] = false;
-        }
-      } else if (condicion()) {
-        input.classList.remove('border-slate-200', 'border-rose-400', 'ring-rose-400/20');
-        input.classList.add('border-emerald-500', 'ring-2', 'ring-emerald-500/20');
-        msg.textContent = "✓ " + textoValido;
-        msg.className = "text-[10px] text-emerald-600 font-semibold flex items-center gap-1 transition-all duration-300";
-        state[key] = true;
-      } else {
-        input.classList.remove('border-slate-200', 'border-emerald-500', 'ring-emerald-500/20');
-        input.classList.add('border-rose-400', 'ring-2', 'ring-rose-400/20');
-        msg.textContent = "✕ " + textoError;
-        msg.className = "text-[10px] text-rose-500 font-semibold flex items-center gap-1 transition-all duration-300";
-        state[key] = false;
-      }
-    };
-
-    const registrarValidacion = (key, input, msg, condicion, textoError, textoValido, msgObligatorio, esOpcional = false) => {
-      input.addEventListener('input', () => {
-        ejecutarValidacion(key, input, msg, condicion, textoError, textoValido, msgObligatorio, esOpcional);
-        updateSubmitButton();
-      });
-      input.addEventListener('change', () => {
-        ejecutarValidacion(key, input, msg, condicion, textoError, textoValido, msgObligatorio, esOpcional);
-        updateSubmitButton();
-      });
-      ejecutarValidacion(key, input, msg, condicion, textoError, textoValido, msgObligatorio, esOpcional);
-    };
-
-    // Campos Obligatorios
-    registrarValidacion('nombre_tienda', document.getElementById('nombre_tienda'), document.getElementById('nombreTiendaMsg'), () => document.getElementById('nombre_tienda').value.trim().length >= 2, "El nombre de la tienda es muy corto", "Nombre válido");
-    registrarValidacion('pais_region', document.getElementById('pais_region'), document.getElementById('paisRegionMsg'), () => document.getElementById('pais_region').value.trim().length >= 2, "El país o región es muy corto", "País válido");
-    registrarValidacion('ciudad', document.getElementById('ciudad'), document.getElementById('ciudadMsg'), () => document.getElementById('ciudad').value.trim().length >= 2, "El nombre de la ciudad es muy corto", "Ciudad válida");
-    registrarValidacion('codigo_postal', document.getElementById('codigo_postal'), document.getElementById('codigoPostalMsg'), () => document.getElementById('codigo_postal').value.trim().length >= 3, "Código postal inválido", "Código postal válido");
-    registrarValidacion('direccion', document.getElementById('direccion'), document.getElementById('direccionMsg'), () => document.getElementById('direccion').value.trim().length >= 5, "La dirección es muy corta", "Dirección válida");
-    registrarValidacion('numero_sucursales', document.getElementById('numero_sucursales'), document.getElementById('sucursalesMsg'), () => parseInt(document.getElementById('numero_sucursales').value) >= 1, "Debe ser al menos 1 sucursal", "Cantidad válida", "Obligatorio para entender la capacidad de tu negocio.");
-    registrarValidacion('ruc', document.getElementById('ruc'), document.getElementById('rucMsg'), () => document.getElementById('ruc').value.trim().length >= 5, "RUC o identificación fiscal inválida", "RUC válido");
-
-    // Correo Electrónico
-    registrarValidacion('correo_tienda', document.getElementById('correo_tienda'), document.getElementById('correoTiendaMsg'), () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(document.getElementById('correo_tienda').value), "Formato de correo no válido", "Correo de tienda válido", "Opcional, pero recomendado como contacto", true);
-
-    // Número Convencional (Bloqueo estricto: solo permite números)
-    const inputConvencional = document.getElementById('numero_convencional');
-    inputConvencional.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '');
-    });
-
-    registrarValidacion('numero_convencional', inputConvencional, document.getElementById('numConvencionalMsg'), () => inputConvencional.value === "" || /^[0-9]{7,15}$/.test(inputConvencional.value), "Debe tener entre 7 y 15 dígitos", "Número convencional válido", "Opcional, pero recomendado como contacto", true);
-
-    updateSubmitButton();
-  </script>
-
 </body>
 </html>
