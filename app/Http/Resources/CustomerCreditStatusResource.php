@@ -6,6 +6,8 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\AccountReceivableResource;
+use App\Http\Resources\ReceivablePaymentResource;
 
 /**
  * Envuelve el array de ReceivableService::estadoDeCredito().
@@ -13,12 +15,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class CustomerCreditStatusResource extends JsonResource
 {
-    public function toArray(Request $request): array
+    /** @param  \Illuminate\Http\Request  $request */
+    public function toArray($request): array
     {
         return [
-            'credit_limit'     => $this->resource['credit_limit'],
-            'exposure'         => $this->resource['exposure'],
-            'available_credit' => $this->resource['available_credit'],
+            'credit_limit'     => (string) $this->resource['credit_limit'],
+            'exposure'         => (string) $this->resource['exposure'],
+            'available_credit' => (string) $this->resource['available_credit'],
             'open_accounts'    => AccountReceivableResource::collection($this->resource['open_accounts']),
             'payment_history'  => ReceivablePaymentResource::collection($this->resource['payment_history']),
         ];

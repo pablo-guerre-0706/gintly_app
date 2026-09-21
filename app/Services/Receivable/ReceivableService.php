@@ -6,6 +6,7 @@ namespace App\Services\Receivable;
 
 use App\Enums\AccountReceivableStatus;
 use App\Enums\InvoicePaymentStatus;
+use App\Exceptions\InvoiceVoidedException;
 use App\Exceptions\CreditLimitExceededException;
 use App\Exceptions\OverpaymentException;
 use App\Models\AccountReceivable;
@@ -136,6 +137,18 @@ final class ReceivableService
         $method = (string) $data['payment_method'];
 
         return DB::transaction(function () use ($accountReceivable, $data, $amount, $method): ReceivablePayment {
+
+            // Orden de bloqueo canónico Invoice → CxC (idéntico a InvoiceService::anular): elimina el ABBA.
+            $invoice = Invoice::query()
+                ->whereKey($accountReceivable->invoice_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Factura anulada ⇒ error de dominio controlado (409), nunca un 500 crudo.
+            if ($invoice->status->isVoided()) {
+                throw new InvoiceVoidedException();
+            }
+
             // Serializa abonos concurrentes sobre la MISMA cuenta (bloqueo de fila).
             $ar = AccountReceivable::query()
                 ->whereKey($accountReceivable->getKey())

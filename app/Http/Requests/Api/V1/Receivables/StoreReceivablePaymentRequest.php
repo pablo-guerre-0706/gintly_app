@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Receivables;
 
 use App\Enums\PaymentMethod;
-use App\Http\Requests\Api\V1\BaseTenantRequest;
+use App\Http\Requests\BaseTenantRequest;
 use Illuminate\Validation\Rule;
 
 final class StoreReceivablePaymentRequest extends BaseTenantRequest

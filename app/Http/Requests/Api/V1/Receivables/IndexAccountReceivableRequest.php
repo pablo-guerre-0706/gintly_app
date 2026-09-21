@@ -15,6 +15,11 @@ final class IndexAccountReceivableRequest extends BaseTenantRequest
     use HasDateRangeFilter;
     use HasPaginationRules;
 
+    protected function sortableColumns(): array
+    {
+        return [];
+    }
+
     public function authorize(): bool
     {
         return true; // La autorización la resuelve AccountReceivablePolicy::viewAny en el controlador.

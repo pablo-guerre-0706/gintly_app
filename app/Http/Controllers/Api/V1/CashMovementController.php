@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\CashMovementType;
+use App\Enums\CashMovementCategory;
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\CashMovement\StoreCashMovementRequest;
 use App\Http\Resources\CashMovementResource;
@@ -41,7 +44,19 @@ final class CashMovementController extends Controller
     {
         $this->authorize('create', CashMovement::class);
 
-        $movement = $this->cash->registrarMovimiento($request->validated(), $request->user());
+        $validated = $request->validated();
+
+        // Mapeamos y casteamos los datos para cumplir con la firma estricta del Service
+        $movement = $this->cash->registrarMovimiento(
+            $request->user(),
+            (int) $validated['cash_session_id'],
+            CashMovementType::from($validated['type']),
+            CashMovementCategory::from($validated['category']),
+            PaymentMethod::from($validated['payment_method']),
+            (string) $validated['amount'],
+            isset($validated['authorized_by']) ? (int) $validated['authorized_by'] : null,
+            $validated['description'] ?? null
+        );
 
         return CashMovementResource::make($movement->load(['cashSession', 'user', 'authorizedBy']))
             ->response()

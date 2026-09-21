@@ -23,7 +23,16 @@ final class CloseCashSessionController extends Controller
     {
         $this->authorize('close', $cashSession); // autoría o Admin+
 
-        $session = $this->cash->cerrar($cashSession, $request->validated(), $request->user());
+        $validated = $request->validated();
+
+        // Alineamos las variables al orden exacto y tipos estrictos que exige el Service
+        $session = $this->cash->cerrar(
+            $request->user(),
+            $cashSession,
+            (string) $validated['counted_amount'],
+            (array) $validated['denominations'],
+            isset($validated['closing_notes']) ? (string) $validated['closing_notes'] : null
+        );
 
         return CashSessionResource::make(
             $session->load(['cashRegister', 'openedBy', 'closedBy']),

@@ -27,7 +27,8 @@ use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
-use App\Http\Controllers\Api\V1\CustomerCreditController; // Reutilizado de MOD-08.
+use App\Http\Controllers\Api\V1\CustomerCreditCheckController;
+use App\Http\Controllers\Api\V1\CustomerCreditStatusController;
 use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\UpdatePasswordController;
 use App\Http\Controllers\Api\V1\POSController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
+use App\Http\Controllers\Api\V1\ReceivablePaymentsController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportDefinitionController;
@@ -58,6 +60,7 @@ use App\Http\Controllers\Api\V1\SalesReturnController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\StoreInvoiceController;
+use App\Http\Controllers\Api\V1\StoreReceivablePaymentController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\SuspendSupplierController;
 use App\Http\Controllers\Api\V1\UnblockAccountPayableController;
@@ -72,6 +75,8 @@ use App\Models\User;
 use App\Models\ProductRecipe;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
+
+
 
 
 
@@ -219,19 +224,14 @@ Route::prefix('v1')->group(function (): void {
         Route::get('invoices/{invoice}/payments', InvoicePaymentsController::class);
 
         // MOD-08 · Cuentas por Cobrar
-        // Route::prefix('accounts-receivable')->group(function (): void {
-            // Route::get('/', [AccountReceivableController::class, 'index'])
-                // ->name('accounts-receivable.index');
+        Route::get('accounts-receivable', [AccountReceivableController::class, 'index']);
+        Route::get('accounts-receivable/{accountReceivable}', [AccountReceivableController::class, 'show']);
+        Route::get('accounts-receivable/{accountReceivable}/payments', ReceivablePaymentsController::class);
+        Route::post('accounts-receivable/{accountReceivable}/payments', StoreReceivablePaymentController::class);
 
-            // Route::get('/{accountReceivable}', [AccountReceivableController::class, 'show'])
-                // ->name('accounts-receivable.show');
+        Route::get('customers/{customer}/credit-status', CustomerCreditStatusController::class);
+        Route::post('customers/{customer}/credit-check', CustomerCreditCheckController::class);
 
-            // Route::get('/{accountReceivable}/payments', [AccountReceivableController::class, 'payments'])
-                // ->name('accounts-receivable.payments.index');
-
-            // Route::post('/{accountReceivable}/payments', [AccountReceivableController::class, 'storePayment'])
-                // ->name('accounts-receivable.payments.store');
-        // });
 
         // MOD-09 Crédito del cliente (sub-recurso de customers)
         // Route::prefix('customers/{customer}')->group(function (): void {
