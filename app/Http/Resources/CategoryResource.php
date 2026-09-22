@@ -24,8 +24,11 @@ final class CategoryResource extends JsonResource
             'parent_id' => $this->parent_id,
             'is_active' => $this->is_active,
             // El árbol solo se anida cuando la relación viene precargada, para
-            // no disparar N+1 en la lista plana.
-            'children'  => CategoryResource::collection($this->whenLoaded('children')),
+            // no disparar N+1 en la lista plana. En modo ?tree=true se precarga
+            // 'childrenRecursive' (descendencia completa); en la lista plana, 'children'.
+            'children'  => $this->relationLoaded('childrenRecursive')
+                ? CategoryResource::collection($this->childrenRecursive)
+                : CategoryResource::collection($this->whenLoaded('children')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

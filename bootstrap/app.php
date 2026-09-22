@@ -6,6 +6,7 @@ use App\Http\Middleware\SetPermissionsTeamId;
 use App\Exceptions\CashAuthorizationException;
 use App\Exceptions\CashSessionConflictException;
 use App\Exceptions\CustomerHasReceivablesException;
+use App\Exceptions\CyclicReferenceException;
 use App\Exceptions\ImmutableInvoiceException;
 use App\Exceptions\InvalidPurchaseStateException;
 use App\Exceptions\IncompletePaymentException;
@@ -98,6 +99,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => $e->getMessage(),
                 'code'    => 'ERR-02B',
             ], 409);
+        });
+
+        // ERR-02 · 422. Ciclo en jerarquía de categorías o composición de recetas
+        // (MOD-02). Sin render propio degradaba a 500 en lugar del 422 del contrato.
+        $exceptions->render(function (CyclicReferenceException $e, Request $request) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'ERR-02',
+            ], 422);
         });
 
         $exceptions->render(function (CustomerHasReceivablesException $e, Request $request) {

@@ -27,10 +27,31 @@ final class ProductController extends Controller
     public function index(IndexProductRequest $request): AnonymousResourceCollection
     {
         // Eager de las FKs que expone ProductResource (anti N+1). BusinessScope aísla el tenant.
+        // IndexProductRequest valida filtros/orden/paginación del contrato MOD-02.
         $products = Product::query()
             ->with(['category', 'brand', 'unit'])
-            ->orderBy('name')
-            ->paginate($request->integer('per_page', 15));
+            ->when(
+                $request->validated('type'),
+                fn ($q, $type) => $q->where('type', $type)
+            )
+            ->when(
+                $request->validated('category_id'),
+                fn ($q, $categoryId) => $q->where('category_id', $categoryId)
+            )
+            ->when(
+                $request->has('is_active'),
+                fn ($q) => $q->where('is_active', $request->boolean('is_active'))
+            )
+            ->when(
+                $request->validated('search'),
+                fn ($q, $search) => $q->where(fn ($sub) => $sub
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%"))
+            )
+            // `available` se resuelve contra stock (MOD-03): se valida su forma
+            // pero su aplicación queda diferida a ese módulo.
+            ->orderBy($request->sortColumn('name'), $request->sortDirection('asc'))
+            ->paginate($request->perPage());
 
         return ProductResource::collection($products);
     }

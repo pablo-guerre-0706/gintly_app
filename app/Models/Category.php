@@ -42,6 +42,13 @@ final class Category extends Model
         return $this->hasMany(self::class, 'parent_id');
     }
 
+    // Hijos con sus descendientes, para el modo árbol (?tree=true). La recursión
+    // termina porque CategoryService impide ciclos padre-hijo (directos e indirectos).
+    public function childrenRecursive(): HasMany
+    {
+        return $this->children()->with('childrenRecursive');
+    }
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);

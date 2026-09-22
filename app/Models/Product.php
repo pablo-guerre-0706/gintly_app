@@ -79,6 +79,22 @@ final class Product extends Model
         return $this->hasMany(ProductRecipe::class, 'compound_id');
     }
 
+    /**
+     * Alias exigido por el scoped binding de la ruta anidada products.recipe.
+     *
+     * El parámetro de la línea es {line}; Laravel resuelve el hijo buscando en el
+     * padre la relación Str::plural(Str::camel('line')) = lines(). Sin ella, el
+     * binding con ->scoped() lanzaba BadMethodCallException (500) en
+     * show/update/destroy y jamás acotaba la línea al compuesto. Apunta a las
+     * líneas de ESTE compuesto (compound_id); junto con el BusinessScope de
+     * ProductRecipe, la línea queda acotada al compuesto de la ruta y al negocio
+     * autenticado (ambas condiciones exigidas).
+     */
+    public function lines(): HasMany
+    {
+        return $this->recipeLines();
+    }
+
     // Líneas donde este producto figura como insumo de otros compuestos.
     public function usedInRecipes(): HasMany
     {
