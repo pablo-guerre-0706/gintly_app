@@ -40,4 +40,29 @@ class Branch extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function warehouses(): HasMany
+    {
+        return $this->hasMany(Warehouse::class);
+    }
+
+    public function cashRegisters(): HasMany
+    {
+        return $this->hasMany(CashRegister::class);
+    }
+
+    /**
+     * Dependencias operativas que impiden la baja (ERR-02B).
+     *
+     * El borrado de sucursal es lógico (SoftDeletes), por lo que las FK RESTRICT
+     * del motor no se disparan: la integridad se protege aquí. Las relaciones
+     * excluyen registros ya dados de baja (SoftDeletes) y quedan acotadas al
+     * negocio por BusinessScope, de modo que solo cuentan dependientes vigentes.
+     */
+    public function hasOperationalDependents(): bool
+    {
+        return $this->users()->exists()
+            || $this->warehouses()->exists()
+            || $this->cashRegisters()->exists();
+    }
 }

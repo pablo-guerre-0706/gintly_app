@@ -18,7 +18,10 @@ final class UpdatePasswordController extends Controller
     public function __invoke(UpdateOwnPasswordRequest $request): Response
     {
         // Identidad ya probada por la regla current_password:web del FormRequest -> no requiere authorize adicional.
-        $this->users->updateOwnPassword($request->user(), $request->validated('password'));
+        // Se conserva la sesión actual del titular; las demás se invalidan en el servicio.
+        $keepSessionId = $request->hasSession() ? $request->session()->getId() : null;
+
+        $this->users->updateOwnPassword($request->user(), $request->validated('password'), $keepSessionId);
 
         return response()->noContent();
     }

@@ -6,6 +6,7 @@ namespace App\Services\Auth;
 
 use App\Models\Business;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -19,6 +20,7 @@ final class AuthService
 
     public function __construct(
         private readonly PermissionRegistrar $permissions,
+        private readonly AuditLogger $audit,
     ) {}
 
     public function login(string $businessSlug, string $email, string $password): User
@@ -46,14 +48,29 @@ final class AuthService
             throw new AuthenticationException('Las credenciales proporcionadas no son válidas.');
         }
  
-        // D6: establece sesión en guard web y dispara Illuminate\Auth\Events\Login -> listener escribe last_login_at.
+        // D6: establece la sesión en el guard web.
         Auth::guard('web')->login($user);
+
+        // RF-01: `last_login_at` es evidencia de acceso (detección de omisiones).
+        // Se persiste en el único punto de entrada de la autenticación. saveQuietly
+        // evita disparar eventos de modelo; forceFill omite la lista $fillable.
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+        // RF-01-03: el inicio de sesión queda en la bitácora inmutable.
+        $this->audit->record('login', $user, actor: $user);
 
         return $user;
     }
 
     public function logout(): void
     {
+        // El actor debe capturarse ANTES de invalidar la sesión.
+        $user = Auth::guard('web')->user();
+
+        if ($user instanceof User) {
+            $this->audit->record('logout', $user, actor: $user);
+        }
+
         Auth::guard('web')->logout();
     }
 

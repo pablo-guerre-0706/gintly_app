@@ -14,6 +14,7 @@ use App\Exceptions\InvalidInvoiceStateException;
 use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\ProtectedResourceException;
 use App\Exceptions\PurchaseMatchException;
+use App\Exceptions\RestrictDeleteException;
 use App\Exceptions\SupplierNotApprovedException;
 use App\Exceptions\UnreconciledCashClosingException;
 use App\Http\Resources\CashSessionResource;
@@ -35,14 +36,6 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-
-->withRouting(
-    web: __DIR__.'/../routes/web.php',
-    api: __DIR__.'/../routes/api.php',
-    commands: __DIR__.'/../routes/console.php',
-    health: '/up',
-)
-
 
     ->withMiddleware(function (Middleware $middleware): void {
 
@@ -95,6 +88,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => $e->getMessage(),
                 'code'    => 'PROTECTED_RESOURCE',
             ], 403);
+        });
+
+        // ERR-02B · 409. Maestro con dependencias vigentes: no admite baja.
+        // Excepción compartida (sucursales en MOD-01; unidades/categorías en MOD-02)
+        // que carecía de render y por tanto degradaba a 500.
+        $exceptions->render(function (RestrictDeleteException $e, Request $request) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'code'    => 'ERR-02B',
+            ], 409);
         });
 
         $exceptions->render(function (CustomerHasReceivablesException $e, Request $request) {
