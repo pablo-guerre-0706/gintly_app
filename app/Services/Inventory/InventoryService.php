@@ -163,14 +163,21 @@ final class InventoryService
         });
     }
 
-    // Salida física de stock por traspaso (lo consume StockTransferService).
-    public function descontarPorTraspaso(User $actor, int $warehouseId, int $productId, string $quantity, int $transferId): void
+    /**
+     * Salida física de stock por traspaso (lo consume StockTransferService).
+     * Devuelve el costo promedio de la bodega ORIGEN, con el que debe valorarse la
+     * entrada en destino: los bienes conservan su costo al trasladarse (no lo fija
+     * el cliente ni queda en cero).
+     */
+    public function descontarPorTraspaso(User $actor, int $warehouseId, int $productId, string $quantity, int $transferId): string
     {
         $stock = $this->lockStock($actor->business_id, $productId, $warehouseId);
 
         $newQuantity = bcsub((string) $stock->quantity, $quantity, self::QTY_SCALE);
 
         $this->assertNonNegative($newQuantity, $productId, $warehouseId, $stock);
+
+        $sourceCost = (string) $stock->average_cost;
 
         $this->writeMovement(
             actor: $actor,
@@ -179,13 +186,15 @@ final class InventoryService
             type: InventoryMovementType::Traspaso,
             magnitude: $quantity,
             balanceAfter: $newQuantity,
-            unitCost: (string) $stock->average_cost,
+            unitCost: $sourceCost,
             reason: 'Salida por traspaso #'.$transferId,
             transferId: $transferId,
         );
 
         $stock->quantity = $newQuantity;
         $stock->save();
+
+        return $sourceCost;
     }
 
     // Entrada física de stock por traspaso en la bodega destino.

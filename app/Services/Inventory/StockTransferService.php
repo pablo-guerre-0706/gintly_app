@@ -7,6 +7,7 @@ namespace App\Services\Inventory;
 use App\Enums\StockTransferStatus;
 use App\Exceptions\InvalidCountStateException;
 use App\Models\StockTransfer;
+use App\Models\StockTransferItem;
 use App\Models\User;
 use App\Support\SequenceGenerator;
 use Illuminate\Support\Carbon;
@@ -43,20 +44,32 @@ final class StockTransferService
             $transfer->user_id = $actor->id;
             $transfer->save();
 
+            // Opción A: las líneas se persisten al crear (antes se descartaban).
+            // El costo NO se guarda: se deriva de la bodega origen al completar.
+            foreach ($items as $item) {
+                $line = new StockTransferItem();
+                $line->business_id       = $actor->business_id;
+                $line->stock_transfer_id = $transfer->id;
+                $line->product_id        = (int) $item['product_id'];
+                $line->quantity          = (string) $item['quantity'];
+                $line->save();
+            }
+
             return $transfer->refresh();
         });
     }
 
     /**
-     * Confirma el traspaso: mueve físicamente cada ítem. Cada línea descuenta en
-     * origen y suma en destino bajo lock; si una línea no tiene stock suficiente,
-     * la transacción entera se revierte (atomicidad) y ningún ítem se mueve.
-     *
-     * @param  array<int, array{product_id: int, quantity: string, unit_cost?: string}>  $items
+     * Confirma el traspaso: mueve físicamente cada línea PERSISTIDA (el endpoint ya
+     * no acepta ítems nuevos). Cada línea descuenta en origen y suma en destino bajo
+     * lock, valorando la entrada al costo promedio de la bodega origen; si una línea
+     * no tiene stock suficiente, la transacción entera se revierte (atomicidad).
+     * Un traspaso pendiente sin líneas (dato antiguo previo a la opción A) se rechaza
+     * con un error controlado: no se inventan ni aceptan líneas de reemplazo.
      */
-    public function completar(User $actor, StockTransfer $transfer, array $items): StockTransfer
+    public function completar(User $actor, StockTransfer $transfer): StockTransfer
     {
-        return DB::transaction(function () use ($actor, $transfer, $items): StockTransfer {
+        return DB::transaction(function () use ($actor, $transfer): StockTransfer {
             $transfer = StockTransfer::query()
                 ->whereKey($transfer->getKey())
                 ->lockForUpdate()
@@ -66,21 +79,32 @@ final class StockTransferService
                 throw InvalidCountStateException::transferNotPending($transfer->id);
             }
 
+            // Líneas persistidas al crear, bloqueadas para serializar la confirmación.
+            $items = StockTransferItem::query()
+                ->where('stock_transfer_id', $transfer->id)
+                ->lockForUpdate()
+                ->get();
+
+            if ($items->isEmpty()) {
+                throw InvalidCountStateException::transferHasNoLines($transfer->id);
+            }
+
             foreach ($items as $item) {
-                $this->inventory->descontarPorTraspaso(
+                // El costo de entrada en destino = costo promedio de la bodega origen.
+                $sourceCost = $this->inventory->descontarPorTraspaso(
                     actor: $actor,
                     warehouseId: $transfer->from_warehouse_id,
-                    productId: $item['product_id'],
-                    quantity: $item['quantity'],
+                    productId: (int) $item->product_id,
+                    quantity: (string) $item->quantity,
                     transferId: $transfer->id,
                 );
 
                 $this->inventory->ingresarPorTraspaso(
                     actor: $actor,
                     warehouseId: $transfer->to_warehouse_id,
-                    productId: $item['product_id'],
-                    quantity: $item['quantity'],
-                    unitCost: $item['unit_cost'] ?? '0.0000',
+                    productId: (int) $item->product_id,
+                    quantity: (string) $item->quantity,
+                    unitCost: $sourceCost,
                     transferId: $transfer->id,
                 );
             }

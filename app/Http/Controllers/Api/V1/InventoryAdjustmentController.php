@@ -28,10 +28,24 @@ final class InventoryAdjustmentController extends Controller
     {
         $this->authorize('viewAny', InventoryAdjustment::class);
 
+        // IndexInventoryAdjustmentRequest valida filtros/orden/paginación (contrato MOD-03).
+        // 'movements' expone producto/cantidad/balance (no viven en la cabecera del ajuste).
         $adjustments = InventoryAdjustment::query()
-            ->with(['warehouse', 'user'])
-            ->latest('adjusted_at')
-            ->paginate($request->integer('per_page', 15));
+            ->with(['warehouse', 'user', 'movements'])
+            ->when(
+                $request->validated('warehouse_id'),
+                fn ($q, $warehouseId) => $q->where('warehouse_id', $warehouseId)
+            )
+            ->when(
+                $request->validated('type'),
+                fn ($q, $type) => $q->where('type', $type)
+            )
+            ->when(
+                $request->validated('physical_count_id'),
+                fn ($q, $countId) => $q->where('physical_count_id', $countId)
+            )
+            ->orderBy($request->sortColumn('adjusted_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return InventoryAdjustmentResource::collection($adjustments);
     }
@@ -50,7 +64,8 @@ final class InventoryAdjustmentController extends Controller
             (string) $request->validated('reason'),
         );
 
-        return (new InventoryAdjustmentResource($adjustment->load(['warehouse', 'user'])))
+        // 'movements' incluye el asiento con producto/cantidad/balance del ajuste recién creado.
+        return (new InventoryAdjustmentResource($adjustment->load(['warehouse', 'user', 'movements'])))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }

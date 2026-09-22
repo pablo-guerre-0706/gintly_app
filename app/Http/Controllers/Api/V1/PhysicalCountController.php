@@ -27,10 +27,23 @@ final class PhysicalCountController extends Controller
     {
         $this->authorize('viewAny', PhysicalCount::class);
 
+        // IndexPhysicalCountRequest valida filtros/orden/paginación (contrato MOD-03).
         $counts = PhysicalCount::query()
             ->with(['product', 'warehouse', 'user'])
-            ->latest('counted_at')
-            ->paginate($request->integer('per_page', 15));
+            ->when(
+                $request->validated('warehouse_id'),
+                fn ($q, $warehouseId) => $q->where('warehouse_id', $warehouseId)
+            )
+            ->when(
+                $request->validated('product_id'),
+                fn ($q, $productId) => $q->where('product_id', $productId)
+            )
+            ->when(
+                $request->validated('status'),
+                fn ($q, $status) => $q->where('status', $status)
+            )
+            ->orderBy($request->sortColumn('counted_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return PhysicalCountResource::collection($counts);
     }

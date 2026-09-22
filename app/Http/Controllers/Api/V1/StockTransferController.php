@@ -27,10 +27,23 @@ final class StockTransferController extends Controller
     {
         $this->authorize('viewAny', StockTransfer::class);
 
+        // IndexStockTransferRequest valida filtros/orden/paginación (contrato MOD-03).
         $transfers = StockTransfer::query()
-            ->with(['fromWarehouse', 'toWarehouse', 'user'])
-            ->latest('transferred_at')
-            ->paginate($request->integer('per_page', 15));
+            ->with(['fromWarehouse', 'toWarehouse', 'user', 'items'])
+            ->when(
+                $request->validated('from_warehouse_id'),
+                fn ($q, $fromId) => $q->where('from_warehouse_id', $fromId)
+            )
+            ->when(
+                $request->validated('to_warehouse_id'),
+                fn ($q, $toId) => $q->where('to_warehouse_id', $toId)
+            )
+            ->when(
+                $request->validated('status'),
+                fn ($q, $status) => $q->where('status', $status)
+            )
+            ->orderBy($request->sortColumn('transferred_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return StockTransferResource::collection($transfers);
     }
@@ -47,7 +60,7 @@ final class StockTransferController extends Controller
             $request->validated('notes'),
         );
 
-        return (new StockTransferResource($transfer->load(['fromWarehouse', 'toWarehouse', 'user'])))
+        return (new StockTransferResource($transfer->load(['fromWarehouse', 'toWarehouse', 'user', 'items.product'])))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
@@ -56,6 +69,6 @@ final class StockTransferController extends Controller
     {
         $this->authorize('view', $stockTransfer);
 
-        return new StockTransferResource($stockTransfer->load(['fromWarehouse', 'toWarehouse', 'user']));
+        return new StockTransferResource($stockTransfer->load(['fromWarehouse', 'toWarehouse', 'user', 'items.product']));
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\StockTransferItemResource;
 use App\Models\StockTransfer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -30,6 +31,8 @@ final class StockTransferResource extends JsonResource
             'transferred_at'    => $this->transferred_at?->toIso8601String(),
             'from_warehouse'    => new WarehouseResource($this->whenLoaded('fromWarehouse')),
             'to_warehouse'      => new WarehouseResource($this->whenLoaded('toWarehouse')),
+            // Líneas persistidas del traspaso (visibles incluso cuando está 'pendiente').
+            'items'             => StockTransferItemResource::collection($this->whenLoaded('items')),
             'movements'         => InventoryMovementResource::collection($this->whenLoaded('movements')),
             'created_at'        => $this->created_at?->toIso8601String(),
         ];

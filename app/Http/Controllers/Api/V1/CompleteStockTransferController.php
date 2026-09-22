@@ -23,13 +23,11 @@ final class CompleteStockTransferController extends Controller
     {
         $this->authorize('complete', $stockTransfer);
 
-        // DM3-01 paso 2: las líneas ($items) viajan aquí. InsufficientStockException (409) si falta stock.
-        $transfer = $this->transfers->completar(
-            $request->user(),
-            $stockTransfer,
-            $request->validated('items'),
-        );
+        // Opción A: las líneas se toman de las persistidas al crear; el endpoint ya
+        // NO acepta ítems nuevos. InsufficientStockException (409) si falta stock;
+        // InvalidCountStateException (409) si el traspaso no está pendiente o no tiene líneas.
+        $transfer = $this->transfers->completar($request->user(), $stockTransfer);
 
-        return new StockTransferResource($transfer->load(['fromWarehouse', 'toWarehouse', 'user']));
+        return new StockTransferResource($transfer->load(['fromWarehouse', 'toWarehouse', 'user', 'items.product']));
     }
 }

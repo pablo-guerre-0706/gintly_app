@@ -52,4 +52,10 @@ final class StockTransfer extends Model
     {
         return $this->hasMany(InventoryMovement::class);
     }
+
+    // Líneas del traspaso, persistidas al crear y consumidas al completar.
+    public function items(): HasMany
+    {
+        return $this->hasMany(StockTransferItem::class);
+    }
 }

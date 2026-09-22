@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\RestrictDeleteException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Warehouse\IndexWarehouseRequest;
 use App\Http\Requests\Api\V1\Warehouse\StoreWarehouseRequest;
@@ -26,10 +27,25 @@ final class WarehouseController extends Controller
 
     public function index(IndexWarehouseRequest $request): AnonymousResourceCollection
     {
-        // BusinessScope aísla el tenant. Eager 'branch' para no incurrir en N+1 al exponer la sucursal.
-        return WarehouseResource::collection(
-            Warehouse::query()->with('branch')->orderBy('name')->paginate($request->integer('per_page', 15)),
-        );
+        // BusinessScope aísla el tenant. IndexWarehouseRequest valida filtros/orden/paginación (contrato MOD-03).
+        $warehouses = Warehouse::query()
+            ->with('branch')
+            ->when(
+                $request->validated('branch_id'),
+                fn ($q, $branchId) => $q->where('branch_id', $branchId)
+            )
+            ->when(
+                $request->has('is_active'),
+                fn ($q) => $q->where('is_active', $request->boolean('is_active'))
+            )
+            ->when(
+                $request->has('is_default'),
+                fn ($q) => $q->where('is_default', $request->boolean('is_default'))
+            )
+            ->orderBy($request->sortColumn('name'), $request->sortDirection('asc'))
+            ->paginate($request->perPage());
+
+        return WarehouseResource::collection($warehouses);
     }
 
     public function store(StoreWarehouseRequest $request): JsonResponse
@@ -56,6 +72,13 @@ final class WarehouseController extends Controller
 
     public function destroy(Warehouse $warehouse): Response
     {
+        // ERR-02B (409): la baja es lógica, por lo que la integridad se protege en dominio.
+        // Se rechaza si tiene existencias/reservas, traspasos pendientes, o es la
+        // predeterminada sin otra designada.
+        if (($reason = $warehouse->deletionBlocker()) !== null) {
+            throw new RestrictDeleteException("No es posible dar de baja la bodega: {$reason}.");
+        }
+
         $warehouse->delete(); // soft delete; el name_lock parcial libera el nombre al desactivar
 
         return response()->noContent();

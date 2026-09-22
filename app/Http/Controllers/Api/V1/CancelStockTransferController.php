@@ -26,6 +26,6 @@ final class CancelStockTransferController extends Controller
         // Solo cancelable en 'pendiente' (canTransition). Devuelve el modelo 'cancelado'.
         $transfer = $this->transfers->cancelar($request->user(), $stockTransfer);
 
-        return new StockTransferResource($transfer->load(['fromWarehouse', 'toWarehouse', 'user']));
+        return new StockTransferResource($transfer->load(['fromWarehouse', 'toWarehouse', 'user', 'items.product']));
     }
 }

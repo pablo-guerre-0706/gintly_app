@@ -41,6 +41,7 @@ $morphMap = [
     'stock_level'           => \App\Models\StockLevel::class,
     'physical_count'        => \App\Models\PhysicalCount::class,
     'stock_transfer'        => \App\Models\StockTransfer::class,
+    'stock_transfer_item'   => \App\Models\StockTransferItem::class,
     'inventory_adjustment'  => \App\Models\InventoryAdjustment::class,
     'inventory_movement'    => \App\Models\InventoryMovement::class,
 

@@ -27,9 +27,31 @@ final class StockLevelController extends Controller
     {
         $this->authorize('viewAny', StockLevel::class);
 
+        // IndexStockLevelRequest valida filtros/orden/paginación (contrato MOD-03).
         $stock = StockLevel::query()
             ->with(['product', 'warehouse'])
-            ->paginate($request->integer('per_page', 15));
+            ->when(
+                $request->validated('warehouse_id'),
+                fn ($q, $warehouseId) => $q->where('warehouse_id', $warehouseId)
+            )
+            ->when(
+                $request->validated('product_id'),
+                fn ($q, $productId) => $q->where('product_id', $productId)
+            )
+            // below_min=true: existencias por debajo del mínimo (scope del modelo).
+            ->when(
+                $request->boolean('below_min'),
+                fn ($q) => $q->belowMin()
+            )
+            // search: por nombre o SKU del producto asociado.
+            ->when(
+                $request->validated('search'),
+                fn ($q, $search) => $q->whereHas('product', fn ($p) => $p
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%"))
+            )
+            ->orderBy($request->sortColumn('updated_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return StockLevelResource::collection($stock);
     }

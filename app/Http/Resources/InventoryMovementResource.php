@@ -31,8 +31,10 @@ final class InventoryMovementResource extends JsonResource
             'origin'        => array_filter([
                 'stock_transfer_id'       => $this->stock_transfer_id,
                 'inventory_adjustment_id' => $this->inventory_adjustment_id,
-                // 'purchase_order_id'    => $this->purchase_order_id,   // MOD-04
-                // 'dispatch_id'          => $this->dispatch_id,         // MOD-09
+                // MOD-04 activo: la recepción de compra asienta purchase_order_id;
+                // el kardex debe reflejar ese origen (antes quedaba oculto).
+                'purchase_order_id'       => $this->purchase_order_id,
+                'dispatch_id'             => $this->dispatch_id,          // se puebla con MOD-09
             ], static fn ($v) => $v !== null),
             'reason'        => $this->reason,
             'created_at'    => $this->created_at?->toIso8601String(),
