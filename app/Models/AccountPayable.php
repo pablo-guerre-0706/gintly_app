@@ -17,6 +17,10 @@ final class AccountPayable extends Model
     use BelongsToBusiness;
     use HasFactory;
 
+    // La tabla es 'accounts_payable' (migración); sin esto Eloquent infería
+    // 'account_payables' → toda operación de CxP fallaba con "table doesn't exist".
+    protected $table = 'accounts_payable';
+
     protected $fillable = [
         'supplier_id',
         'purchase_order_id',

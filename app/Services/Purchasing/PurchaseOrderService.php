@@ -146,15 +146,17 @@ final class PurchaseOrderService
     // Lee el estado del proveedor bajo lock. ERR-04B si no está aprobado.
     private function assertSupplierApproved(int $businessId, int $supplierId): void
     {
+        // value('status') aplica el cast → devuelve un SupplierStatus (enum), NUNCA
+        // el string. Comparar contra ->value era enum !== string (siempre verdadero):
+        // rechazaba TODA orden aunque el proveedor estuviera aprobado.
         $status = Supplier::query()
             ->where('business_id', $businessId)
             ->whereKey($supplierId)
             ->lockForUpdate()
             ->value('status');
 
-        if ($status !== SupplierStatus::Aprobado->value) {
+        if ($status !== SupplierStatus::Aprobado) {
             throw SupplierNotApprovedException::make($supplierId);
         }
     }
 }
-

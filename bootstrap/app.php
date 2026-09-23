@@ -14,12 +14,10 @@ use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidInvoiceStateException;
 use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\ProtectedResourceException;
-use App\Exceptions\PurchaseMatchException;
 use App\Exceptions\RestrictDeleteException;
 use App\Exceptions\SupplierNotApprovedException;
 use App\Exceptions\UnreconciledCashClosingException;
 use App\Http\Resources\CashSessionResource;
-use App\Http\Resources\GoodsReceiptResource;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -70,18 +68,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 422);
         });
 
-        $exceptions->render(function (PurchaseMatchException $e, Request $request) {
-            // 409 CON el recurso creado. La evidencia persistió; el cliente
-            // recibe el goods_receipt completo para que ROL-01 lo resuelva.
-            return response()->json([
-                'message'       => $e->getMessage(),
-                'code'          => 'PURCHASE_MATCH',
-                'goods_receipt' => (new GoodsReceiptResource($e->receipt->load(['items', 'accountPayable'])))->toArray($request),
-            ], 409);
-        });
+        // PurchaseMatchException NO se mapea aquí: define su propio render() (que
+        // Laravel prioriza) devolviendo GoodsReceiptResource (envuelto en `data`)
+        // + message a 409. Un render duplicado aquí sería código muerto.
 
         $exceptions->render(function (InvalidPurchaseStateException $e, Request $request) {
-            return response()->json(['message' => $e->getMessage()], 409);
+            // 409 para estados inválidos; 422 para sobrepago de CxP (contrato MOD-04).
+            return response()->json(['message' => $e->getMessage()], $e->status);
         });
 
         $exceptions->render(function (ProtectedResourceException $e, Request $request) {

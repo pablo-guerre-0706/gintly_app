@@ -19,16 +19,23 @@ final class AccountPayableController extends Controller
     {
         $this->authorize('viewAny', AccountPayable::class);
 
-        $validated = $request->validated();
-
+        // IndexAccountPayableRequest valida filtros/orden/paginación (contrato MOD-04).
         $payables = AccountPayable::query()
             ->with(['supplier', 'purchaseOrder'])
-            // Filtro overdue (IndexAccountPayableRequest): vencidas y aún con saldo (independiente del enum de estado).
-            ->when($validated['overdue'] ?? false, fn ($q) => $q
+            ->when(
+                $request->validated('supplier_id'),
+                fn ($q, $supplierId) => $q->where('supplier_id', $supplierId)
+            )
+            ->when(
+                $request->validated('status'),
+                fn ($q, $status) => $q->where('status', $status)
+            )
+            // Filtro overdue: vencidas y aún con saldo (independiente del enum de estado).
+            ->when($request->boolean('overdue'), fn ($q) => $q
                 ->whereDate('due_date', '<', now())
                 ->whereColumn('paid_amount', '<', 'total_amount'))
-            ->latest()
-            ->paginate($request->integer('per_page', 15));
+            ->orderBy($request->sortColumn('created_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return AccountPayableResource::collection($payables);
     }

@@ -26,10 +26,20 @@ final class GoodsReceiptController extends Controller
     {
         $this->authorize('viewAny', GoodsReceipt::class);
 
+        // IndexGoodsReceiptRequest valida filtros/orden/paginación (contrato MOD-04).
+        // 'items' se carga para exponer items[] con matched por línea (contrato).
         $receipts = GoodsReceipt::query()
-            ->with(['purchaseOrder', 'warehouse'])
-            ->latest()
-            ->paginate($request->integer('per_page', 15));
+            ->with(['purchaseOrder', 'warehouse', 'items'])
+            ->when(
+                $request->validated('purchase_order_id'),
+                fn ($q, $orderId) => $q->where('purchase_order_id', $orderId)
+            )
+            ->when(
+                $request->validated('match_status'),
+                fn ($q, $matchStatus) => $q->where('match_status', $matchStatus)
+            )
+            ->orderBy($request->sortColumn('received_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return GoodsReceiptResource::collection($receipts);
     }

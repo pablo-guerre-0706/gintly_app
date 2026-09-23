@@ -7,9 +7,15 @@ namespace App\Exceptions;
 use RuntimeException;
 
 
-// HTTP 409. Transición inválida en el flujo de compras.
+// HTTP 409 (por defecto) para transiciones inválidas del flujo de compras.
+// Excepción: sobrepago de CxP, que el contrato define como 422 (validación).
 final class InvalidPurchaseStateException extends RuntimeException
 {
+    public function __construct(string $message, public readonly int $status = 409)
+    {
+        parent::__construct($message);
+    }
+
     public static function orderNotEditable(int $orderId): self
     {
         return new self("La orden {$orderId} no está en borrador y no admite edición.");
@@ -42,7 +48,8 @@ final class InvalidPurchaseStateException extends RuntimeException
 
     public static function paymentExceedsBalance(int $payableId): self
     {
-        return new self("El monto del pago excede el saldo pendiente de la cuenta {$payableId}.");
+        // 422 (validación de monto), no 409: el contrato distingue "excede saldo" de "estado inválido".
+        return new self("El monto del pago excede el saldo pendiente de la cuenta {$payableId}.", 422);
     }
 
     public static function orderNotReceivable(int $orderId): self

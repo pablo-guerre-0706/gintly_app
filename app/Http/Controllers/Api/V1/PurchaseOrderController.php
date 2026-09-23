@@ -27,10 +27,19 @@ final class PurchaseOrderController extends Controller
     {
         $this->authorize('viewAny', PurchaseOrder::class);
 
+        // IndexPurchaseOrderRequest valida filtros/orden/paginación (contrato MOD-04).
         $orders = PurchaseOrder::query()
             ->with(['supplier', 'branch'])
-            ->latest('ordered_at')
-            ->paginate($request->integer('per_page', 15));
+            ->when(
+                $request->validated('supplier_id'),
+                fn ($q, $supplierId) => $q->where('supplier_id', $supplierId)
+            )
+            ->when(
+                $request->validated('status'),
+                fn ($q, $status) => $q->where('status', $status)
+            )
+            ->orderBy($request->sortColumn('ordered_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return PurchaseOrderResource::collection($orders);
     }

@@ -27,10 +27,17 @@ final class PurchaseMatchException extends RuntimeException
      */
     public function render(Request $request): JsonResponse
     {
+        // Cuerpo canónico: { message, code:'PURCHASE_MATCH', data: GoodsReceiptResource }.
+        // `code` es un código semántico ESTABLE para el frontend; `data` transporta el
+        // recibo persistido (con items[].matched y account_payable congelada). No se
+        // usa la clave duplicada `goods_receipt`.
         return (new GoodsReceiptResource(
             $this->receipt->load(['items.product', 'accountPayable'])
         ))
-            ->additional(['message' => $this->getMessage()])
+            ->additional([
+                'message' => $this->getMessage(),
+                'code'    => 'PURCHASE_MATCH',
+            ])
             ->response()
             ->setStatusCode(Response::HTTP_CONFLICT);
     }

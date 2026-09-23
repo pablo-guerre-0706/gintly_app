@@ -23,15 +23,22 @@ final class SupplierController extends Controller
     {
         $this->authorize('viewAny', Supplier::class);
 
-        $validated = $request->validated();
-
+        // IndexSupplierRequest valida search + status/is_active (antes solo se aplicaba search) y orden/paginación.
         $suppliers = Supplier::query()
-            // Filtro search (IndexSupplierRequest): nombre o identificación fiscal.
-            ->when($validated['search'] ?? null, fn ($q, $search) => $q->where(fn ($sub) => $sub
+            // Filtro search: nombre o identificación fiscal.
+            ->when($request->validated('search'), fn ($q, $search) => $q->where(fn ($sub) => $sub
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('tax_id', 'like', "%{$search}%")))
-            ->orderBy('name')
-            ->paginate($request->integer('per_page', 15));
+            ->when(
+                $request->validated('status'),
+                fn ($q, $status) => $q->where('status', $status)
+            )
+            ->when(
+                $request->has('is_active'),
+                fn ($q) => $q->where('is_active', $request->boolean('is_active'))
+            )
+            ->orderBy($request->sortColumn('name'), $request->sortDirection('asc'))
+            ->paginate($request->perPage());
 
         return SupplierResource::collection($suppliers);
     }
