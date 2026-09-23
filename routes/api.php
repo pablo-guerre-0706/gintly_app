@@ -92,7 +92,8 @@ Route::prefix('v1')->group(function (): void {
 
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
-        Route::put('/me/password', [UpdatePasswordController::class, 'update']);
+        // Controlador invocable (__invoke): se referencia por clase, no por método.
+        Route::put('/me/password', UpdatePasswordController::class);
         // Route::get('/pos', [POSController::class, 'index'])->name('pos.index');
         // Route::get('/finance/cash-closing', [FinanceController::class, 'cashClosing'])
             // ->name('finance.cash-closing');
@@ -101,8 +102,9 @@ Route::prefix('v1')->group(function (): void {
         // que esperan routeId() en los FormRequest y el ignore() del unique.
         Route::apiResource('users', UserController::class);
         Route::put('/users/{user}/role', [UserController::class, 'updateRole']);
-        Route::put('/users/{user}/password', [UpdateUserPasswordController::class, 'update']);
-        Route::put('/users/{user}/email', [UpdateUserEmailController::class, 'update']);
+        // Controladores invocables (__invoke): se referencian por clase, no por método.
+        Route::put('/users/{user}/password', UpdateUserPasswordController::class);
+        Route::put('/users/{user}/email', UpdateUserEmailController::class);
 
         Route::apiResource('branches', BranchController::class);
 
@@ -181,18 +183,18 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('customers', CustomerController::class)
             ->parameters(['customers' => 'customer']);
 
-        // Direcciones — sub-recurso del cliente con scopeBindings automático y nombres correctos
+        // Direcciones — sub-recurso del cliente. scopeBindings() acota {address} a
+        // su {customer} (Customer::addresses()): /customers/{otro}/addresses/{addr} → 404.
+        // NO se usa Route::model('address'): un binder explícito resolvería {address}
+        // por id GLOBAL y saltaría el scoping (fuga entre clientes del mismo negocio).
+        // El binding implícito por type-hint del controlador ya resuelve los modelos.
         Route::scopeBindings()->group(function () {
             Route::apiResource('customers.addresses', CustomerAddressController::class)
                 ->parameters([
                     'customers' => 'customer',
-                    'addresses' => 'address'
+                    'addresses' => 'address',
                 ]);
         });
-
-        // Explicit Model Binding (Garantiza que Laravel resuelva los strings como modelos)
-        Route::model('customer', \App\Models\Customer::class);
-        Route::model('address', \App\Models\CustomerAddress::class);
 
         // MOD-06 - Gestion de Caja
         Route::apiResource('cash-registers', CashRegisterController::class);

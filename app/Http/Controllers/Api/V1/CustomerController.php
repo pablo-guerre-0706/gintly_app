@@ -28,14 +28,27 @@ final class CustomerController extends Controller
     {
         $this->authorize('viewAny', Customer::class);
 
+        // IndexCustomerRequest valida filtros/orden/paginación (contrato MOD-05).
         $customers = Customer::query()
             ->when(! $request->includesGeneric(), fn ($query) => $query->real())
             ->when(
-                $request->filled('document_type'),
-                fn ($query) => $query->where('document_type', $request->input('document_type')),
+                $request->validated('document_type'),
+                fn ($query, $type) => $query->where('document_type', $type),
             )
-            ->orderByDesc('id')
-            ->paginate($request->integer('per_page', 15));
+            ->when(
+                $request->has('is_active'),
+                fn ($query) => $query->where('is_active', $request->boolean('is_active')),
+            )
+            ->when(
+                $request->validated('search'),
+                fn ($query, $search) => $query->where(fn ($sub) => $sub
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('document_number', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%")),
+            )
+            ->orderBy($request->sortColumn('created_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return CustomerResource::collection($customers);
     }
@@ -55,7 +68,8 @@ final class CustomerController extends Controller
     {
         $this->authorize('view', $customer);
 
-        return CustomerResource::make($customer);
+        // El contrato: show incluye addresses[]. Eager-load para que el Resource las exponga.
+        return CustomerResource::make($customer->load('addresses'));
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer): CustomerResource

@@ -41,7 +41,10 @@ final class CustomerPolicy
             : Response::deny('No tiene autorización para registrar clientes.');
     }
 
-    // Editar es ROL-02, y NUNCA el Consumidor Final (PROTECTED_RESOURCE).
+    // Editar es ROL-02. La protección del «Consumidor Final» (PROTECTED_RESOURCE,
+    // 403 con code) la impone CustomerService::assertNotProtected, que además es
+    // backstop de vías no-HTTP. La Policy NO la duplica: si lo hiciera, un 403 de
+    // autorización (sin `code`) taparía el 403 codificado del contrato.
     public function update(User $actor, Customer $customer): Response
     {
         return $this->guardMutation($actor, $customer, 'modificar');
@@ -53,21 +56,13 @@ final class CustomerPolicy
     }
 
     /**
-     * Validación unificada de mutaciones (Seguridad + Recurso Protegido + Rol)
+     * Autorización de mutaciones: aislamiento por negocio (404) + rango ROL-02.
+     * El recurso protegido lo resuelve el Service (PROTECTED_RESOURCE 403 con code).
      */
     private function guardMutation(User $actor, Customer $customer, string $accion): Response
     {
         if (! $this->sharesBusinessWith($actor, $customer)) {
             return Response::denyWithStatus(404, 'El cliente indicado no pertenece a su negocio.');
-        }
-
-        // Candado del recurso protegido ANTES del rango (si se invirtiera, un Admin
-        // pasaría el rango y podría mutar el «Consumidor Final»).
-        if ($customer->isProtected()) {
-            return Response::denyWithStatus(
-                403,
-                "El «Consumidor Final» es un cliente protegido del sistema y no puede {$accion}se.",
-            );
         }
 
         return $this->hasAtLeast($actor, RoleName::Admin)

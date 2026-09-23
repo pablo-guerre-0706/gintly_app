@@ -27,7 +27,9 @@ final class CustomerAddressController extends Controller
 
     public function index(Request $request, Customer $customer): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', CustomerAddress::class);
+        // CustomerAddressPolicy::viewAny exige el cliente titular (verifica tenant
+        // y rol). Antes se pasaba solo la clase → ArgumentCountError (500).
+        $this->authorize('viewAny', [CustomerAddress::class, $customer]);
 
         $addresses = $customer->addresses()
             ->orderByDesc('is_default')

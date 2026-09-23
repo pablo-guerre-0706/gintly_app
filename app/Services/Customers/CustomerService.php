@@ -16,8 +16,10 @@ final class CustomerService
     public function crear(array $attributes): Customer
     {
         // business_id lo inyecta BelongsToBusiness; is_generic está fuera de $fillable.
+        // refresh() carga los DEFAULT del motor (is_generic=false, etc.) para que la
+        // respuesta 201 refleje el estado persistido y no atributos en memoria (null).
         return $this->persistGuardingDocument(
-            fn (): Customer => Customer::create($attributes),
+            fn (): Customer => Customer::create($attributes)->refresh(),
         );
     }
 
@@ -26,11 +28,23 @@ final class CustomerService
         // Backstop D-17: cierra la vía no-HTTP (Jobs, consola, tinker).
         $this->assertNotProtected($customer);
 
+        // Desactivar (is_active=false) un cliente con CxC viva se bloquea igual que
+        // el borrado: la deuda no puede ocultarse retirándole el acceso operativo.
+        if ($this->isDeactivating($attributes)) {
+            $this->assertHasNoLiveReceivables($customer);
+        }
+
         return $this->persistGuardingDocument(function () use ($customer, $attributes): Customer {
             $customer->update($attributes);
 
             return $customer->refresh();
         });
+    }
+
+    private function isDeactivating(array $attributes): bool
+    {
+        return array_key_exists('is_active', $attributes)
+            && filter_var($attributes['is_active'], FILTER_VALIDATE_BOOLEAN) === false;
     }
 
     public function eliminar(Customer $customer): void
