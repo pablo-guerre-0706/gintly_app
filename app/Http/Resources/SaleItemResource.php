@@ -26,6 +26,13 @@ final class SaleItemResource extends JsonResource
             'quantity'            => $this->quantity,
             'unit_price'          => $this->unit_price,
             'is_taxable'          => $this->is_taxable,
+            // Fotografía fiscal congelada (MOD-07): importes calculados por el servidor.
+            'tax_class'           => $this->tax_class?->value,
+            'fiscal_condition'    => $this->fiscal_condition?->value,
+            'tax_rate'            => $this->tax_rate,
+            'taxable_base'        => $this->taxable_base,
+            'tax_amount'          => $this->tax_amount,
+            'tax_rule_id'         => $this->tax_rule_id,
             'discount_amount'     => $this->discount_amount,
             'line_total'          => $this->line_total,
             'is_compound'         => $this->isCompound(),

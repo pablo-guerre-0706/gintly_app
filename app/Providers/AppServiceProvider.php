@@ -37,6 +37,7 @@ use App\Models\SalesReturn;
 use App\Models\StockLevel;
 use App\Models\StockTransfer;
 use App\Models\Supplier;
+use App\Models\TaxRule;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -73,6 +74,7 @@ use App\Policies\SalesReturnPolicy;
 use App\Policies\StockLevelPolicy;
 use App\Policies\StockTransferPolicy;
 use App\Policies\SupplierPolicy;
+use App\Policies\TaxRulePolicy;
 use App\Policies\UnitOfMeasurePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\WarehousePolicy;
@@ -162,6 +164,7 @@ final class AppServiceProvider extends ServiceProvider
         // MOD-07
         Gate::policy(Sale::class, SalePolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
+        Gate::policy(TaxRule::class, TaxRulePolicy::class);
 
         // MOD-08
         Gate::policy(AccountReceivable::class, AccountReceivablePolicy::class);

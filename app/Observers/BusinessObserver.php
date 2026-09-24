@@ -8,10 +8,12 @@ use App\Enums\DocumentType;
 use App\Enums\AnomalyRuleCode;
 use App\Enums\AnomalySeverity;
 use App\Enums\AnomalyThresholdType;
+use App\Enums\TaxClass;
 use App\Models\AnomalyRule;
 use App\Models\Business;
 use App\Models\Customer;
 use App\Models\DocumentSequence;
+use App\Models\TaxRule;
 use Illuminate\Support\Facades\DB;
 
 
@@ -42,9 +44,38 @@ final class BusinessObserver
             $this->seedGenericCustomer($business);
             $this->seedDocumentSequences($business);
             $this->seedAnomalyRules($business);
+            $this->seedTaxConfiguration($business);
 
             app(\Database\Seeders\RolesAndPermissionsSeeder::class)->syncBusinessRoles($business->id);
         });
+    }
+
+    /**
+     * Configuración fiscal inicial: una regla ESTÁNDAR general activa con la tasa por
+     * defecto del negocio (business.tax_rate). Es el equivalente 1:1 al comportamiento
+     * previo; el resto de clases (reducida/tasa cero/exento) no requieren regla para
+     * vender —tasa cero y exento resuelven 0; reducida se configura vía API si se usa—.
+     * Race-safe: respaldado por uniq_active_tax_rule_scope. bypass acotado a unguarded.
+     */
+    private function seedTaxConfiguration(Business $business): void
+    {
+        // Aprovisionamiento EXPLÍCITO: solo si el negocio declaró una tasa se funda su
+        // regla estándar general (fuente operativa única). Sin tasa explícita NO se
+        // inventa ninguna regla: el negocio existe y arma catálogo, pero vender un
+        // producto gravado sin regla aplicable → 422 FISCAL_CONFIG_MISSING.
+        if ($business->tax_rate === null) {
+            return;
+        }
+
+        TaxRule::unguarded(fn () => TaxRule::query()->createOrFirst(
+            [
+                'business_id' => $business->id,
+                'tax_class'   => TaxClass::Standard->value,
+                'branch_id'   => null,
+                'is_active'   => true,
+            ],
+            ['rate' => (string) $business->tax_rate],
+        ));
     }
 
     // Cliente genérico "Consumidor Final": uno por negocio, protegido.

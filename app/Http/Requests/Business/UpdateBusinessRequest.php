@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Business;
 
 use App\Http\Requests\BaseTenantRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * H-07. `status` y `plan` describen el contrato SaaS, no la operación del
@@ -35,9 +34,10 @@ final class UpdateBusinessRequest extends BaseTenantRequest
             // facturas siguientes.
             'tax_rate' => ['sometimes', 'required', 'numeric', 'decimal:0,4', 'min:0', 'max:0.9999'],
 
-            // Rule::timezone() valida contra la base IANA real; una lista fija
-            // en `in:` se desactualiza con cada revisión de husos.
-            'timezone' => ['sometimes', 'required', 'string', 'max:64', Rule::timezone()],
+            // La regla 'timezone' valida contra los identificadores IANA reales de PHP
+            // (DateTimeZone) — una lista fija en `in:` se desactualizaría. (Rule::timezone()
+            // no existe en esta versión del framework: se usa la regla de cadena.)
+            'timezone' => ['sometimes', 'required', 'string', 'max:64', 'timezone'],
         ];
     }
 

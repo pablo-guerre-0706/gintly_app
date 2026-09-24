@@ -10,10 +10,10 @@ use App\Enums\InvoicePaymentType;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
+use App\Exceptions\FiscalConfigurationMissingException;
 use App\Exceptions\FolioConflictException;
 use App\Exceptions\IncompletePaymentException;
 use App\Exceptions\InvalidInvoiceStateException;
-use App\Models\Business;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Product;
@@ -82,9 +82,10 @@ final class InvoiceService
             $customerId = (int) $sales->first()->customer_id;
             $branchId   = (int) $sales->first()->branch_id;
 
-            // --- 2. Totales: subtotal, IVA (solo gravable) y total con descuento (H-68) ---
-            $business = Business::query()->whereKey($businessId)->firstOrFail();
-            $totals   = $this->computeTotals($sales, (string) $business->tax_rate, $discountAmount);
+            // --- 2. Totales: subtotal, IVA (suma de impuestos congelados por línea) y
+            //     total con descuento de factura (H-68). Ya NO se recalcula el IVA con
+            //     business.tax_rate: cada línea trae su impuesto fiscal congelado. ---
+            $totals = $this->computeTotals($sales, $discountAmount);
 
             // --- 3. Crédito: verificación ATÓMICA (dentro de la tx, tras el lock) ---
             //     owner_authorized (ROL-01 para exceder cupo) se lee del request validado.
@@ -239,36 +240,42 @@ final class InvoiceService
     }
 
     /**
-     * IVA = Σ(line_total de líneas gravables) × tax_rate. total = subtotal + IVA
-     * − descuento de factura (H-68), con piso en 0. Todo bcmath a escala 2.
+     * subtotal = Σ line_total. IVA = Σ (impuesto congelado por línea, ya redondeado):
+     * política de agregación «redondear por línea y sumar». total = subtotal + IVA
+     * − descuento de factura (H-68), con piso en 0. Todo bcmath a escala 2, sin floats.
+     *
+     * El impuesto NO se recalcula con la configuración vigente: se leen los importes
+     * congelados al agregar la línea (fotografía fiscal inmutable). Una línea sin
+     * snapshot fiscal (previa a la función) se rechaza de forma controlada.
      *
      * @param  \Illuminate\Support\Collection<int, Sale> $sales
-     * @return array{subtotal: string, tax: string, total: string}
+     * @return array{subtotal: string, tax: string, taxable_base: string, total: string}
      */
-    private function computeTotals($sales, string $taxRate, string $discountAmount): array
+    private function computeTotals($sales, string $discountAmount): array
     {
         $subtotal    = '0.00';
+        $tax         = '0.00';
         $taxableBase = '0.00';
 
         foreach ($sales as $sale) {
-            foreach ($sale->items()->get(['line_total', 'is_taxable']) as $item) {
-                $subtotal = bcadd($subtotal, (string) $item->line_total, self::MONEY_SCALE);
-
-                if ($item->is_taxable) {
-                    $taxableBase = bcadd($taxableBase, (string) $item->line_total, self::MONEY_SCALE);
+            foreach ($sale->items()->get(['id', 'line_total', 'tax_class', 'taxable_base', 'tax_amount']) as $item) {
+                if ($item->tax_class === null) {
+                    throw FiscalConfigurationMissingException::forSaleItem((int) $item->id);
                 }
+
+                $subtotal    = bcadd($subtotal, (string) $item->line_total, self::MONEY_SCALE);
+                $tax         = bcadd($tax, (string) $item->tax_amount, self::MONEY_SCALE);
+                $taxableBase = bcadd($taxableBase, (string) $item->taxable_base, self::MONEY_SCALE);
             }
         }
 
-        // tax_rate es fracción (0.15 = 15 %). IVA a escala 2.
-        $tax   = bcmul($taxableBase, $taxRate, self::MONEY_SCALE);
         $total = bcsub(bcadd($subtotal, $tax, self::MONEY_SCALE), $discountAmount, self::MONEY_SCALE);
 
         if (bccomp($total, '0', self::MONEY_SCALE) < 0) {
             $total = '0.00';
         }
 
-        return ['subtotal' => $subtotal, 'tax' => $tax, 'total' => $total];
+        return ['subtotal' => $subtotal, 'tax' => $tax, 'taxable_base' => $taxableBase, 'total' => $total];
     }
 
     /**

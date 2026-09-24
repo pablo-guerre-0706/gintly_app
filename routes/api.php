@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\V1\StoreInvoiceController;
 use App\Http\Controllers\Api\V1\StoreReceivablePaymentController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\SuspendSupplierController;
+use App\Http\Controllers\Api\V1\TaxRuleController;
 use App\Http\Controllers\Api\V1\UnblockAccountPayableController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UpdateUserEmailController; //
@@ -224,6 +225,13 @@ Route::prefix('v1')->group(function (): void {
         Route::put('invoices/{invoice}', [InvoiceController::class, 'update']); // ruta-lápida → 403
         Route::post('invoices/{invoice}/void', VoidInvoiceController::class);
         Route::get('invoices/{invoice}/payments', InvoicePaymentsController::class);
+
+        // MOD-07 · Administración fiscal (ROL-01): clases y tasas configurables.
+        Route::get('tax-rules', [TaxRuleController::class, 'index']);
+        Route::post('tax-rules', [TaxRuleController::class, 'store']);
+        Route::put('tax-rules/{taxRule}', [TaxRuleController::class, 'update']);
+        Route::patch('tax-rules/{taxRule}', [TaxRuleController::class, 'update']);
+        Route::delete('tax-rules/{taxRule}', [TaxRuleController::class, 'destroy']);
 
         // MOD-08 · Cuentas por Cobrar
         Route::get('accounts-receivable', [AccountReceivableController::class, 'index']);

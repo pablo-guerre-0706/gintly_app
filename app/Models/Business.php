@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BusinessStatus;
+use App\Enums\TaxClass;
 use App\Observers\BusinessObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -32,6 +33,28 @@ class Business extends Model
             'status'   => BusinessStatus::class,
             'tax_rate' => 'decimal:4',
         ];
+    }
+
+    /**
+     * Tasa ESTÁNDAR GENERAL vigente del negocio, resuelta desde tax_rules (fuente
+     * fiscal OPERATIVA única). Devuelve null si aún no hay regla (p. ej. durante el
+     * aprovisionamiento). business.tax_rate es un ESPEJO de compatibilidad: se siembra
+     * al crear el negocio y se sincroniza cuando se edita la tasa por el endpoint del
+     * negocio (que además la TRADUCE a la regla); el valor autoritativo para mostrar y
+     * calcular proviene de la regla, no de la columna.
+     *
+     * withoutGlobalScopes: no depende del contexto de tenant vigente.
+     */
+    public function standardTaxRate(): ?string
+    {
+        $rate = TaxRule::withoutGlobalScopes()
+            ->where('business_id', $this->getKey())
+            ->where('tax_class', TaxClass::Standard->value)
+            ->whereNull('branch_id')
+            ->where('is_active', true)
+            ->value('rate');
+
+        return $rate !== null ? (string) $rate : null;
     }
 
     public function owner(): BelongsTo

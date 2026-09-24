@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Product;
 
 use App\Enums\ProductType;
+use App\Enums\TaxClass;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
@@ -49,6 +50,10 @@ final class UpdateProductRequest extends BaseTenantRequest
             'cost'       => ['sometimes', 'numeric', 'decimal:0,2', 'min:0'],
 
             'tracks_inventory' => ['sometimes', 'boolean'],
+            // Cambiar la clase fiscal afecta SOLO las líneas futuras; las ya congeladas
+            // no se tocan. is_taxable es ALIAS DE ENTRADA DEPRECADO: no se persiste, solo
+            // se traduce (prepareForValidation) y se verifica su coherencia (after()).
+            'tax_class'        => ['sometimes', Rule::enum(TaxClass::class)],
             'is_taxable'       => ['sometimes', 'boolean'],
             'is_active'        => ['sometimes', 'boolean'],
         ];
@@ -82,6 +87,24 @@ final class UpdateProductRequest extends BaseTenantRequest
                     );
                 }
             },
+            // Coherencia del alias deprecado is_taxable con tax_class (si llegan ambos).
+            function (Validator $validator): void {
+                if (! $this->has('is_taxable') || ! $this->filled('tax_class')) {
+                    return;
+                }
+
+                $taxClass = TaxClass::tryFrom((string) $this->input('tax_class'));
+                if ($taxClass === null) {
+                    return;
+                }
+
+                if (($taxClass !== TaxClass::Exempt) !== $this->boolean('is_taxable')) {
+                    $validator->errors()->add(
+                        'is_taxable',
+                        'is_taxable (alias deprecado) contradice tax_class: is_taxable=false equivale a tax_class=exempt, y true a una clase gravada.'
+                    );
+                }
+            },
         ];
     }
 
@@ -109,7 +132,7 @@ final class UpdateProductRequest extends BaseTenantRequest
             'cost.decimal'          => 'El costo admite un máximo de dos decimales.',
             'cost.min'              => 'El costo no puede ser negativo.',
             'tracks_inventory.boolean' => 'El control de inventario debe ser verdadero o falso.',
-            'is_taxable.boolean'    => 'El indicador de gravabilidad debe ser verdadero o falso.',
+            'tax_class.enum'        => 'La clase fiscal debe ser tasa general, reducida, tasa cero o exento.',
             'is_active.boolean'     => 'El estado del producto debe ser verdadero o falso.',
         ];
     }
@@ -129,7 +152,7 @@ final class UpdateProductRequest extends BaseTenantRequest
             'sale_price'       => 'precio de venta',
             'cost'             => 'costo',
             'tracks_inventory' => 'controla inventario',
-            'is_taxable'       => 'gravable',
+            'tax_class'        => 'clase fiscal',
             'is_active'        => 'estado',
         ];
     }
@@ -148,6 +171,14 @@ final class UpdateProductRequest extends BaseTenantRequest
 
         if ($this->input('type') === ProductType::Service->value) {
             $merge['tracks_inventory'] = false;
+        }
+
+        // Alias deprecado: si llega is_taxable sin tax_class, se traduce
+        // (true→standard, false→exempt). Sin default en update (tax_class es 'sometimes').
+        if (! $this->filled('tax_class') && $this->has('is_taxable')) {
+            $merge['tax_class'] = $this->boolean('is_taxable')
+                ? TaxClass::Standard->value
+                : TaxClass::Exempt->value;
         }
 
         if ($merge !== []) {

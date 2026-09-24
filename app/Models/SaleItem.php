@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\FiscalCondition;
+use App\Enums\TaxClass;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\DispatchItem;
 use App\Models\SalesReturnItem;
@@ -31,6 +33,13 @@ final class SaleItem extends Model
         'discount_amount',
         'line_total',
         'recipe_snapshot',
+        // Fotografía fiscal congelada (MOD-07):
+        'tax_class',
+        'fiscal_condition',
+        'tax_rate',
+        'taxable_base',
+        'tax_amount',
+        'tax_rule_id',
     ];
 
     protected function casts(): array
@@ -45,6 +54,11 @@ final class SaleItem extends Model
             'recipe_snapshot'     => 'array',
             'dispatched_quantity' => 'decimal:3',
             'returned_quantity'   => 'decimal:3',
+            'tax_class'           => TaxClass::class,
+            'fiscal_condition'    => FiscalCondition::class,
+            'tax_rate'            => 'decimal:6',
+            'taxable_base'        => 'decimal:2',
+            'tax_amount'          => 'decimal:2',
         ];
     }
 
@@ -56,6 +70,11 @@ final class SaleItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function taxRule(): BelongsTo
+    {
+        return $this->belongsTo(TaxRule::class);
     }
 
     // Cantidad aún no entregada = facturada − despachada. Accesor P10 (MOD-09).

@@ -7,6 +7,7 @@ namespace Tests\Feature\Mod04;
 use App\Enums\ProductType;
 use App\Enums\RoleName;
 use App\Enums\SupplierStatus;
+use App\Enums\TaxClass;
 use App\Models\AccountPayable;
 use App\Models\Branch;
 use App\Models\Business;
@@ -19,6 +20,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\Warehouse;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\MysqlTestCase;
@@ -49,7 +51,16 @@ final class PurchaseFlowHttpTest extends MysqlTestCase
         $registrar->setPermissionsTeamId(null);
         $registrar->forgetCachedPermissions();
 
-        return $this->actingAs(User::query()->findOrFail($u->getKey()), 'web');
+        // Recarga desde MySQL para el guard web. whereKey()->firstOrFail() + instanceof
+        // estrecha el tipo al contrato Authenticatable que exige actingAs() (findOrFail
+        // conservaba la unión User|Collection y disparaba P1006 en Intelephense).
+        $authenticatedUser = User::query()->whereKey($u->getKey())->firstOrFail();
+
+        if (! $authenticatedUser instanceof AuthenticatableContract) {
+            throw new \RuntimeException('El usuario recargado no implementa Authenticatable.');
+        }
+
+        return $this->actingAs($authenticatedUser, 'web');
     }
 
     /** Contexto de un negocio ya sembrado. */
@@ -100,7 +111,7 @@ final class PurchaseFlowHttpTest extends MysqlTestCase
             'sale_price'       => '20.00',
             'cost'             => '10.00',
             'tracks_inventory' => true,
-            'is_taxable'       => true,
+            'tax_class'        => TaxClass::Standard->value,
             'is_active'        => true,
         ]);
         $product->business_id = $business->id;

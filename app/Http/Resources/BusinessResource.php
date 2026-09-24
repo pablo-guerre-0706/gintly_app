@@ -20,7 +20,11 @@ final class BusinessResource extends JsonResource
             'slug'       => $this->slug,
             'plan'       => $this->plan,
             'status'     => $this->status?->value,   // BusinessStatus (backed enum) -> string
-            'tax_rate'   => (string) $this->tax_rate, // decimal(5,4) bcmath -> string, nunca float
+            // Tasa estándar VIGENTE resuelta desde tax_rules (fuente operativa única);
+            // la columna es solo un espejo de compatibilidad. Devuelve NULL cuando el
+            // negocio no tiene regla estándar (no hay presunción de 15 %). String bcmath.
+            'tax_rate'   => $this->standardTaxRate()
+                ?? ($this->tax_rate !== null ? (string) $this->tax_rate : null),
             'timezone'   => $this->timezone,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

@@ -68,6 +68,7 @@ $morphMap = [
     'invoice'               => \App\Models\Invoice::class,
     'invoice_payment'       => \App\Models\InvoicePayment::class,
     'document_sequence'     => \App\Models\DocumentSequence::class,
+    'tax_rule'              => \App\Models\TaxRule::class,
 
     // MOD-08 — Ventas al Crédito y CxC
     'account_receivable'    => \App\Models\AccountReceivable::class,

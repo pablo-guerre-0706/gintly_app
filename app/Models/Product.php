@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProductType;
+use App\Enums\TaxClass;
 use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -32,7 +34,7 @@ final class Product extends Model
         'sale_price',
         'cost',
         'tracks_inventory',
-        'is_taxable',
+        'tax_class',
         'is_active',
     ];
 
@@ -43,9 +45,21 @@ final class Product extends Model
             'sale_price'       => 'decimal:2',
             'cost'             => 'decimal:2',
             'tracks_inventory' => 'boolean',
-            'is_taxable'       => 'boolean',
+            'tax_class'        => TaxClass::class,
             'is_active'        => 'boolean',
         ];
+    }
+
+    /**
+     * is_taxable dejó de ser columna: es un DATO DERIVADO de la clase fiscal, para
+     * no mantener dos fuentes fiscales escribibles. Un producto está sujeto a
+     * impuesto salvo que su clase sea exenta (tasa cero SÍ está sujeta, a 0 %).
+     */
+    protected function isTaxable(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): bool => $this->tax_class?->condition()->isSubjectToTax() ?? true,
+        );
     }
 
     // Coerción universal: un servicio nunca rastrea inventario, venga la

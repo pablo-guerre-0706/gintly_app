@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Product;
 
 use App\Enums\ProductType;
+use App\Enums\TaxClass;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 final class StoreProductRequest extends BaseTenantRequest
 {
@@ -49,8 +51,46 @@ final class StoreProductRequest extends BaseTenantRequest
             // tracks_inventory se acepta pero se coacciona en prepareForValidation
             // cuando type=service. No se rechaza jamás.
             'tracks_inventory' => ['sometimes', 'boolean'],
+            // Clase fiscal explícita (MOD-07), fuente fiscal canónica del producto.
+            // prepareForValidation la resuelve desde el alias deprecado is_taxable o la
+            // fija en 'standard' si no llega ninguno.
+            'tax_class'        => ['required', Rule::enum(TaxClass::class)],
+            // is_taxable: ALIAS DE ENTRADA DEPRECADO (compat de frontend en transición).
+            // No se persiste (dato derivado en la respuesta); solo se valida su tipo y
+            // su coherencia con tax_class (after()).
             'is_taxable'       => ['sometimes', 'boolean'],
             'is_active'        => ['sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * Coherencia del alias deprecado is_taxable con tax_class: si llegan AMBOS y se
+     * contradicen (is_taxable=false ⇎ tax_class=exempt), se rechaza con 422.
+     *
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if (! $this->has('is_taxable')) {
+                    return;
+                }
+
+                $taxClass = TaxClass::tryFrom((string) $this->input('tax_class'));
+                if ($taxClass === null) {
+                    return; // el enum rule ya reporta el valor inválido
+                }
+
+                $derived = $taxClass !== TaxClass::Exempt;
+
+                if ($derived !== $this->boolean('is_taxable')) {
+                    $validator->errors()->add(
+                        'is_taxable',
+                        'is_taxable (alias deprecado) contradice tax_class: is_taxable=false equivale a tax_class=exempt, y true a una clase gravada (standard/reduced/zero_rated).'
+                    );
+                }
+            },
         ];
     }
 
@@ -78,7 +118,7 @@ final class StoreProductRequest extends BaseTenantRequest
             'cost.decimal'          => 'El costo admite un máximo de dos decimales.',
             'cost.min'              => 'El costo no puede ser negativo.',
             'tracks_inventory.boolean' => 'El control de inventario debe ser verdadero o falso.',
-            'is_taxable.boolean'    => 'El indicador de gravabilidad debe ser verdadero o falso.',
+            'tax_class.enum'        => 'La clase fiscal debe ser tasa general, reducida, tasa cero o exento.',
             'is_active.boolean'     => 'El estado del producto debe ser verdadero o falso.',
         ];
     }
@@ -98,7 +138,7 @@ final class StoreProductRequest extends BaseTenantRequest
             'sale_price'       => 'precio de venta',
             'cost'             => 'costo',
             'tracks_inventory' => 'controla inventario',
-            'is_taxable'       => 'gravable',
+            'tax_class'        => 'clase fiscal',
             'is_active'        => 'estado',
         ];
     }
@@ -120,6 +160,16 @@ final class StoreProductRequest extends BaseTenantRequest
         // con independencia de lo enviado. El modelo lo reafirma en saving().
         if ($this->input('type') === ProductType::Service->value) {
             $merge['tracks_inventory'] = false;
+        }
+
+        // Compatibilidad del alias deprecado: si NO llega tax_class pero llega el
+        // is_taxable anterior, se traduce (true→standard, false→exempt). Si no llega
+        // ninguno, se asume 'standard' (equivalente al is_taxable=true por defecto
+        // previo). Si llega tax_class, es la entrada canónica y manda.
+        if (! $this->filled('tax_class')) {
+            $merge['tax_class'] = $this->has('is_taxable')
+                ? ($this->boolean('is_taxable') ? TaxClass::Standard->value : TaxClass::Exempt->value)
+                : TaxClass::Standard->value;
         }
 
         if ($merge !== []) {

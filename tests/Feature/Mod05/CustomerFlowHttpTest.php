@@ -13,6 +13,7 @@ use App\Models\CustomerAddress;
 use App\Models\Invoice;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\MysqlTestCase;
@@ -32,7 +33,16 @@ final class CustomerFlowHttpTest extends MysqlTestCase
         $registrar->setPermissionsTeamId(null);
         $registrar->forgetCachedPermissions();
 
-        return $this->actingAs(User::query()->findOrFail($u->getKey()), 'web');
+        // Recarga desde MySQL para el guard web. whereKey()->firstOrFail() + instanceof
+        // estrecha el tipo al contrato Authenticatable que exige actingAs() (findOrFail
+        // conservaba la unión User|Collection y disparaba P1006 en Intelephense).
+        $authenticatedUser = User::query()->whereKey($u->getKey())->firstOrFail();
+
+        if (! $authenticatedUser instanceof AuthenticatableContract) {
+            throw new \RuntimeException('El usuario recargado no implementa Authenticatable.');
+        }
+
+        return $this->actingAs($authenticatedUser, 'web');
     }
 
     /** Negocio sembrado NORMALMENTE (con observer: cliente genérico + roles). */

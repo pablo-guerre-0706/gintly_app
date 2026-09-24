@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Gestión del carrito de venta. Su responsabilidad clave es el congelamiento de
- * datos maestros al agregar cada línea: description, unit_price,
- * unit_cost, is_taxable y, para compuestos, recipe_snapshot. Una vez congelados,
- * un cambio posterior en el producto o su receta no altera la venta.
+ * datos maestros al agregar cada línea: description, unit_price, unit_cost, la
+ * FOTOGRAFÍA FISCAL (clase, condición, tasa, base, impuesto, regla) y, para
+ * compuestos, recipe_snapshot. Una vez congelados, un cambio posterior en el
+ * producto, su receta, su clase fiscal o las tasas del negocio no altera la venta.
  */
 final class SaleService
 {
@@ -29,6 +30,7 @@ final class SaleService
 
     public function __construct(
         private readonly SequenceGenerator $sequences,
+        private readonly TaxResolver $tax,
     ) {
     }
 
@@ -70,25 +72,28 @@ final class SaleService
                 ->whereKey($productId)
                 ->firstOrFail();
 
-            // line_total = cantidad × precio − descuento (escala 2).
+            // line_total = cantidad × precio − descuento (escala 2). Es la base gravable
+            // de la línea: el descuento de línea se aplica ANTES del impuesto.
             $gross = bcmul($quantity, (string) $product->sale_price, self::MONEY_SCALE);
             $lineTotal = bcsub($gross, $discountAmount, self::MONEY_SCALE);
             if (bccomp($lineTotal, '0', self::MONEY_SCALE) < 0) {
                 $lineTotal = '0.00';
             }
 
-            $item = new SaleItem([
+            // Resolución fiscal determinista sobre la base de línea; se congela entera.
+            $fiscal = $this->tax->resolveForLine($product, (int) $sale->branch_id, $lineTotal);
+
+            $item = new SaleItem(array_merge([
                 'sale_id'         => $sale->id,
                 'product_id'      => $product->id,
                 'description'     => $product->name,                 // congelado
                 'quantity'        => $quantity,
                 'unit_price'      => (string) $product->sale_price,  // congelado
                 'unit_cost'       => (string) $product->cost,        // congelado
-                'is_taxable'      => $product->is_taxable,           // congelado (D-30)
                 'discount_amount' => $discountAmount,
                 'line_total'      => $lineTotal,
                 'recipe_snapshot' => $this->freezeRecipe($product),  // congelado (H-59)
-            ]);
+            ], $fiscal->toItemAttributes()));                        // fiscal congelado (MOD-07)
             $item->save();
 
             $this->recalcularSubtotal($sale);

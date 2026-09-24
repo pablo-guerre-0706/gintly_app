@@ -31,7 +31,10 @@ final class ProductResource extends JsonResource
             'sale_price'  => $this->sale_price,
             'cost'        => $this->cost,
             'tracks_inventory' => $this->tracks_inventory,
-            'is_taxable'  => $this->is_taxable,
+            // Clase fiscal es la fuente; is_taxable se conserva DERIVADO por compatibilidad.
+            'tax_class'       => $this->tax_class->value,
+            'tax_class_label' => $this->tax_class->label(),
+            'is_taxable'      => $this->is_taxable,
             'is_active'   => $this->is_active,
             'category'    => new CategoryResource($this->whenLoaded('category')),
             'brand'       => new BrandResource($this->whenLoaded('brand')),
