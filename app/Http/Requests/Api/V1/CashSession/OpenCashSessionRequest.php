@@ -14,7 +14,10 @@ final class OpenCashSessionRequest extends BaseTenantRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('open', CashSession::class) ?? false;
+        // La habilidad es 'create' (CashSessionPolicy::create, ROL-03+). Antes se
+        // invocaba 'open', que NO existe en la policy: Gate lo resolvía como negado
+        // y devolvía 403 en TODA apertura. El controlador ya autoriza 'create'.
+        return $this->user()?->can('create', CashSession::class) ?? false;
     }
 
     /**

@@ -92,6 +92,16 @@ $morphMap = [
     'business_goal'         => \App\Models\BusinessGoal::class,
     'kpi_snapshot'          => \App\Models\KpiSnapshot::class,
     'report_definition'     => \App\Models\ReportDefinition::class,
+
+    // Onboarding / Registro (pre-tenant)
+    // RegisterWizard es un modelo VIVO (RegisterWizardController + RegisterWizardRequest
+    // + ruta web + migración create_register_wizards): captura el formulario de alta
+    // multi-paso ANTES de que exista el negocio. La invariante del proyecto exige que
+    // TODO modelo de app/Models tenga un alias estable de morphMap (MorphMapIntegrityTest),
+    // para que ninguna columna polimórfica persista el FQCN. Alias snake_case singular de
+    // la tabla `register_wizards`. Al derivarse auditable_types de array_keys(morph_map),
+    // queda disponible en la lista blanca de auditoría (sin forzar auditoría automática).
+    'register_wizard'       => \App\Models\RegisterWizard::class,
 ];
 
 return [

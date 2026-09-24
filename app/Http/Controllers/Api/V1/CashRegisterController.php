@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\CashRegister\IndexCashRegisterRequest;
 use App\Http\Requests\Api\V1\CashRegister\StoreCashRegisterRequest;
 use App\Http\Requests\Api\V1\CashRegister\UpdateCashRegisterRequest;
 use App\Http\Resources\CashRegisterResource;
 use App\Models\CashRegister;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
@@ -19,16 +20,34 @@ final class CashRegisterController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Request $request): AnonymousResourceCollection
+    // IndexCashRegisterRequest valida filtros (branch_id, is_active), autoriza viewAny
+    // y sanea orden/paginación. Alcance por rol: ROL-01/ROL-02 administran las cajas del
+    // negocio (con filtros del request); ROL-03 SOLO ve cajas ACTIVAS de su propia
+    // sucursal (sin sucursal asignada → ninguna), acorde a lo que puede operar.
+    public function index(IndexCashRegisterRequest $request): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', CashRegister::class);
+        $user  = $request->user();
+        $query = CashRegister::query()->with('branch');
 
-        $registers = CashRegister::query()
-            ->with('branch')
-            ->when($request->filled('branch_id'), fn ($q) => $q->where('branch_id', $request->integer('branch_id')))
-            ->when($request->boolean('only_active'), fn ($q) => $q->where('is_active', true))
-            ->orderByDesc('id')
-            ->paginate($request->integer('per_page', 15));
+        if ($user->holdsAtLeast(RoleName::Admin)) {
+            $query
+                ->when(
+                    $request->validated('branch_id'),
+                    fn ($q, $branchId) => $q->where('branch_id', $branchId),
+                )
+                ->when(
+                    $request->has('is_active'),
+                    fn ($q) => $q->where('is_active', $request->boolean('is_active')),
+                );
+        } else {
+            // branch_id ?? 0 → si el operador no tiene sucursal, no ve ninguna caja.
+            $query->where('is_active', true)
+                ->where('branch_id', $user->branch_id ?? 0);
+        }
+
+        $registers = $query
+            ->orderBy($request->sortColumn('created_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return CashRegisterResource::collection($registers);
     }

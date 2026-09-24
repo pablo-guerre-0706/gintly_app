@@ -8,13 +8,13 @@ use App\Enums\CashMovementType;
 use App\Enums\CashMovementCategory;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\CashMovement\IndexCashMovementRequest;
 use App\Http\Requests\Api\V1\CashMovement\StoreCashMovementRequest;
 use App\Http\Resources\CashMovementResource;
 use App\Models\CashMovement;
 use App\Services\Cash\CashService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class CashMovementController extends Controller
@@ -25,17 +25,31 @@ final class CashMovementController extends Controller
     {
     }
 
-    public function index(Request $request): AnonymousResourceCollection
+    // IndexCashMovementRequest valida enums (type/category/payment_method), autoriza
+    // viewAny y sanea orden/paginación. Antes con Request plano faltaban el filtro
+    // payment_method y el orden del contrato.
+    public function index(IndexCashMovementRequest $request): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', CashMovement::class);
-
         $movements = CashMovement::query()
             ->with(['cashSession', 'user', 'authorizedBy'])
-            ->when($request->filled('cash_session_id'), fn ($q) => $q->where('cash_session_id', $request->integer('cash_session_id')))
-            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->input('type')))
-            ->when($request->filled('category'), fn ($q) => $q->where('category', $request->input('category')))
-            ->orderByDesc('id')
-            ->paginate($request->integer('per_page', 25));
+            ->when(
+                $request->validated('cash_session_id'),
+                fn ($q, $sessionId) => $q->where('cash_session_id', $sessionId),
+            )
+            ->when(
+                $request->validated('type'),
+                fn ($q, $type) => $q->where('type', $type),
+            )
+            ->when(
+                $request->validated('category'),
+                fn ($q, $category) => $q->where('category', $category),
+            )
+            ->when(
+                $request->validated('payment_method'),
+                fn ($q, $method) => $q->where('payment_method', $method),
+            )
+            ->orderBy($request->sortColumn('created_at'), $request->sortDirection('desc'))
+            ->paginate($request->perPage());
 
         return CashMovementResource::collection($movements);
     }

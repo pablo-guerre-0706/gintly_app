@@ -15,13 +15,16 @@ use App\Exceptions\InvalidRefundMethodException;
 use App\Exceptions\NoActiveCashSessionException;
 use App\Exceptions\UnreconciledCashClosingException;
 use App\Models\CashMovement;
+use App\Models\CashRegister;
 use App\Models\CashSession;
 use App\Models\User;
 use App\Services\Anomaly\AnomalyService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class CashService
 {
@@ -40,6 +43,11 @@ final class CashService
      */
     public function abrir(User $actor, int $cashRegisterId, string $openingAmount): CashSession
     {
+        // Aislamiento de sucursal (ROL-03): la caja debe pertenecer a SU sucursal.
+        // El FormRequest ya garantizó existencia+activa+tenant; aquí se acota la
+        // sucursal antes de abrir. ROL-01/ROL-02 administran cualquier caja del negocio.
+        $this->assertCanOpenRegister($actor, $cashRegisterId);
+
         try {
             return DB::transaction(function () use ($actor, $cashRegisterId, $openingAmount): CashSession {
                 $session = new CashSession([
@@ -89,6 +97,11 @@ final class CashService
         ): CashMovement {
             $session = $this->lockOpenSession($actor->business_id, $cashSessionId);
 
+            // Propiedad (ROL-03): solo puede registrar movimientos en SU sesión abierta.
+            // Se valida bajo lock y antes de persistir, de modo que un rechazo no asienta
+            // nada (rollback de la transacción). ROL-01/ROL-02 operan administrativamente.
+            $this->assertCanOperateSession($actor, $session);
+
             // El autorizante de un egreso autorizado debe ser ROL-02.
             if ($category->requiresAuthorization()) {
                 $this->assertAuthorizerIsAdmin($actor->business_id, $authorizedBy);
@@ -134,6 +147,12 @@ final class CashService
                 throw NoActiveCashSessionException::forClosing($session->id);
             }
 
+            // Backstop del cierre administrativo por contingencia: si quien cierra no es
+            // quien abrió la sesión, el motivo (closing_notes) es OBLIGATORIO y con
+            // contenido significativo. En HTTP ya lo exige CloseCashSessionRequest; este
+            // guarda cierra la vía no-HTTP. Se lanza ANTES de persistir → nada se modifica.
+            $this->assertContingencyNote($actor, $session, $closingNotes);
+
             // Esperado = fondo inicial + Σ(ingresos efectivo)
             //                              − Σ(egresos efectivo).
             $expected = $this->computeExpectedCash($session);
@@ -141,6 +160,7 @@ final class CashService
             $session->counted_amount = $countedAmount;
             $session->counted_denominations = $denominations;
             $session->expected_amount = $expected;
+            // closed_by SIEMPRE lo deriva el servidor del actor autenticado; jamás del request.
             $session->closed_by = $actor->id;
             $session->closed_at = Carbon::now();
             $session->closing_notes = $closingNotes;
@@ -158,20 +178,20 @@ final class CashService
 
             $session->save();
 
-            if ($session->status === CashSessionStatus::Descuadrada) {
-                $this->dispatchDescuadreAnomaly($session, $difference);
-            }
-
             return $session->refresh();
         });
 
-        // ?(MOD-11): descuadre de caja → anomalía silenciosa.
+        // MOD-11 · descuadre de caja → anomalía silenciosa. Se registra DESPUÉS del
+        // commit (la evidencia ya persiste) sobre $closed, la instancia recargada del
+        // motor: el parámetro $session original quedó obsoleto (la reasignación dentro
+        // del closure no se propaga fuera). La sucursal se deriva de la caja, ya que
+        // cash_sessions no tiene columna branch_id propia.
         if (bccomp((string) $closed->difference, '0.00', 2) !== 0) {
-            $this->anomalies->registrarSilencioso('descuadre_caja', $session, [
+            $this->anomalies->registrarSilencioso('descuadre_caja', $closed, [
                 'expected_value' => (string) $closed->expected_amount,
                 'actual_value'   => (string) $closed->counted_amount,
                 'difference'     => (string) $closed->difference,
-                'branch_id'      => $session->branch_id ?? null,
+                'branch_id'      => $closed->cashRegister?->branch_id,
             ]);
         }
 
@@ -283,15 +303,74 @@ final class CashService
         return $expected;
     }
 
-    // El autorizante existe, es del tenant y tiene rango ROL-02+.
+    /**
+     * Motivo obligatorio en el cierre administrativo por contingencia (quien cierra
+     * ≠ quien abrió). Backstop no-HTTP; se traduce a 422 sobre closing_notes.
+     */
+    private function assertContingencyNote(User $actor, CashSession $session, ?string $closingNotes): void
+    {
+        if ((int) $session->opened_by === (int) $actor->id) {
+            return; // Cierre ordinario: el motivo es opcional.
+        }
+
+        $note = $closingNotes !== null ? trim($closingNotes) : '';
+
+        if (mb_strlen($note) < 3) {
+            throw ValidationException::withMessages([
+                'closing_notes' => ['El cierre administrativo de una sesión ajena exige registrar el motivo.'],
+            ]);
+        }
+    }
+
+    /**
+     * ROL-03 solo opera sobre una sesión que él mismo abrió; ROL-01/ROL-02 conservan
+     * la operación administrativa sobre cualquier sesión del negocio.
+     */
+    private function assertCanOperateSession(User $actor, CashSession $session): void
+    {
+        if ($actor->holdsAtLeast(RoleName::Admin)) {
+            return;
+        }
+
+        if ((int) $session->opened_by !== (int) $actor->id) {
+            throw new AuthorizationException('No puede operar sobre una sesión de caja de otro usuario.');
+        }
+    }
+
+    /**
+     * Aislamiento de sucursal en la apertura. ROL-01/ROL-02 abren cualquier caja del
+     * negocio; ROL-03 solo cajas de SU sucursal, y si no tiene sucursal asignada la
+     * apertura se rechaza de forma controlada (403, no un 500).
+     */
+    private function assertCanOpenRegister(User $actor, int $cashRegisterId): void
+    {
+        if ($actor->holdsAtLeast(RoleName::Admin)) {
+            return;
+        }
+
+        if ($actor->branch_id === null) {
+            throw new AuthorizationException('No tiene una sucursal asignada para abrir una caja.');
+        }
+
+        // Acotado al tenant por BusinessScope; el FormRequest ya validó existencia/activa.
+        $register = CashRegister::query()->whereKey($cashRegisterId)->first();
+
+        if ($register === null || (int) $register->branch_id !== (int) $actor->branch_id) {
+            throw new AuthorizationException('No puede abrir una caja de otra sucursal.');
+        }
+    }
+
+    // El autorizante existe, es del tenant, está ACTIVO y tiene rango ROL-02+.
     private function assertAuthorizerIsAdmin(int $businessId, ?int $authorizedBy): void
     {
         if ($authorizedBy === null) {
             throw CashAuthorizationException::notAdmin(0);
         }
 
+        // Debe estar activo: un ROL-02 inactivo no puede autorizar egresos.
         $authorizer = User::query()
             ->where('business_id', $businessId)
+            ->where('is_active', true)
             ->whereKey($authorizedBy)
             ->first();
 
@@ -339,21 +418,6 @@ final class CashService
                 ? "Cobro de crédito · Ref: {$reference}"
                 : 'Cobro de crédito',
         ]);
-    }
-
-    /**
-     * D-24 · Hook de anomalía de descuadre. INERTE hasta MOD-11: mientras el
-     * AnomalyService no exista, no hay a quién despachar. Al cerrar MOD-11 se
-     * retira el class_exists y se inyecta el servicio real.
-     */
-    private function dispatchDescuadreAnomaly(CashSession $session, string $difference): void
-    {
-        if (! class_exists(\App\Services\Anomaly\AnomalyService::class)) {
-            return;
-        }
-
-        // El cableado real se completa en MOD-11 (registro de la anomalía
-        // 'descuadre_caja' con origen = esta sesión y el monto de la diferencia).
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RoleName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -49,6 +50,19 @@ class User extends Authenticatable
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * ¿El usuario ostenta al menos el rol indicado (por nivel) en el negocio activo?
+     * Resuelve el rol bajo el equipo de permisos vigente (SetPermissionsTeamId).
+     * Base del alcance por rol (p. ej. visibilidad administrativa vs. propiedad ROL-03).
+     */
+    public function holdsAtLeast(RoleName $minimum): bool
+    {
+        $name = $this->getRoleNames()->first();
+        $role = $name !== null ? RoleName::tryFrom((string) $name) : null;
+
+        return $role?->atLeast($minimum) ?? false;
     }
 
     public function managedBranches(): HasMany

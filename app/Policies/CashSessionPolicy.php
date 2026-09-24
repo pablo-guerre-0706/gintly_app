@@ -19,10 +19,21 @@ final class CashSessionPolicy
         return $this->hasAtLeast($user, RoleName::Operator); // ROL-03
     }
 
+    // Alcance por propiedad: ROL-01/ROL-02 ven cualquier sesión de su negocio
+    // (visibilidad administrativa); ROL-03 SOLO la que él mismo abrió. Aplica a
+    // show y a /movements (ambos autorizan 'view'). El arqueo ciego lo sigue
+    // garantizando el Resource (oculta expected/difference mientras 'abierta').
     public function view(User $user, CashSession $session): bool
     {
-        return $this->sharesBusinessWith($user, $session)
-            && $this->hasAtLeast($user, RoleName::Operator);
+        if (! $this->sharesBusinessWith($user, $session)) {
+            return false;
+        }
+
+        if ($this->hasAtLeast($user, RoleName::Admin)) {
+            return true;
+        }
+
+        return (int) $session->opened_by === (int) $user->id;
     }
 
     public function create(User $user): bool

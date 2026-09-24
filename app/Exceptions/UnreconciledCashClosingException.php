@@ -25,7 +25,7 @@ final class UnreconciledCashClosingException extends RuntimeException
         $this->session->loadMissing(['cashRegister', 'openedBy', 'closedBy']);
 
         return response()->json([
-            'error'   => 'CASH_CLOSING_UNRECONCILED',
+            'error'   => 'UNRECONCILED_CASH_CLOSING',
             'message' => $this->getMessage(),
             'data'    => CashSessionResource::make($this->session),
         ], 422);

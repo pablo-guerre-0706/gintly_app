@@ -25,12 +25,14 @@ final class CloseCashSessionController extends Controller
 
         $validated = $request->validated();
 
-        // Alineamos las variables al orden exacto y tipos estrictos que exige el Service
+        // Alineamos las variables al orden exacto y tipos estrictos que exige el Service.
+        // La clave validada es 'counted_denominations' (CloseCashSessionRequest); antes
+        // se leía 'denominations' (inexistente), descartando el desglose del arqueo.
         $session = $this->cash->cerrar(
             $request->user(),
             $cashSession,
             (string) $validated['counted_amount'],
-            (array) $validated['denominations'],
+            (array) $validated['counted_denominations'],
             isset($validated['closing_notes']) ? (string) $validated['closing_notes'] : null
         );
 
