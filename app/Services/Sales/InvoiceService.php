@@ -87,14 +87,23 @@ final class InvoiceService
             //     business.tax_rate: cada línea trae su impuesto fiscal congelado. ---
             $totals = $this->computeTotals($sales, $discountAmount);
 
-            // --- 3. Crédito: verificación ATÓMICA (dentro de la tx, tras el lock) ---
-            //     owner_authorized (ROL-01 para exceder cupo) se lee del request validado.
+            // --- 3. Crédito: verificación ATÓMICA (dentro de la tx). El cliente se bloquea
+            //     con lockForUpdate para SERIALIZAR el cupo: dos facturas concurrentes del
+            //     mismo cliente no pueden ambas leer la misma exposición y ser aprobadas
+            //     (la 2ª espera al commit de la 1ª y recalcula sobre la CxC ya creada).
+            //     owner_authorized ya viene coaccionado a ROL-01 por StoreInvoiceRequest.
             if ($paymentType === InvoicePaymentType::Credito) {
                 $this->assertNotGenericCustomer($customerId, $businessId);
 
                 $customer = Customer::query()
                     ->where('business_id', $businessId)
+                    ->lockForUpdate()
                     ->findOrFail($customerId);
+
+                // Cliente activo (RF-08-01): no se factura a crédito a un cliente inactivo.
+                if (! $customer->is_active) {
+                    throw InvalidInvoiceStateException::creditToInactiveCustomer();
+                }
 
                 $this->receivables->assertCreditAvailable(
                     $customer,

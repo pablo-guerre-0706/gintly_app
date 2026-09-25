@@ -33,7 +33,10 @@ final class StoreReceivablePaymentRequest extends BaseTenantRequest
                 'nullable',
                 'required_if:payment_method,efectivo', // Efectivo exige caja (existencia).
                 'integer',
-                $this->tenantExists('cash_sessions'),  // Que la sesión sea del mismo negocio.
+                // excludeTrashed:false → cash_sessions NO tiene deleted_at (no es soft-deletable);
+                // el default whereNull('deleted_at') provocaría un SQLSTATE 42S22 (500). Igual
+                // criterio que StoreInvoiceRequest para esta misma tabla.
+                $this->tenantExists('cash_sessions', 'id', excludeTrashed: false),
             ],
             'reference'       => ['nullable', 'string', 'max:100'],
         ];

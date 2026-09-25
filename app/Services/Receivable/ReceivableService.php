@@ -12,6 +12,7 @@ use App\Exceptions\OverpaymentException;
 use App\Models\AccountReceivable;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\InvoicePayment;
 use App\Models\ReceivablePayment;
 use App\Services\Anomaly\AnomalyService;
 use App\Services\Cash\CashService;
@@ -50,7 +51,36 @@ final class ReceivableService
         $ar->status = AccountReceivableStatus::fromAmounts($total, $paid);
         $ar->save(); // business_id lo inyecta el trait. unique(invoice_id) garantiza la unicidad 1:1.
 
+        // Materializa el asiento de CARTERA del pago inicial: por cada invoice_payment de la
+        // factura (fuente fiscal) crea su receivable_payment enlazado 1:1. NO vuelve a
+        // incrementar paid_amount (ya viene del total pagado de la factura, arriba) ni asienta
+        // caja (el cash_movement 'venta' ya se registró al emitir). Garantiza la invariante
+        // Σ receivable_payments == accounts_receivable.paid_amount == Σ invoice_payments.
+        foreach ($invoice->payments()->get() as $invoicePayment) {
+            $this->materializarAbonoInicial($ar, $invoicePayment);
+        }
+
         return $ar;
+    }
+
+    /**
+     * Crea el receivable_payment que respalda un invoice_payment ya existente (pago inicial),
+     * copiando sus datos y enlazándolo 1:1, SIN tocar acumulados ni caja.
+     */
+    private function materializarAbonoInicial(AccountReceivable $ar, InvoicePayment $invoicePayment): ReceivablePayment
+    {
+        $payment = new ReceivablePayment();
+        $payment->accounts_receivable_id = $ar->id;
+        $payment->invoice_payment_id     = $invoicePayment->id;
+        $payment->cash_session_id        = $invoicePayment->cash_session_id;
+        $payment->amount                 = (string) $invoicePayment->amount;
+        $payment->payment_method         = $invoicePayment->payment_method;
+        $payment->reference              = $invoicePayment->reference;
+        $payment->paid_at                = $invoicePayment->paid_at;
+        $payment->user_id                = $invoicePayment->user_id; // No-repudio: el cajero del cobro inicial.
+        $payment->save();
+
+        return $payment;
     }
 
     // =====================================================================
@@ -175,9 +205,24 @@ final class ReceivableService
                 $this->cashService->registrarCobroCredito($cashSessionId, $amount, $data['reference'] ?? null);
             }
 
-            // (1) Inserta el abono. user_id lo fija el Service (no-repudio), NUNCA el request.
+            // (1a) Asiento FISCAL del cobro en el libro de la factura (RF-07): todo abono
+            //      queda reflejado fiscalmente. invoice_payments es la fuente fiscal única;
+            //      invoice.paid_amount se mantiene == Σ invoice_payments (ver syncStatuses).
+            $invoicePayment = new InvoicePayment();
+            $invoicePayment->invoice_id      = $invoice->id;
+            $invoicePayment->cash_session_id = $cashSessionId;
+            $invoicePayment->user_id         = Auth::id();
+            $invoicePayment->payment_method  = $method;
+            $invoicePayment->amount          = $amount;
+            $invoicePayment->reference       = $data['reference'] ?? null;
+            $invoicePayment->paid_at         = now();
+            $invoicePayment->save();
+
+            // (1b) Abono TRAZABLE de la CxC, enlazado 1:1 al asiento fiscal (sin doble conteo).
+            //      user_id lo fija el Service (no-repudio), NUNCA el request.
             $payment = new ReceivablePayment();
             $payment->accounts_receivable_id = $ar->id;
+            $payment->invoice_payment_id     = $invoicePayment->id;
             $payment->cash_session_id        = $cashSessionId;
             $payment->amount                 = $amount;
             $payment->payment_method         = $method;
@@ -237,6 +282,14 @@ final class ReceivableService
      */
     public function reducirPorNotaCredito(AccountReceivable $accountReceivable, string $amount): void
     {
+        // Orden de bloqueo CANÓNICO Invoice → AccountReceivable (idéntico a abonar/anular):
+        // se bloquea primero la factura para prevenir un ABBA con el flujo futuro de MOD-10
+        // que invoca este método. syncStatuses reentra el mismo lock de la factura.
+        Invoice::query()
+            ->whereKey($accountReceivable->invoice_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
         $ar = AccountReceivable::query()
             ->whereKey($accountReceivable->getKey())
             ->lockForUpdate()
@@ -322,16 +375,18 @@ final class ReceivableService
         if ($invoice instanceof Invoice) {
             if (bccomp($paymentDelta, '0.00', 2) > 0) {
                 // Abono real: suma al pagado de la factura y deriva del total FISCAL.
+                // fromAmounts(paid, total): el orden es (pagado, total), NO (total, pagado).
                 $invoice->paid_amount    = bcadd((string) $invoice->paid_amount, $paymentDelta, 2);
                 $invoice->payment_status = InvoicePaymentStatus::fromAmounts(
-                    (string) $invoice->total,
-                    (string) $invoice->paid_amount
+                    (string) $invoice->paid_amount,
+                    (string) $invoice->total
                 );
             } else {
                 // Reducción por NC: la factura acopla su estado al saldo REDUCIDO de la CxC.
+                // fromAmounts(paid, total): pagado primero, total (reducido) después.
                 $invoice->payment_status = InvoicePaymentStatus::fromAmounts(
-                    (string) $ar->total_amount,
-                    (string) $ar->paid_amount
+                    (string) $ar->paid_amount,
+                    (string) $ar->total_amount
                 );
             }
             $invoice->save();

@@ -53,6 +53,11 @@ final class InvalidInvoiceStateException extends RuntimeException
         return new self('No se puede emitir una factura a crédito al cliente genérico.');
     }
 
+    public static function creditToInactiveCustomer(): self
+    {
+        return new self('No se puede emitir una factura a crédito a un cliente inactivo.');
+    }
+
     public static function invoiceNotVoidable(int $invoiceId): self
     {
         return new self("La factura {$invoiceId} no está emitida y no puede anularse.");

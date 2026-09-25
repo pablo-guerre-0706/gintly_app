@@ -19,6 +19,7 @@ final class ReceivablePayment extends Model
 
     protected $fillable = [
         'accounts_receivable_id',
+        'invoice_payment_id',
         'cash_session_id',
         'amount',
         'payment_method',
@@ -39,6 +40,12 @@ final class ReceivablePayment extends Model
     public function accountReceivable(): BelongsTo
     {
         return $this->belongsTo(AccountReceivable::class, 'accounts_receivable_id');
+    }
+
+    /** Asiento fiscal 1:1 del abono en el libro de la factura (RF-07). */
+    public function invoicePayment(): BelongsTo
+    {
+        return $this->belongsTo(InvoicePayment::class);
     }
 
     public function cashSession(): BelongsTo
