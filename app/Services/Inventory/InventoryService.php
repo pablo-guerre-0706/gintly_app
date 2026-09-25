@@ -492,7 +492,7 @@ final class InventoryService
     {
         if (! $saleItem->isCompound()) {
             return [$saleItem->product_id => $quantity];
-    }
+        }
 
         $out = [];
         foreach ((array) $saleItem->recipe_snapshot as $ing) {
@@ -502,7 +502,49 @@ final class InventoryService
             $out[$ingredientId] = bcadd($out[$ingredientId] ?? '0.000', bcmul($quantity, $perUnit, 3), 3);
         }
 
+        // Orden determinista por product_id: los insumos se bloquean/consumen en orden único
+        // ascendente, evitando ABBA entre retiros concurrentes que compartan insumos.
+        ksort($out, SORT_NUMERIC);
+
         return $out;
+    }
+
+    /**
+     * IDs de producto que una línea toca físicamente (simple: el propio producto;
+     * compuesto: sus insumos del snapshot congelado), en orden ascendente. Alimenta
+     * el pre-bloqueo determinista de saldos de DispatchService.
+     *
+     * @return array<int, int>
+     */
+    public function componentProductIds(SaleItem $saleItem): array
+    {
+        $ids = array_map('intval', array_keys($this->explosionInsumos($saleItem, '1')));
+        sort($ids, SORT_NUMERIC);
+
+        return $ids;
+    }
+
+    /**
+     * Pre-bloqueo determinista de las filas de saldo (orden ÚNICO de locks MOD-09: por
+     * product_id ascendente). Establecer el orden aquí, antes de descontar por línea,
+     * evita interbloqueos ABBA entre retiros concurrentes que compartan productos. Las
+     * filas ausentes no se bloquean: el descuento posterior las trata como INSUFFICIENT_STOCK.
+     *
+     * @param  array<int, int>  $productIds
+     */
+    public function lockStockRows(int $businessId, int $warehouseId, array $productIds): void
+    {
+        $ids = array_values(array_unique(array_map('intval', $productIds)));
+        sort($ids, SORT_NUMERIC);
+
+        foreach ($ids as $productId) {
+            StockLevel::query()
+                ->where('business_id', $businessId)
+                ->where('product_id', $productId)
+                ->where('warehouse_id', $warehouseId)
+                ->lockForUpdate()
+                ->first();
+        }
     }
 
     /**

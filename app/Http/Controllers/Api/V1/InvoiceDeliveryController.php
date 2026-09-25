@@ -1,49 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Resources\InvoiceDeliveryStatusResource;
+use App\Models\Invoice;
+use App\Services\Dispatch\DispatchService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-class InvoiceDeliveryController extends Controller
+/**
+ * MOD-09 · Saldo pendiente de entrega de una factura (RF-09-02).
+ *
+ * Solo lectura y derivado: por línea expone facturado, retirado y pendiente, y el estado
+ * consolidado (pendiente/parcial/completado) sobre las líneas entregables. No acepta
+ * cantidades del cliente.
+ */
+final class InvoiceDeliveryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    use AuthorizesRequests;
+
+    public function __construct(private readonly DispatchService $dispatches)
     {
-        //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    /** GET /invoices/{invoice}/delivery-status */
+    public function show(Invoice $invoice): InvoiceDeliveryStatusResource
     {
-        //
-    }
+        $this->authorize('viewDeliveryStatus', $invoice);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return new InvoiceDeliveryStatusResource($this->dispatches->estadoEntrega($invoice));
     }
 }

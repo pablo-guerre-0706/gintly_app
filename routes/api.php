@@ -243,27 +243,16 @@ Route::prefix('v1')->group(function (): void {
         Route::post('customers/{customer}/credit-check', CustomerCreditCheckController::class);
 
 
-        // MOD-09 Crédito del cliente (sub-recurso de customers)
-        // Route::prefix('customers/{customer}')->group(function (): void {
-            // Route::get('credit-status', [CustomerCreditController::class, 'status'])
-                // ->name('customers.credit-status');
-
-            // Route::post('credit-check', [CustomerCreditController::class, 'check'])
-            // ->name('customers.credit-check');
-        // });
-
-        // MOD-09 · Entregas y Retiros
-        // Route::prefix('dispatches')->group(function (): void {
-            // Route::get('/', [DispatchController::class, 'index'])->name('dispatches.index');
-            // Route::post('/', [DispatchController::class, 'store'])->name('dispatches.store');
-            // Route::get('/{dispatch}', [DispatchController::class, 'show'])->name('dispatches.show');
-            // Route::get('/{dispatch}/items', [DispatchController::class, 'items'])->name('dispatches.items');
-            // Route::post('/{dispatch}/revert', [DispatchController::class, 'revert'])->name('dispatches.revert');
-        // });
+        // MOD-09 · Entregas y Retiros de Mercancía
+        Route::get('dispatches', [DispatchController::class, 'index'])->name('dispatches.index');
+        Route::post('dispatches', [DispatchController::class, 'store'])->name('dispatches.store');
+        Route::get('dispatches/{dispatch}', [DispatchController::class, 'show'])->name('dispatches.show');
+        Route::get('dispatches/{dispatch}/items', [DispatchController::class, 'items'])->name('dispatches.items');
+        Route::post('dispatches/{dispatch}/revert', [DispatchController::class, 'revert'])->name('dispatches.revert');
 
         // MOD-09 · Saldo pendiente de entrega (sub-recurso de invoices)
-        // Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
-            // ->name('invoices.delivery-status');
+        Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
+            ->name('invoices.delivery-status');
 
 
         // MOD-10 · Devoluciones

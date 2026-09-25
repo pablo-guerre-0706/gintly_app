@@ -27,8 +27,12 @@ final class DispatchResource extends JsonResource
             'reverted_at'   => $this->reverted_at?->toIso8601String(),
             'revert_reason' => $this->revert_reason,
 
-            'user'  => new UserResource($this->whenLoaded('user')),
-            'items' => DispatchItemResource::collection($this->whenLoaded('items')),
+            // Relaciones opcionales (solo si se cargaron): sin N+1.
+            'user'        => new UserResource($this->whenLoaded('user')),        // Responsable del retiro.
+            'reverted_by_user' => new UserResource($this->whenLoaded('revertedBy')),
+            'invoice'     => new InvoiceResource($this->whenLoaded('invoice')),
+            'warehouse'   => new WarehouseResource($this->whenLoaded('warehouse')),
+            'items'       => DispatchItemResource::collection($this->whenLoaded('items')),
         ];
     }
 }

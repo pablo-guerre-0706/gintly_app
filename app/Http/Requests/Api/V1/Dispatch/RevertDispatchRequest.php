@@ -15,8 +15,17 @@ final class RevertDispatchRequest extends BaseTenantRequest
 
     public function rules(): array
     {
+        // Motivo obligatorio y SIGNIFICATIVO (RF-09-04): min 3 caracteres, como la anulación de factura.
         return [
-            'revert_reason' => ['required', 'string', 'max:255'], // Motivo obligatorio (RF-09-04).
+            'revert_reason' => ['required', 'string', 'min:3', 'max:255'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'revert_reason.required' => 'El motivo de la reversión es obligatorio.',
+            'revert_reason.min'      => 'El motivo de la reversión debe tener al menos 3 caracteres.',
         ];
     }
 

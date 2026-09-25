@@ -24,6 +24,19 @@ final class InvalidDispatchStateException extends RuntimeException
         return new self('El retiro ya fue revertido; no admite una nueva reversión.', 409);
     }
 
+    /**
+     * La factura se anuló DESPUÉS del retiro: revertir re-reservaría mercancía de un
+     * comprobante inválido. La mercancía ya entregada se resuelve por devolución (MOD-10).
+     */
+    public static function cannotRevertVoidedInvoice(int $invoiceId): self
+    {
+        return new self(
+            "No se puede revertir el retiro: la factura #{$invoiceId} está anulada. "
+            . 'La mercancía ya entregada debe gestionarse por devolución (MOD-10).',
+            409
+        );
+    }
+
     /** La línea no pertenece a la factura del retiro. */
     public static function lineNotOnInvoice(int $saleItemId): self
     {
@@ -34,6 +47,12 @@ final class InvalidDispatchStateException extends RuntimeException
     public static function serviceNotDispatchable(int $saleItemId): self
     {
         return new self("La línea de venta #{$saleItemId} es un servicio y no genera retiro.", 422);
+    }
+
+    /** El producto de la línea no controla inventario: no genera retiro físico. */
+    public static function notDispatchable(int $saleItemId): self
+    {
+        return new self("La línea de venta #{$saleItemId} no controla inventario y no genera retiro físico.", 422);
     }
 
     /** La sucursal emisora no tiene bodega predeterminada. */

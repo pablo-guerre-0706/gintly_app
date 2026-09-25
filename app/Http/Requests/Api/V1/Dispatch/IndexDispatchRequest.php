@@ -20,12 +20,29 @@ final class IndexDispatchRequest extends BaseTenantRequest
         return true; // DispatchPolicy::viewAny en el controlador.
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->stripEmptyFilters();
+    }
+
+    /**
+     * Allowlist de ordenamiento (H-04). Sin él, HasPaginationRules es abstracto y la clase
+     * ni siquiera carga; con columnas arbitrarias, 'sort' sería un vector de inyección.
+     *
+     * @return array<int, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return ['id', 'code', 'dispatched_at', 'status', 'created_at'];
+    }
+
     public function rules(): array
     {
         return array_merge(
             [
-                'invoice_id'   => ['sometimes', 'integer', $this->tenantExists('invoices')],
-                'warehouse_id' => ['sometimes', 'integer', $this->tenantExists('warehouses')],
+                // invoices NO es soft-deletable ⇒ excludeTrashed:false (evita 42S22 → 500).
+                'invoice_id'   => ['sometimes', 'integer', $this->tenantExists('invoices', 'id', excludeTrashed: false)],
+                'warehouse_id' => ['sometimes', 'integer', $this->tenantExists('warehouses')], // soft-deletable
                 'status'       => ['sometimes', 'string', Rule::in(DispatchStatus::values())],
             ],
             $this->dateRangeRules(),
@@ -33,12 +50,24 @@ final class IndexDispatchRequest extends BaseTenantRequest
         );
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return array_merge($this->dateRangeMessages(), $this->paginationMessages());
+    }
+
     public function attributes(): array
     {
-        return [
-            'invoice_id'   => 'factura',
-            'warehouse_id' => 'bodega',
-            'status'       => 'estado',
-        ];
+        return array_merge(
+            $this->dateRangeAttributes(),
+            $this->paginationAttributes(),
+            [
+                'invoice_id'   => 'factura',
+                'warehouse_id' => 'bodega',
+                'status'       => 'estado',
+            ],
+        );
     }
 }

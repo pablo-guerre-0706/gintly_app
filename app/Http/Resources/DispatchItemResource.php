@@ -17,7 +17,9 @@ final class DispatchItemResource extends JsonResource
             'dispatch_id'  => $this->dispatch_id,
             'sale_item_id' => $this->sale_item_id,
             'product_id'   => $this->product_id,
-            'quantity'     => (string) $this->quantity,
+            'quantity'     => (string) $this->quantity, // decimal como string (bcmath e3).
+            // Descripción congelada de la línea de venta, desde la relación confiable.
+            'description'  => $this->whenLoaded('saleItem', fn () => $this->saleItem->description),
             'product'      => new ProductResource($this->whenLoaded('product')),
         ];
     }
