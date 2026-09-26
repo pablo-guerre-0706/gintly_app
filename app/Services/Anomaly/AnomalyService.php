@@ -15,14 +15,17 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-final class AnomalyService
+// No 'final': se extiende en pruebas para forzar el camino de fallo de una corrida (RF-11-04).
+class AnomalyService
 {
     /**
-     * Mapa causante por tabla origen. Ausente ⇒ sin causante humano (no aplica).
+     * Mapa causante por tabla origen → columna del responsable humano. Ausente ⇒ sin causante
+     * trazable (BR-01 no aplica). OJO: cash_sessions NO tiene user_id; su responsable es el
+     * cajero que la abrió/operó (opened_by). goods_receipts y physical_counts sí usan user_id.
      * @var array<string, string>
      */
     private const CAUSER_FIELDS = [
-        'cash_sessions'   => 'user_id',
+        'cash_sessions'   => 'opened_by',
         'goods_receipts'  => 'user_id',
         'physical_counts' => 'user_id',
     ];
@@ -38,7 +41,13 @@ final class AnomalyService
     {
         try {
             return DB::transaction(function () use ($ruleCode, $source, $values): ?Anomaly {
+                // Tenant EXPLÍCITO del origen: el motor programado (cron) corre sin sesión, así que
+                // NO se puede depender del BusinessScope (Auth) ni de la inyección por Auth de business_id.
+                $businessId = (int) $source->business_id;
+
                 $rule = AnomalyRule::query()
+                    ->withoutGlobalScopes()
+                    ->where('business_id', $businessId)
                     ->where('code', $ruleCode)
                     ->where('is_active', true)
                     ->first();
@@ -53,6 +62,7 @@ final class AnomalyService
                 }
 
                 $anomaly = new Anomaly();
+                $anomaly->business_id           = $businessId; // Explícito (independiente de Auth).
                 $anomaly->anomaly_rule_id       = $rule->id;
                 $anomaly->reconciliation_run_id = $values['reconciliation_run_id'] ?? null;
                 $anomaly->branch_id             = $values['branch_id'] ?? ($source->branch_id ?? null);
@@ -165,14 +175,16 @@ final class AnomalyService
 
     private function writeEvent(Anomaly $anomaly, ?AnomalyStatus $from, AnomalyStatus $to, ?string $comment): void
     {
-        AnomalyEvent::create([
-            'anomaly_id'  => $anomaly->id,
-            'user_id'     => Auth::id(),        // NULL en procesos programados.
-            'from_status' => $from?->value,
-            'to_status'   => $to->value,
-            'comment'     => $comment,
-            'changed_at'  => now(),
-        ]);
+        // business_id EXPLÍCITO desde la anomalía (no de Auth): el cron escribe eventos sin sesión.
+        $event = new AnomalyEvent();
+        $event->business_id = $anomaly->business_id;
+        $event->anomaly_id  = $anomaly->id;
+        $event->user_id     = Auth::id(); // NULL en procesos programados.
+        $event->from_status = $from?->value;
+        $event->to_status   = $to->value;
+        $event->comment     = $comment;
+        $event->changed_at  = now();
+        $event->save();
     }
 
     private function isDuplicateActive(QueryException $e): bool

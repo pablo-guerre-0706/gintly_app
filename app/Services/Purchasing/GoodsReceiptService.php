@@ -14,6 +14,7 @@ use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\User;
+use App\Services\Anomaly\AnomalyService;
 use App\Services\Inventory\InventoryService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ final class GoodsReceiptService
 
     public function __construct(
         private readonly InventoryService $inventory,
+        private readonly AnomalyService $anomalies,
     ) {
     }
 
@@ -120,12 +122,39 @@ final class GoodsReceiptService
             return $receipt->refresh()->load(['items', 'accountPayable']);
         });
 
-        // La señal 409 se emite DESPUÉS del commit. La evidencia persiste.
+        // MOD-11 (RF-11-03) · discrepancia 3-way → anomalía INMEDIATA, DESPUÉS del commit: la
+        // recepción y su evidencia ya persisten. registrarSilencioso deriva el tenant del origen y
+        // es a prueba de fallos (un fallo al alertar NO destruye la recepción). La deduplicación
+        // estructural (uniq_active_anomaly) evita duplicar con una conciliación posterior.
+        // La señal 409 se emite DESPUÉS de registrar la alerta. La evidencia persiste.
         if ($receipt->match_status === GoodsReceiptMatchStatus::Discrepancia) {
+            $this->anomalies->registrarSilencioso('discrepancia_3way', $receipt, [
+                'difference' => $this->discrepancyAmount($receipt),
+            ]);
+
             throw new PurchaseMatchException($receipt);
         }
 
         return $receipt;
+    }
+
+    /**
+     * Métrica monetaria de la discrepancia (|factura declarada − total calculado|) para el umbral
+     * de la regla (tipo Monto). Null si no se declaró factura: el umbral null ⇒ siempre alerta.
+     */
+    private function discrepancyAmount(GoodsReceipt $receipt): ?string
+    {
+        if ($receipt->supplier_invoice_total === null) {
+            return null;
+        }
+
+        $computed = (string) (AccountPayable::query()
+            ->withoutGlobalScopes()
+            ->where('goods_receipt_id', $receipt->id)
+            ->where('business_id', $receipt->business_id)
+            ->value('total_amount') ?? '0.00');
+
+        return $this->absolute(bcsub((string) $receipt->supplier_invoice_total, $computed, self::MONEY_SCALE));
     }
 
     public function resolver(User $actor, GoodsReceipt $receipt, string $resolution, ?string $notes): GoodsReceipt

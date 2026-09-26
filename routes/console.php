@@ -9,11 +9,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 
-Schedule::command('receivables:mark-overdue')->dailyAt('00:30');
+Schedule::command('receivables:mark-overdue')->dailyAt('00:30'); // MOD-08.
+// MOD-11 · Auditoría de fondo diaria por negocio (RF-11-04). Registro ÚNICO (se eliminó el duplicado).
 Schedule::command('reconciliation:run --scope=integral')->dailyAt('01:00');
-
-Schedule::command('reconciliation:run --scope=integral')->dailyAt('01:00');
-// (receivables:mark-overdue está registrado a 00:30, MOD-08.)
 
 Schedule::command('kpi:snapshot --period=diario')->dailyAt('02:00');
 Schedule::command('kpi:snapshot --period=mensual')->monthlyOn(1, '02:30');

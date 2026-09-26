@@ -1,49 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\Api\V1\Anomaly\UpdateAnomalyRuleRequest;
+use App\Http\Resources\AnomalyRuleResource;
+use App\Models\AnomalyRule;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class AnomalyRuleController extends Controller
+/**
+ * MOD-11 · Reglas de anomalía (capa HTTP delgada). Catálogo CERRADO de 6 reglas por negocio
+ * (sembradas por BusinessObserver). Solo se parametrizan umbral, severidad y activación (ROL-01);
+ * code y name son inmutables (los protege $fillable del modelo).
+ */
+final class AnomalyRuleController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    use AuthorizesRequests;
+
+    /** GET /anomaly-rules — las reglas del negocio (catálogo fijo, sin paginar). */
+    public function index(): AnonymousResourceCollection
     {
-        //
+        $this->authorize('viewAny', AnomalyRule::class);
+
+        // BusinessScope acota al tenant; orden estable por código.
+        $rules = AnomalyRule::query()->orderBy('code')->get();
+
+        return AnomalyRuleResource::collection($rules);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    /** PUT /anomaly-rules/{anomalyRule} — parametriza umbral/severidad/activación (ROL-01). */
+    public function update(UpdateAnomalyRuleRequest $request, AnomalyRule $anomalyRule): AnomalyRuleResource
     {
-        //
-    }
+        $this->authorize('update', $anomalyRule);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        // $fillable excluye code/name (inmutables); solo se persisten los atributos parametrizables.
+        $anomalyRule->update($request->validated());
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return AnomalyRuleResource::make($anomalyRule->refresh());
     }
 }

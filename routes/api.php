@@ -270,27 +270,21 @@ Route::prefix('v1')->group(function (): void {
         Route::get('customers/{customer}/credit-balance', CustomerCreditBalanceController::class)
             ->name('customers.credit-balance');
 
-        // MOD-11 · Reglas de anomalía
-        // Route::prefix('anomaly-rules')->group(function (): void {
-            // Route::get('/', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
-            // Route::put('/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
-        // });
+        // MOD-11 · Reglas de anomalía (catálogo cerrado; parametrización ROL-01)
+        Route::get('anomaly-rules', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
+        Route::put('anomaly-rules/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
 
-        // MOD-11 · Anomalías (máquina de estados)
-        // Route::prefix('anomalies')->group(function (): void {
-            // Route::get('/', [AnomalyController::class, 'index'])->name('anomalies.index');
-            // Route::get('/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
-            // Route::get('/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
-            // Route::post('/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
-            // Route::post('/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
-        // });
+        // MOD-11 · Anomalías (máquina de estados + bitácora append-only)
+        Route::get('anomalies', [AnomalyController::class, 'index'])->name('anomalies.index');
+        Route::get('anomalies/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
+        Route::get('anomalies/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
+        Route::post('anomalies/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
+        Route::post('anomalies/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
 
-        // MOD-11 · Corridas de conciliación
-        // Route::prefix('reconciliation-runs')->group(function (): void {
-            // Route::get('/', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
-            // Route::post('/', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
-            // Route::get('/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
-        // });
+        // MOD-11 · Corridas de conciliación (manual ROL-02+; programada vía comando)
+        Route::get('reconciliation-runs', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
+        Route::post('reconciliation-runs', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
+        Route::get('reconciliation-runs/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
 
         // MOD-12 · Metas de negocio
         // Route::prefix('business-goals')->group(function (): void {

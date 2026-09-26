@@ -22,6 +22,21 @@ final class IndexReconciliationRunRequest extends BaseTenantRequest
         return true; // ReconciliationRunPolicy::viewAny.
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->stripEmptyFilters();
+    }
+
+    /**
+     * Allowlist de ordenamiento (H-04). Obligatorio: HasPaginationRules lo declara abstracto.
+     *
+     * @return array<int, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return ['id', 'started_at', 'finished_at', 'status', 'scope', 'anomalies_found', 'created_at'];
+    }
+
     public function rules(): array
     {
         return array_merge(
@@ -35,8 +50,17 @@ final class IndexReconciliationRunRequest extends BaseTenantRequest
         );
     }
 
+    public function messages(): array
+    {
+        return array_merge($this->dateRangeMessages(), $this->paginationMessages());
+    }
+
     public function attributes(): array
     {
-        return ['scope' => 'alcance', 'run_type' => 'tipo', 'status' => 'estado'];
+        return array_merge(
+            $this->dateRangeAttributes(),
+            $this->paginationAttributes(),
+            ['scope' => 'alcance', 'run_type' => 'tipo', 'status' => 'estado'],
+        );
     }
 }
