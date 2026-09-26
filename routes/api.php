@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\CustomerCreditBalanceController;
 use App\Http\Controllers\Api\V1\CustomerCreditCheckController;
 use App\Http\Controllers\Api\V1\CustomerCreditStatusController;
 use App\Http\Controllers\Api\V1\DispatchController;
@@ -255,23 +256,19 @@ Route::prefix('v1')->group(function (): void {
             ->name('invoices.delivery-status');
 
 
-        // MOD-10 · Devoluciones
-        // Route::prefix('sales-returns')->group(function (): void {
-            // Route::get('/', [SalesReturnController::class, 'index'])->name('sales-returns.index');
-            // Route::post('/', [SalesReturnController::class, 'store'])->name('sales-returns.store');
-            // Route::get('/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales-returns.show');
-            // Route::get('/{salesReturn}/items', [SalesReturnController::class, 'items'])->name('sales-returns.items');
-        // });
+        // MOD-10 · Devoluciones, Reingresos y Mermas
+        Route::get('sales-returns', [SalesReturnController::class, 'index'])->name('sales-returns.index');
+        Route::post('sales-returns', [SalesReturnController::class, 'store'])->name('sales-returns.store');
+        Route::get('sales-returns/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales-returns.show');
+        Route::get('sales-returns/{salesReturn}/items', [SalesReturnController::class, 'items'])->name('sales-returns.items');
 
-        // MOD-10 · Notas de crédito
-        // Route::prefix('credit-notes')->group(function (): void {
-            // Route::get('/', [CreditNoteController::class, 'index'])->name('credit-notes.index');
-            // Route::get('/{creditNote}', [CreditNoteController::class, 'show'])->name('credit-notes.show');
-        // });
+        // MOD-10 · Notas de crédito (solo lectura; se emiten dentro de la devolución)
+        Route::get('credit-notes', [CreditNoteController::class, 'index'])->name('credit-notes.index');
+        Route::get('credit-notes/{creditNote}', [CreditNoteController::class, 'show'])->name('credit-notes.show');
 
-        // MOD-10 · Saldo a favor del cliente
-        // Route::get('customers/{customer}/credit-balance', [CustomerCreditController::class, 'creditBalance'])
-            // ->name('customers.credit-balance');
+        // MOD-10 · Saldo a favor del cliente (sub-recurso de customers)
+        Route::get('customers/{customer}/credit-balance', CustomerCreditBalanceController::class)
+            ->name('customers.credit-balance');
 
         // MOD-11 · Reglas de anomalía
         // Route::prefix('anomaly-rules')->group(function (): void {

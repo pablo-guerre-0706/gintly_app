@@ -27,6 +27,9 @@ final class CreditNoteResource extends JsonResource
             'status_label'          => $this->status->label(),
             'issued_at'             => $this->issued_at?->toIso8601String(),
             'issued_by'             => $this->issued_by,
+
+            // Desglose trazable de las vías de resarcimiento (Σ amount == total_amount).
+            'resolutions'           => CreditNoteResolutionResource::collection($this->whenLoaded('resolutions')),
         ];
     }
 }

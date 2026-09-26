@@ -82,6 +82,7 @@ $morphMap = [
     'sales_return'          => \App\Models\SalesReturn::class,
     'sales_return_item'     => \App\Models\SalesReturnItem::class,
     'credit_note'           => \App\Models\CreditNote::class,
+    'credit_note_resolution' => \App\Models\CreditNoteResolution::class,
 
     // MOD-11 — Conciliación, Alertas y Anomalías
     'anomaly_rule'          => \App\Models\AnomalyRule::class,

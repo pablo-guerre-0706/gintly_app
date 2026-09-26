@@ -27,16 +27,19 @@ final class StoreSalesReturnRequest extends BaseTenantRequest
     public function rules(): array
     {
         return [
-            'invoice_id'      => ['required', 'integer', $this->tenantExists('invoices')],
-            'cash_session_id' => ['nullable', 'integer', $this->tenantExists('cash_sessions')],
+            // invoices, cash_sessions y sale_items NO son soft-deletable ⇒ excludeTrashed:false
+            // evita whereNull('deleted_at') sobre columna inexistente (SQLSTATE 42S22 → 500).
+            'invoice_id'      => ['required', 'integer', $this->tenantExists('invoices', 'id', excludeTrashed: false)],
+            'cash_session_id' => ['nullable', 'integer', $this->tenantExists('cash_sessions', 'id', excludeTrashed: false)],
             'notes'           => ['nullable', 'string', 'max:500'],
 
             'lines'                 => ['required', 'array', 'min:1'],
-            'lines.*.sale_item_id'  => ['required', 'integer', $this->tenantExists('sale_items')],
+            // distinct: prohíbe repetir la misma línea de venta dentro de una devolución.
+            'lines.*.sale_item_id'  => ['required', 'integer', 'distinct', $this->tenantExists('sale_items', 'id', excludeTrashed: false)],
             'lines.*.quantity'      => ['required', 'numeric', 'decimal:0,3', 'gt:0'],
             'lines.*.reason_code'   => ['required', 'string', Rule::in(ReturnReasonCode::values())],
             'lines.*.destination'   => ['nullable', 'string', Rule::in(ReturnDestination::values())],
-            'lines.*.warehouse_id'  => ['nullable', 'integer', $this->tenantExists('warehouses')],
+            'lines.*.warehouse_id'  => ['nullable', 'integer', $this->tenantExists('warehouses')], // soft-deletable
         ];
         // AL SERVICE (bajo lock): devolvible por línea (ERR-10/422), vía de resarcimiento (ERR-10B/422),
         // autoridad ROL-01 del reembolso (403), pertenencia de la línea a la factura.
@@ -66,8 +69,9 @@ final class StoreSalesReturnRequest extends BaseTenantRequest
     public function messages(): array
     {
         return [
-            'lines.min'              => 'La devolución debe incluir al menos una línea.',
-            'lines.*.quantity.gt'    => 'La cantidad a devolver debe ser mayor que cero.',
+            'lines.min'                    => 'La devolución debe incluir al menos una línea.',
+            'lines.*.quantity.gt'          => 'La cantidad a devolver debe ser mayor que cero.',
+            'lines.*.sale_item_id.distinct' => 'No repitas la misma línea de venta dentro de una devolución.',
         ];
     }
 

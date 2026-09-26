@@ -20,12 +20,28 @@ final class IndexSalesReturnRequest extends BaseTenantRequest
         return true; // SalesReturnPolicy::viewAny.
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->stripEmptyFilters();
+    }
+
+    /**
+     * Allowlist de ordenamiento (H-04). Obligatorio: HasPaginationRules lo declara abstracto.
+     *
+     * @return array<int, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return ['id', 'code', 'returned_at', 'status', 'total_returned', 'created_at'];
+    }
+
     public function rules(): array
     {
         return array_merge(
             [
-                'invoice_id'  => ['sometimes', 'integer', $this->tenantExists('invoices')],
-                'customer_id' => ['sometimes', 'integer', $this->tenantExists('customers')],
+                // invoices NO es soft-deletable ⇒ excludeTrashed:false (evita 42S22 → 500).
+                'invoice_id'  => ['sometimes', 'integer', $this->tenantExists('invoices', 'id', excludeTrashed: false)],
+                'customer_id' => ['sometimes', 'integer', $this->tenantExists('customers')], // soft-deletable
                 'status'      => ['sometimes', 'string', Rule::in(SalesReturnStatus::values())],
             ],
             $this->dateRangeRules(),
@@ -33,8 +49,17 @@ final class IndexSalesReturnRequest extends BaseTenantRequest
         );
     }
 
+    public function messages(): array
+    {
+        return array_merge($this->dateRangeMessages(), $this->paginationMessages());
+    }
+
     public function attributes(): array
     {
-        return ['invoice_id' => 'factura', 'customer_id' => 'cliente', 'status' => 'estado'];
+        return array_merge(
+            $this->dateRangeAttributes(),
+            $this->paginationAttributes(),
+            ['invoice_id' => 'factura', 'customer_id' => 'cliente', 'status' => 'estado'],
+        );
     }
 }

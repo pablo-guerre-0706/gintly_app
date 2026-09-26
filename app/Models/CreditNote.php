@@ -9,6 +9,7 @@ use App\Enums\CreditNoteStatus;
 use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class CreditNote extends Model
 {
@@ -42,6 +43,12 @@ final class CreditNote extends Model
     public function cashSession(): BelongsTo { return $this->belongsTo(CashSession::class); }
     public function issuedBy(): BelongsTo    { return $this->belongsTo(User::class, 'issued_by'); }
 
+    /** Desglose trazable de las vías de resarcimiento (MOD-10). Σ(amount) == total_amount. */
+    public function resolutions(): HasMany
+    {
+        return $this->hasMany(CreditNoteResolution::class);
+    }
+
     /** ¿Es una NC de saldo a favor vigente (fuente de verdad del crédito disponible, Fase 1)? */
     public function isOpenBalance(): bool
     {
@@ -49,4 +56,3 @@ final class CreditNote extends Model
             && $this->status === CreditNoteStatus::Emitida;
     }
 }
-
