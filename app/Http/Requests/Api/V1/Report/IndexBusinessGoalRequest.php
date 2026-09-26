@@ -19,6 +19,21 @@ final class IndexBusinessGoalRequest extends BaseTenantRequest
         return true; // BusinessGoalPolicy::viewAny.
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->stripEmptyFilters();
+    }
+
+    /**
+     * Allowlist de ordenamiento (H-04): HasPaginationRules lo declara abstracto (sin él la clase no carga).
+     *
+     * @return array<int, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return ['id', 'kpi_code', 'period_type', 'period_start', 'period_end', 'created_at'];
+    }
+
     public function rules(): array
     {
         return array_merge(
@@ -29,5 +44,10 @@ final class IndexBusinessGoalRequest extends BaseTenantRequest
             ],
             $this->paginationRules(),
         );
+    }
+
+    public function messages(): array
+    {
+        return $this->paginationMessages();
     }
 }

@@ -11,7 +11,12 @@ return [
         'goalable' => false,
         'family' => 'integridad',
         'direction' => 'up',
-        'source' => 'directo'
+        'source' => 'directo',
+        // FRD KPI-01: "facturado contra la suma de cobros y cuentas por cobrar generadas en el periodo".
+        // Fase 1 mide integridad ventas↔cobro/CxC; la correspondencia física de inventario la cubre KPI-02
+        // y la conciliación 3-way (inventario→retiro→cobro→caja) el reporte RF-11-02. Pata de inventario: Fase 2.
+        'measures' => 'facturado_vs_cobros_y_cxc',
+        'inventory_leg' => 'diferido_fase2'
         ],
     'kpi_02' => [
         'label' => 'Correspondencia bodega-inventario',

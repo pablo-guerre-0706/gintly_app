@@ -21,6 +21,7 @@ final class ReportResource extends JsonResource
             'totals'      => $this->resource['totals'],
             'comparisons' => $this->resource['comparisons'],
             'series'      => $this->resource['series'],
+            'metadata'    => $this->resource['metadata'] ?? [],
         ];
     }
 }

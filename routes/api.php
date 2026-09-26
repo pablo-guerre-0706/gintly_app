@@ -286,30 +286,29 @@ Route::prefix('v1')->group(function (): void {
         Route::post('reconciliation-runs', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
         Route::get('reconciliation-runs/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
 
-        // MOD-12 · Metas de negocio
-        // Route::prefix('business-goals')->group(function (): void {
-            // Route::get('/', [BusinessGoalController::class, 'index'])->name('business-goals.index');
-            // Route::post('/', [BusinessGoalController::class, 'store'])->name('business-goals.store');
-            // Route::put('/{businessGoal}', [BusinessGoalController::class, 'update'])->name('business-goals.update');
-            // Route::delete('/{businessGoal}', [BusinessGoalController::class, 'destroy'])->name('business-goals.destroy');
-        // });
+        // MOD-12 · Metas de negocio (CUD solo ROL-01; lectura ROL-01/ROL-02)
+        Route::prefix('business-goals')->group(function (): void {
+            Route::get('/', [BusinessGoalController::class, 'index'])->name('business-goals.index');
+            Route::post('/', [BusinessGoalController::class, 'store'])->name('business-goals.store');
+            Route::put('/{businessGoal}', [BusinessGoalController::class, 'update'])->name('business-goals.update');
+            Route::delete('/{businessGoal}', [BusinessGoalController::class, 'destroy'])->name('business-goals.destroy');
+        });
 
-        // MOD-12 · Instantáneas de KPI y panel
-        // Route::prefix('kpi-snapshots')->group(function (): void {
-            // Route::get('/', [KpiSnapshotController::class, 'index'])->name('kpi-snapshots.index');
-            // Route::post('/recalculate', [KpiSnapshotController::class, 'recalculate'])->name('kpi-snapshots.recalculate');
-        // });
-        // Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis');
+        // MOD-12 · Instantáneas de KPI y panel consolidado
+        Route::prefix('kpi-snapshots')->group(function (): void {
+            Route::get('/', [KpiSnapshotController::class, 'index'])->name('kpi-snapshots.index');
+            Route::post('/recalculate', [KpiSnapshotController::class, 'recalculate'])->name('kpi-snapshots.recalculate');
+        });
+        Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis');
 
-        // MOD-12 · Reportes
-        // Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
-        // Route::prefix('report-definitions')->group(function (): void {
-            // Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
-            // Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
-            // Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
-            // Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
-       // });
-        //});
+        // MOD-12 · Reportería consolidada (solo lectura) y definiciones reutilizables
+        Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
+        Route::prefix('report-definitions')->group(function (): void {
+            Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
+            Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
+            Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
+            Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
+        });
     });
 });
 

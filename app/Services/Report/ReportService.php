@@ -6,136 +6,241 @@ namespace App\Services\Report;
 
 use App\Enums\ReportType;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * RF-12-01 · Reportería consolidada, comparable y trazable (SOLO LECTURA).
+ * Los rangos se interpretan en business.timezone y se consultan como intervalos SEMIABIERTOS
+ * [inicio, fin) convertidos a UTC (los timestamps se almacenan en UTC), igual que KpiService.
+ * NO se consultan snapshots como fuente operativa; se consultan las tablas fuente. Cada consulta
+ * filtra business_id explícitamente (las vistas/tablas no están protegidas por BusinessScope aquí).
+ * Cada reporte devuelve totales + período actual + período equivalente anterior + variación + serie.
+ * Sin float: DECIMAL/BCMath, decimales como cadenas con escala estable. Períodos vacíos → ceros.
+ */
 final class ReportService
 {
     /**
-     * RF-12-01 · Reporte consolidado, comparable y trazable (solo lectura).
-     * TODA consulta filtra business_id explícitamente (ERR-12: las vistas son globales).
-     * @return array{type:string, period:array{from:string,to:string}, totals:array, comparisons:array, series:array}
+     * @return array{type:string, period:array, totals:array, comparisons:array, series:array, metadata:array}
      */
     public function generar(int $businessId, ReportType $type, ?string $from, ?string $to, ?int $branchId): array
     {
-        $end   = $to !== null ? CarbonImmutable::parse($to) : CarbonImmutable::now();
-        $start = $from !== null ? CarbonImmutable::parse($from) : $end->startOfMonth();
-        $span  = $start->diffInDays($end) + 1;
-        $prevStart = $start->subDays($span);
-        $prevEnd   = $start->subDay();
+        $p = $this->resolvePeriod($businessId, $from, $to);
 
         $payload = match ($type) {
-            ReportType::Ventas      => $this->ventas($businessId, $start, $end, $prevStart, $prevEnd, $branchId),
-            ReportType::Cartera     => $this->cartera($businessId),
-            ReportType::Inventario  => $this->inventario($businessId, $start, $end),
-            ReportType::Caja        => $this->caja($businessId, $start, $end, $branchId),
-            ReportType::Consolidado => $this->consolidado($businessId, $start, $end, $prevStart, $prevEnd, $branchId),
+            ReportType::Ventas      => $this->ventas($businessId, $p, $branchId),
+            ReportType::Cartera     => $this->cartera($businessId, $p, $branchId),
+            ReportType::Inventario  => $this->inventario($businessId, $p, $branchId),
+            ReportType::Caja        => $this->caja($businessId, $p, $branchId),
+            ReportType::Consolidado => $this->consolidado($businessId, $p, $branchId),
         };
 
         return array_merge(
-            ['type' => $type->value, 'period' => ['from' => $start->toDateString(), 'to' => $end->toDateString()]],
+            [
+                'type'   => $type->value,
+                'period' => ['from' => $p['startDate'], 'to' => $p['endDate']],
+            ],
             $payload,
+            ['metadata' => [
+                'timezone'          => $p['tz'],
+                'previous_period'   => ['from' => $p['prevStartDate'], 'to' => $p['prevEndDate']],
+                'utc_bounds'        => [$p['utcStart']->toIso8601String(), $p['utcEnd']->toIso8601String()],
+                'branch_id'         => $branchId,
+                'generated_at'      => CarbonImmutable::now()->toIso8601String(),
+            ]],
         );
     }
 
-    private function ventas(int $b, CarbonImmutable $s, CarbonImmutable $e, CarbonImmutable $ps, CarbonImmutable $pe, ?int $branchId): array
+    // ---------------- Reportes (fuentes operativas, límites UTC) ----------------
+
+    private function ventas(int $b, array $p, ?int $branchId): array
     {
-        $q = fn (CarbonImmutable $a, CarbonImmutable $z) => DB::table('vw_kpi_ventas')->where('business_id', $b)
-            ->whereBetween('day', [$a->toDateString(), $z->toDateString()])
-            ->when($branchId !== null, fn ($x) => $x->where('branch_id', $branchId));
+        $sales = fn (CarbonImmutable $s, CarbonImmutable $e): object => DB::table('invoices')
+            ->where('business_id', $b)->where('status', 'emitida')
+            ->where('issued_at', '>=', $s)->where('issued_at', '<', $e)
+            ->when($branchId !== null, fn (Builder $x) => $x->where('branch_id', $branchId))
+            ->selectRaw('COALESCE(SUM(total),0) sold, COUNT(*) cnt')->first();
 
-        $current  = (string) (clone $q($s, $e))->sum('total_sold');
-        $previous = (string) (clone $q($ps, $pe))->sum('total_sold');
-        $count    = (int) (clone $q($s, $e))->sum('invoice_count');
+        $cur  = $sales($p['utcStart'], $p['utcEnd']);
+        $prev = $sales($p['prevUtcStart'], $p['prevUtcEnd']);
 
-        $series = $q($s, $e)->selectRaw('day, SUM(total_sold) AS total_sold, SUM(invoice_count) AS invoice_count')
+        $current  = $this->d((string) ($cur->sold ?? '0'));
+        $previous = $this->d((string) ($prev->sold ?? '0'));
+        $count    = (int) ($cur->cnt ?? 0);
+
+        $series = DB::table('invoices')->where('business_id', $b)->where('status', 'emitida')
+            ->where('issued_at', '>=', $p['utcStart'])->where('issued_at', '<', $p['utcEnd'])
+            ->when($branchId !== null, fn (Builder $x) => $x->where('branch_id', $branchId))
+            ->selectRaw("DATE(CONVERT_TZ(issued_at, '+00:00', ?)) day, COALESCE(SUM(total),0) sold, COUNT(*) cnt", [$p['offset']])
             ->groupBy('day')->orderBy('day')->get()
-            ->map(fn ($r) => ['day' => $r->day, 'total_sold' => (string) $r->total_sold, 'invoice_count' => (int) $r->invoice_count])
+            ->map(fn ($r) => ['day' => $r->day, 'total_sold' => $this->d((string) $r->sold), 'invoice_count' => (int) $r->cnt])
             ->all();
 
         return [
             'totals'      => [
-                'total_sold'    => bcadd($current, '0.00', 2),
+                'total_sold'    => $current,
                 'invoice_count' => $count,
                 'avg_ticket'    => $count > 0 ? bcdiv($current, (string) $count, 2) : '0.00',
             ],
-            'comparisons' => [
-                'previous_total' => bcadd($previous, '0.00', 2),
-                'delta'          => bcsub($current === '' ? '0' : $current, $previous === '' ? '0' : $previous, 2),
-            ],
+            'comparisons' => $this->comparison($current, $previous),
             'series'      => $series,
         ];
     }
 
-    private function cartera(int $b): array
+    /** Cartera del período: cohorte de CxC de facturas a crédito emitidas en el rango (comparable por período). */
+    private function cartera(int $b, array $p, ?int $branchId): array
     {
-        $row = DB::table('vw_kpi_cartera')->where('business_id', $b)->first();
+        $cohort = fn (CarbonImmutable $s, CarbonImmutable $e): object => DB::table('accounts_receivables AS ar')
+            ->join('invoices AS i', 'i.id', '=', 'ar.invoice_id')
+            ->where('ar.business_id', $b)
+            ->where('i.payment_type', 'credito')->where('i.status', 'emitida')
+            ->where('i.issued_at', '>=', $s)->where('i.issued_at', '<', $e)
+            ->when($branchId !== null, fn (Builder $x) => $x->where('i.branch_id', $branchId))
+            ->selectRaw('COALESCE(SUM(ar.total_amount),0) emitida, COALESCE(SUM(ar.paid_amount),0) recuperada, '
+                . 'COALESCE(SUM(ar.balance),0) pendiente, '
+                . "COALESCE(SUM(CASE WHEN ar.status='vencida' THEN ar.balance ELSE 0 END),0) vencida")
+            ->first();
+
+        $cur  = $cohort($p['utcStart'], $p['utcEnd']);
+        $prev = $cohort($p['prevUtcStart'], $p['prevUtcEnd']);
 
         return [
             'totals'      => [
-                'emitida'    => bcadd((string) ($row->emitida ?? '0'), '0.00', 2),
-                'recuperada' => bcadd((string) ($row->recuperada ?? '0'), '0.00', 2),
-                'pendiente'  => bcadd((string) ($row->pendiente ?? '0'), '0.00', 2),
-                'vencida'    => bcadd((string) ($row->vencida ?? '0'), '0.00', 2),
+                'emitida'    => $this->d((string) ($cur->emitida ?? '0')),
+                'recuperada' => $this->d((string) ($cur->recuperada ?? '0')),
+                'pendiente'  => $this->d((string) ($cur->pendiente ?? '0')),
+                'vencida'    => $this->d((string) ($cur->vencida ?? '0')),
             ],
-            'comparisons' => [],
+            'comparisons' => $this->comparison(
+                $this->d((string) ($cur->recuperada ?? '0')),
+                $this->d((string) ($prev->recuperada ?? '0')),
+            ),
             'series'      => [],
         ];
     }
 
-    private function inventario(int $b, CarbonImmutable $s, CarbonImmutable $e): array
+    private function inventario(int $b, array $p, ?int $branchId): array
     {
-        $exact = DB::table('vw_kpi_exactitud_stock')->where('business_id', $b)
-            ->whereBetween('day', [$s->toDateString(), $e->toDateString()])
-            ->selectRaw('COALESCE(SUM(abs_deviation),0) abs_dev, COALESCE(SUM(system_total),0) sys')->first();
+        $exact = DB::table('physical_counts')->where('business_id', $b)
+            ->where('counted_at', '>=', $p['utcStart'])->where('counted_at', '<', $p['utcEnd'])
+            ->selectRaw('COALESCE(SUM(ABS(difference)),0) abs_dev, COALESCE(SUM(system_quantity),0) sys')->first();
 
-        $short = (string) DB::table('vw_kpi_faltantes')->where('business_id', $b)
-            ->whereBetween('day', [$s->toDateString(), $e->toDateString()])->sum('unjustified_shortage');
+        $shortage = fn (CarbonImmutable $s, CarbonImmutable $e): string => (string) DB::table('anomalies AS a')
+            ->join('anomaly_rules AS r', 'r.id', '=', 'a.anomaly_rule_id')
+            ->where('a.business_id', $b)->where('r.code', 'faltante_inventario')
+            ->whereIn('a.status', ['detectada', 'notificada', 'en_revision'])
+            ->where('a.detected_at', '>=', $s)->where('a.detected_at', '<', $e)
+            ->when($branchId !== null, fn (Builder $x) => $x->where('a.branch_id', $branchId))
+            ->sum(DB::raw('ABS(a.difference)'));
 
-        $absDev = (string) ($exact->abs_dev ?? '0');
-        $sys    = (string) ($exact->sys ?? '0');
+        $absDev = $this->d3((string) ($exact->abs_dev ?? '0'));
+        $sys    = $this->d3((string) ($exact->sys ?? '0'));
+        $curSh  = $this->d($shortage($p['utcStart'], $p['utcEnd']));
+        $prevSh = $this->d($shortage($p['prevUtcStart'], $p['prevUtcEnd']));
 
         return [
             'totals'      => [
-                'abs_deviation'        => bcadd($absDev, '0.000', 3),
+                'abs_deviation'        => $absDev,
                 'exactitud_pct'        => bccomp($sys, '0', 3) > 0 ? bcmul(bcsub('1', bcdiv($absDev, $sys, 6), 6), '100', 2) : '100.00',
-                'unjustified_shortage' => bcadd($short === '' ? '0' : $short, '0.00', 2),
+                'unjustified_shortage' => $curSh,
             ],
-            'comparisons' => [],
+            'comparisons' => $this->comparison($curSh, $prevSh),
             'series'      => [],
         ];
     }
 
-    private function caja(int $b, CarbonImmutable $s, CarbonImmutable $e, ?int $branchId): array
+    private function caja(int $b, array $p, ?int $branchId): array
     {
-        $row = DB::table('cash_sessions')->where('business_id', $b)
-            ->where('status', 'cerrada')
-            ->whereBetween('created_at', [$s->startOfDay(), $e->endOfDay()])
-            ->when($branchId !== null, fn ($x) => $x->where('branch_id', $branchId))
+        $sessions = fn (CarbonImmutable $s, CarbonImmutable $e): object => DB::table('cash_sessions')
+            ->where('business_id', $b)->where('status', 'cerrada')
+            ->where('created_at', '>=', $s)->where('created_at', '<', $e)
+            ->when($branchId !== null, fn (Builder $x) => $x->where('branch_id', $branchId))
             ->selectRaw('COUNT(*) sessions, COALESCE(SUM(ABS(difference)),0) abs_diff, COALESCE(SUM(counted_amount),0) counted')
             ->first();
 
+        $cur  = $sessions($p['utcStart'], $p['utcEnd']);
+        $prev = $sessions($p['prevUtcStart'], $p['prevUtcEnd']);
+
         return [
             'totals'      => [
-                'sessions'       => (int) ($row->sessions ?? 0),
-                'counted_amount' => bcadd((string) ($row->counted ?? '0'), '0.00', 2),
-                'total_variance' => bcadd((string) ($row->abs_diff ?? '0'), '0.00', 2),
+                'sessions'       => (int) ($cur->sessions ?? 0),
+                'counted_amount' => $this->d((string) ($cur->counted ?? '0')),
+                'total_variance' => $this->d((string) ($cur->abs_diff ?? '0')),
+            ],
+            'comparisons' => $this->comparison(
+                $this->d((string) ($cur->counted ?? '0')),
+                $this->d((string) ($prev->counted ?? '0')),
+            ),
+            'series'      => [],
+        ];
+    }
+
+    private function consolidado(int $b, array $p, ?int $branchId): array
+    {
+        return [
+            'totals'      => [
+                'ventas'     => $this->ventas($b, $p, $branchId)['totals'],
+                'cartera'    => $this->cartera($b, $p, $branchId)['totals'],
+                'inventario' => $this->inventario($b, $p, $branchId)['totals'],
+                'caja'       => $this->caja($b, $p, $branchId)['totals'],
             ],
             'comparisons' => [],
             'series'      => [],
         ];
     }
 
-    private function consolidado(int $b, CarbonImmutable $s, CarbonImmutable $e, CarbonImmutable $ps, CarbonImmutable $pe, ?int $branchId): array
+    // ---------------- Helpers ----------------
+
+    /** @return array{previous_total:string, delta:string, variation_pct:string} */
+    private function comparison(string $current, string $previous): array
     {
+        $delta = bcsub($current, $previous, 2);
+        $variation = bccomp($previous, '0', 2) > 0
+            ? bcmul(bcdiv($delta, $previous, 6), '100', 2)
+            : '0.00';
+
+        return ['previous_total' => $previous, 'delta' => $delta, 'variation_pct' => $variation];
+    }
+
+    /**
+     * Resuelve el período en business.timezone: fechas locales inclusivas + límites UTC semiabiertos
+     * del período actual y del período EQUIVALENTE anterior (mismo span, no solapado).
+     */
+    private function resolvePeriod(int $b, ?string $from, ?string $to): array
+    {
+        $tz = (string) (DB::table('businesses')->where('id', $b)->value('timezone') ?: config('app.timezone'));
+
+        $end   = $to !== null ? CarbonImmutable::parse($to, $tz) : CarbonImmutable::now($tz);
+        $start = $from !== null ? CarbonImmutable::parse($from, $tz) : $end->startOfMonth();
+
+        $localStart        = $start->startOfDay();
+        $localEndExclusive = $end->startOfDay()->addDay(); // 'to' inclusivo.
+        $spanDays          = (int) $localStart->diffInDays($localEndExclusive);
+
+        $prevEndExclusive = $localStart;
+        $prevStart        = $localStart->subDays($spanDays);
+
         return [
-            'totals'      => [
-                'ventas'     => $this->ventas($b, $s, $e, $ps, $pe, $branchId)['totals'],
-                'cartera'    => $this->cartera($b)['totals'],
-                'inventario' => $this->inventario($b, $s, $e)['totals'],
-                'caja'       => $this->caja($b, $s, $e, $branchId)['totals'],
-            ],
-            'comparisons' => [],
-            'series'      => [],
+            'tz'            => $tz,
+            'offset'        => $localStart->format('P'), // p. ej. -06:00 (zonas de offset fijo).
+            'startDate'     => $localStart->toDateString(),
+            'endDate'       => $localEndExclusive->subDay()->toDateString(),
+            'prevStartDate' => $prevStart->toDateString(),
+            'prevEndDate'   => $prevEndExclusive->subDay()->toDateString(),
+            'utcStart'      => $localStart->utc(),
+            'utcEnd'        => $localEndExclusive->utc(),
+            'prevUtcStart'  => $prevStart->utc(),
+            'prevUtcEnd'    => $prevEndExclusive->utc(),
         ];
+    }
+
+    private function d(string $v): string
+    {
+        return bcadd($v === '' ? '0' : $v, '0', 2);
+    }
+
+    private function d3(string $v): string
+    {
+        return bcadd($v === '' ? '0' : $v, '0', 3);
     }
 }
