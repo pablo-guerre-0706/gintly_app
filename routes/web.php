@@ -50,7 +50,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::view('/finance/cash-closing', 'finance.cash-closing')->name('finance.cash-closing');
 
-    Route::view('/customers', 'customers.index')->name('customers.index');
+    // Nombre 'web.customers.index' para NO colisionar con el recurso API 'customers.index'
+    // (apiResource en routes/api.php). La colisión de nombres rompía route:cache. La URL /customers
+    // y su vista se conservan intactas. La creación es su propia vista de panel (web.customers.create);
+    // las vistas Blade nunca enlazan a nombres de rutas API de escritura.
+    Route::view('/customers', 'customers.index')->name('web.customers.index');
+    Route::view('/customers/create', 'customers.create')->name('web.customers.create');
 
     Route::view('/inventory/reconciliation', 'inventory.reconciliation')->name('inventory.reconciliation');
 

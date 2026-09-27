@@ -10,7 +10,7 @@
     </header>
 
     <div class="rounded-2xl bg-white p-6 shadow-sm border border-[#E2E2E2]">
-        <form id="formStoreCustomer" data-url="{{ route('customers.store') }}" novalidate class="space-y-5">
+        <form id="formStoreCustomer" data-url="/api/v1/customers" novalidate class="space-y-5">
             <div class="grid gap-5 sm:grid-cols-2">
                 <!-- Nombre -->
                 <div class="form-group">
@@ -75,7 +75,7 @@
 
             <!-- Botones -->
             <div class="flex justify-end gap-3 pt-4 border-t border-neutral-200">
-                <a href="{{ route('customers.index') }}" class="flex h-9 items-center px-4 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition">
+                <a href="{{ route('web.customers.index') }}" class="flex h-9 items-center px-4 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition">
                     Cancelar
                 </a>
                 <button type="submit" class="h-9 px-5 rounded-lg bg-cyan-800 text-xs font-semibold text-white hover:bg-cyan-900 transition">

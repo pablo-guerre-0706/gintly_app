@@ -37,7 +37,7 @@
                 </label>
 
                 <a
-                    href="{{ route('customers.view.create') }}"
+                    href="{{ route('web.customers.create') }}"
                     class="flex h-10 items-center justify-center rounded-lg bg-cyan-800 px-5 text-xs font-semibold text-white transition hover:bg-cyan-900"
                 >
                 <span class="mr-2 text-sm font-normal">⊕</span>
@@ -60,7 +60,9 @@
             </nav>
 
             <div id="customersList" class="mt-7 space-y-5" aria-live="polite">
-                @foreach ($customers as $customer)
+                {{-- Lista poblada por el módulo JS (data-customers-url). El pre-render server-side
+                     es opcional: por defecto vacío para no depender de datos inyectados por la ruta. --}}
+                @foreach ($customers ?? [] as $customer)
                     <article
                         tabindex="0"
                         data-customer-card

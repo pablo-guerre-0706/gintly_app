@@ -54,7 +54,7 @@ $kpis = [
             <a href="{{ route('finance.cash-closing') }}" class="inline-flex h-9 items-center rounded-xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-100 shadow-sm transition-all hover:bg-slate-50 hover:scale-105">
                 <i class="fa-solid fa-vault mr-2 text-[#146F8A]"></i> Cierre de caja
             </a>
-            <a href="{{ route('customers.index') }}" class="inline-flex h-9 items-center rounded-xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-100 shadow-sm transition-all hover:bg-slate-50 hover:scale-105">
+            <a href="{{ route('web.customers.index') }}" class="inline-flex h-9 items-center rounded-xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-100 shadow-sm transition-all hover:bg-slate-50 hover:scale-105">
                 <i class="fa-solid fa-users mr-2 text-[#146F8A]"></i> Clientes y Fidelidad
             </a>
             <a href="{{ route('inventory.reconciliation') }}" class="inline-flex h-9 items-center rounded-xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-100 shadow-sm transition-all hover:bg-slate-50 hover:scale-105">
