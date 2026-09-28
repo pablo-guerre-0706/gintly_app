@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\User;
 
+use App\Enums\OperativeProfile;
+use App\Enums\RoleName;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\User;
 use Illuminate\Validation\Rule;
@@ -32,6 +34,7 @@ final class UpdateUserRoleRequest extends BaseTenantRequest
                 'required',
                 'string',
                 'max:255',
+                Rule::in(RoleName::assignableValues()), // Solo roles humanos; ROL-SYS jamás.
                 Rule::exists('roles', 'name')->where(function ($query): void {
                     $query->where('guard_name', 'web')
                         ->where(fn ($q) => $q
@@ -39,6 +42,10 @@ final class UpdateUserRoleRequest extends BaseTenantRequest
                             ->orWhereNull('business_id'));
                 }),
             ],
+            // Convertir a ROL-03 EXIGE sucursal + al menos un perfil (Fase 3).
+            'branch_id'  => ['required_if:role,ROL-03', 'nullable', 'integer', $this->tenantExists('branches')],
+            'profiles'   => ['required_if:role,ROL-03', 'array', 'min:1'],
+            'profiles.*' => ['string', 'distinct', Rule::in(OperativeProfile::values())],
         ];
     }
 

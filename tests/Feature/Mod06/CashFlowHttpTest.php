@@ -13,6 +13,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\EquipsOperativeProfiles;
 use Tests\MysqlTestCase;
 
 /**
@@ -24,6 +25,8 @@ use Tests\MysqlTestCase;
  */
 final class CashFlowHttpTest extends MysqlTestCase
 {
+    use EquipsOperativeProfiles;
+
     private static int $seq = 0;
 
     private function asUser(User $u): static
@@ -77,6 +80,10 @@ final class CashFlowHttpTest extends MysqlTestCase
         $admin     = $this->makeUser($business, RoleName::Admin);           // sin sucursal (administrativo)
         $operator  = $this->makeUser($business, RoleName::Operator, $branch);
         $operator2 = $this->makeUser($business, RoleName::Operator, $branch2);
+
+        // Fase 5: los operadores de caja requieren el perfil cajero (se equipan con todos los perfiles).
+        $this->equipOperator($operator, $branch->id);
+        $this->equipOperator($operator2, $branch2->id);
 
         $register  = $this->makeRegister($business, $branch,  'Caja '.$slug.'-1');
         $register2 = $this->makeRegister($business, $branch2, 'Caja '.$slug.'-2');

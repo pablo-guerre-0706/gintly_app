@@ -32,10 +32,10 @@ final class PhysicalCountPolicy
             : Response::deny('No tiene autorización para consultar este conteo.');
     }
 
-    // El conteo lo registra el operativo (ROL-03), está en el piso, cuenta.
+    // El conteo lo registra el operativo (ROL-03) con perfil BODEGUERO; la bodega debe ser de su sucursal (servicio).
     public function create(User $actor): Response
     {
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        return $this->hasAtLeast($actor, RoleName::Operator) && $this->operatorGrants($actor, 'inventario.conteo')
             ? Response::allow()
             : Response::deny('No tiene autorización para registrar conteos físicos.');
     }

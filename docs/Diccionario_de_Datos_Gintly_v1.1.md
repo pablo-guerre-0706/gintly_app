@@ -83,6 +83,17 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 ### RBAC (Spatie · modo teams)
 `roles`, `permissions`, `model_has_roles`, `model_has_permissions`, `role_has_permissions`. La columna de equipo es **`business_id`**, lo que aísla los roles por negocio. Regla de dominio: **un usuario mantiene exactamente un rol activo** (`syncRoles`).
 
+### `user_operative_profiles` · perfiles operativos de ROL-03 *(Fase 3)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX | Negocio propietario (aislamiento). |
+| user_id | bigint | NN, FK CASC | UQ(user_id,profile) | Usuario ROL-03 al que se asigna el perfil. |
+| profile | enum | NN | UQ(user_id,profile) | `cajero` / `facturador` / `bodeguero` / `despachador`. |
+| assigned_by | bigint | NULL, FK RSTR | — | Quién asignó el perfil (no-repudio). |
+| created_at / updated_at | timestamp | NULL | — | Auditoría. |
+
+**UNIQUE:** `uniq_user_operative_profile` (user_id, profile). **Nota:** ROL-03 es un ÚNICO rol; los perfiles son capacidades COMBINABLES. El mapa perfil→capacidades vive en `config/profiles.php` (fuente única, reutiliza el catálogo de permisos). Un ROL-03 sin filas aquí queda **bloqueado operativamente** (opción B, mínimo privilegio); no se asignan perfiles por compatibilidad. ROL-01/ROL-02 no usan perfiles.
+
 ### `register_wizards` · asistente de alta multi-paso (web)
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
 | --- | --- | --- | --- | --- |

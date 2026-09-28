@@ -24,6 +24,7 @@ final class DispatchPolicy
     {
         return $this->sharesBusinessWith($user, $dispatch)
             && $this->hasAtLeast($user, RoleName::Operator)
+            && $this->operatorGrants($user, 'entregas.ver')
             && $this->withinOperationalScope($user, $dispatch);
     }
 
@@ -36,10 +37,11 @@ final class DispatchPolicy
         return $this->view($user, $dispatch);
     }
 
-    /** POST /dispatches — registrar retiro (ROL-03; la sucursal la valida el servicio). */
+    /** POST /dispatches — registrar retiro (ROL-03 con perfil DESPACHADOR; la sucursal la valida el servicio). */
     public function create(User $user): bool
     {
-        return $this->hasAtLeast($user, RoleName::Operator);
+        return $this->hasAtLeast($user, RoleName::Operator)
+            && $this->operatorGrants($user, 'entregas.crear');
     }
 
     /** POST /dispatches/{id}/revert — reversión (ROL-02, RF-09-04). */

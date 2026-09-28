@@ -27,20 +27,28 @@ final class SalePolicy
             return Response::deny('La venta solicitada no pertenece a su negocio.');
         }
 
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        if (! $this->hasAtLeast($actor, RoleName::Operator)) {
+            return Response::deny('No tiene autorización para consultar esta venta.');
+        }
+
+        // Fase 5: ROL-03 no consulta ventas de otra sucursal.
+        return $this->operatorInBranch($actor, $sale->branch_id)
             ? Response::allow()
-            : Response::deny('No tiene autorización para consultar esta venta.');
+            : Response::deny('La venta pertenece a otra sucursal.');
     }
 
     public function create(User $actor): Response
     {
-        return $this->hasAtLeast($actor, RoleName::Operator)
-            ? Response::allow()
-            : Response::deny('No tiene autorización para registrar ventas.');
+        // Fase 5: registrar ventas exige el perfil FACTURADOR para ROL-03.
+        if (! $this->hasAtLeast($actor, RoleName::Operator) || ! $this->operatorGrants($actor, 'ventas.crear')) {
+            return Response::deny('No tiene autorización para registrar ventas.');
+        }
+
+        return Response::allow();
     }
 
     /**
-     * Agregar/quitar ítems y confirmar: el cajero que opera la venta.
+     * Agregar/quitar ítems y confirmar: el FACTURADOR que opera la venta, en SU sucursal.
      */
     public function manageItems(User $actor, Sale $sale): Response
     {
@@ -48,9 +56,13 @@ final class SalePolicy
             return Response::deny('La venta indicada no pertenece a su negocio.');
         }
 
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        if (! $this->hasAtLeast($actor, RoleName::Operator) || ! $this->operatorGrants($actor, 'ventas.crear')) {
+            return Response::deny('No tiene autorización para modificar esta venta.');
+        }
+
+        return $this->operatorInBranch($actor, $sale->branch_id)
             ? Response::allow()
-            : Response::deny('No tiene autorización para modificar esta venta.');
+            : Response::deny('La venta pertenece a otra sucursal.');
     }
 
     public function confirm(User $actor, Sale $sale): Response

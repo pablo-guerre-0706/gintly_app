@@ -22,6 +22,8 @@ final class UserResource extends JsonResource
             'branch_id'     => $this->branch_id,
             // RF-01-01: exactamente un rol activo. Solo aparece si se eager-loadea 'roles' (evita N+1).
             'role'          => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')->first()),
+            // Fase 3: perfiles operativos (solo ROL-03). Solo si se eager-loadea (evita N+1).
+            'profiles'      => $this->whenLoaded('operativeProfiles', fn () => $this->profileValues()),
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'created_at'    => $this->created_at?->toIso8601String(),
             'updated_at'    => $this->updated_at?->toIso8601String(),

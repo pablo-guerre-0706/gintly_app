@@ -54,7 +54,7 @@
 
 }, { "method": "POST", "path": "/auth/logout", "roles": ["auth"], "response_204": null }, 
 
-{ "method": "GET", "path": "/me", "roles": ["auth"], "response_200": "UserResource (incluye rol activo)" } 
+{ "method": "GET", "path": "/me", "roles": ["auth"], "response_200": "MeResource { id, name, email, is_active, role (rol humano garantizado), branch_id, profiles[] (solo ROL-03), capabilities[] (capacidades EFECTIVAS de interfaz: ROL-01/02 = permisos del rol, ROL-03 = unión de capacidades de sus perfiles; NO son autorización por recurso), business{id,name,timezone,status} }. business_id SIEMPRE de la sesión, nunca del frontend. ROL-SYS/inactivos no acceden (EnsureOperableUser → 403 e invalida sesión)." } 
 
 ], 
 
@@ -275,6 +275,45 @@
 "documentation_gaps": { 
 
 "H-11": "branches y la configuración fiscal/horaria carecen de RF propio. Se propone para el addendum del FRD: RF-01-07 «Gestión de sucursales y acreditación operativa» (ROL-02, Must) y RF-0108 «Configuración fiscal y horaria del negocio» (ROL-01, Must)." 
+
+}, 
+
+"authorization_reconciliation": { "note": "Reconciliación de autorización (Fases 2/3/5/6/7) fusionada en el bloque canónico MOD-01.", 
+
+"enforcement_fase5": "Autorización ADITIVA de ROL-03 por FLUJO (además del rol humano): perfil requerido (operativeCan, config/profiles.php) + sucursal (user.branch_id) + negocio. Las Policies autorizan por nivel de rol; NINGÚN ROL-03 obtiene una operación solo porque su rol Spatie contiene la unión de permisos: debe superar el perfil y el alcance. Gates de perfil: caja abrir/cerrar/movimiento (cajero); ventas crear/confirmar y facturas crear (facturador); CxC abonar (cajero); conteo/traspaso/recepción/devolución (bodeguero); entregas (despachador). Efectivo: perfil cajero + sesión propia abierta + caja de su sucursal (CashService::assertCanOperateSession). Un facturador que cobre efectivo necesita también cajero. Sucursal en la entrada: venta (branch_id), conteo/recepción (bodega), traspaso (origen propio; finalización por bodeguero de la sucursal RECEPTORA), devolución (factura), retiro (MOD-09) → 422/403 si no coincide con user.branch_id. Productos/categorías/clientes siguen siendo datos maestros del negocio (no acotados por sucursal). ROL-01/ROL-02 no usan perfiles ni se acotan a sucursal.", 
+
+"rol_sys": "ROL-SYS = procesos automáticos; NO humano. No asignable por la API (allowlist de roles humanos), no inicia sesión (AuthService lo rechaza → 401), fuera de la jerarquía humana (RoleName::atLeast lo excluye). El middleware EnsureOperableUser corta CADA petición autenticada (API y web) de cuentas ROL-SYS o inactivas → 403 e invalida la sesión (logout guard web + session invalidate; sin bucles de redirección). Cuentas ROL-SYS existentes: neutralizadas (is_active=false + contraseña aleatoria) y sesiones persistidas invalidadas por migración; no se borran (auditoría).", 
+
+"escalacion": "Regla de RANGO única (UserService::assertGrantable, misma en POST /users y PUT /users/{user}/role): solo roles humanos de nivel ≤ actor. ROL-02 no crea/asigna ROL-01 ni ROL-SYS; ROL-01 no asigna ROL-SYS; nadie modifica su propio rol ni el del propietario. Errores: 422 (ROL-SYS fuera del allowlist en POST), 403 (rango, RoleAssignmentException code ROLE_ASSIGNMENT_FORBIDDEN; y PUT bloqueado por Policy assignRole).", 
+
+"resources": { 
+
+"operative_profiles": [ 
+{ "method": "GET", "path": "/operative-profiles", "roles": ["ROL-02", "ROL-01"], "note": "Catálogo de perfiles ROL-03 desde config/profiles.php.", "response_200": "{ data:[ {value, label, capabilities[]} ] }" }, 
+{ "method": "GET", "path": "/users/{user}/profiles", "roles": ["ROL-02", "ROL-01"], "response_200": "UserResource (incluye profiles[])" }, 
+{ "method": "PUT", "path": "/users/{user}/profiles", "roles": ["ROL-02", "ROL-01"], "request": { "profiles": "array|required|min:1", "profiles.*": "enum[cajero,facturador,bodeguero,despachador]|distinct" }, "note": "Reemplaza el conjunto de perfiles. Solo objetivos ROL-03 del mismo negocio (UserPolicy::manageProfiles); rango del actor aplicado. Para dejar sin perfiles, cambie el rol (que los limpia).", "response_200": "UserResource (incluye profiles[])", "errors": [ { "http": 403, "when": "El objetivo no es ROL-03, o rango insuficiente." }, { "http": 422, "when": "profiles vacío o perfil no reconocido." } ] } 
+], 
+
+"users_rol03": [ 
+{ "method": "POST", "path": "/users", "roles": ["ROL-02", "ROL-01"], "note": "Crear ROL-03 EXIGE branch_id (same_tenant) y profiles (array min:1). Rol humano ≤ actor (403 si excede; 422 si ROL-SYS).", "request_extra": { "branch_id": "int|required_if:role,ROL-03", "profiles": "array|required_if:role,ROL-03|min:1", "profiles.*": "enum[cajero,facturador,bodeguero,despachador]" } }, 
+{ "method": "PUT", "path": "/users/{user}/role", "roles": ["ROL-01", "ROL-02"], "note": "Convertir a ROL-03 EXIGE branch_id + profiles; salir de ROL-03 LIMPIA los perfiles.", "request_extra": { "branch_id": "int|required_if:role,ROL-03", "profiles": "array|required_if:role,ROL-03|min:1" } } 
+], 
+
+"cash_session_current": [ 
+{ "method": "GET", "path": "/cash-sessions/current", "roles": ["auth (ROL-03 cajero y superiores)"], "note": "Sesión de caja ABIERTA del PROPIO usuario (opened_by=self); nunca la de otro. Registrada antes del binding {cashSession}.", "response_200": "CashSessionResource (incluye cashRegister con branch) | { data: null } si no hay sesión activa (respuesta estable)." } 
+], 
+
+"collectible_receivables": [ 
+{ "method": "GET", "path": "/accounts-receivable/collectible", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil cajero)"], "query": { "search": "string|opt (cliente, documento o folio de factura)", "per_page": "int|1..100|opt" }, "note": "CxC COBRABLES (estado pendiente/parcial/vencida). ROL-03 acotado a SU sucursal (por la factura). Vista MÍNIMA (no abre el detalle administrativo). Registrada antes del binding {accountReceivable}.", "response_200": "Paginated<CollectibleReceivableResource {id, customer_id, customer_name, invoice_id, invoice_folio, branch_id, total_amount, paid_amount, balance, status, due_date}>", "errors": [ { "http": 403, "when": "ROL-03 sin perfil cajero." } ] } 
+], 
+
+"dashboards": [ 
+{ "method": "GET", "path": "/dashboard/kpis", "roles": ["ROL-01"], "note": "Ruta CANÓNICA del dashboard de KPIs (MOD-12). No se crea ruta fantasma; el frontend definitivo consume esta." }, 
+{ "method": "GET", "path": "/dashboard/admin", "roles": ["ROL-02", "ROL-01"], "note": "Agregado administrativo de pendientes REALES del negocio.", "response_200": "{ data: { anomalias_activas, recepciones_en_discrepancia, cuentas_por_pagar_congeladas, cuentas_por_cobrar_vencidas, sesiones_caja_abiertas, ventas_abiertas } (conteos) }" }, 
+{ "method": "GET", "path": "/dashboard/operative", "roles": ["ROL-03 y superiores"], "note": "Secciones CONDICIONADAS por los perfiles del usuario y acotadas a su sucursal. Solo aparece la sección de un perfil si lo tiene.", "response_200": "{ data: { branch_id, profiles[], sections: { cajero?{sesion_caja_abierta, cxc_cobrables}, facturador?{ventas_abiertas}, bodeguero?{conteos_abiertos, recepciones_en_discrepancia}, despachador?{despachos_de_sucursal} } } }" } 
+], 
+
+"rol01_evidence": "Lecturas de EVIDENCIA para decisiones ROL-01 (existentes, sin entidad de solicitudes): GET /anomalies y /anomalies/{id}(+/events) antes de resolver; GET /goods-receipts/{id} antes de resolver discrepancia; GET /accounts-payable/{id} antes de desbloquear; GET /invoices/{id} antes de anular; GET /customers/{id}/credit-status antes de autorizar excepción de crédito. No se introduce ninguna bandeja de solicitudes." 
 
 } } 
 

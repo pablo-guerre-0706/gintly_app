@@ -32,10 +32,10 @@ final class GoodsReceiptPolicy
             : Response::deny('No tiene autorización para consultar esta recepción.');
     }
 
-    // La recepción física la registra ROL-03, recibe en bodega.
+    // La recepción física la registra ROL-03 con perfil BODEGUERO (la sucursal la valida el servicio).
     public function create(User $actor): Response
     {
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        return $this->hasAtLeast($actor, RoleName::Operator) && $this->operatorGrants($actor, 'compras.recibir')
             ? Response::allow()
             : Response::deny('No tiene autorización para registrar recepciones.');
     }

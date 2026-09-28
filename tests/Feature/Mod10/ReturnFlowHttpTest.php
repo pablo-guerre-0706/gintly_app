@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\EquipsOperativeProfiles;
 use Tests\MysqlTestCase;
 
 /**
@@ -42,6 +43,8 @@ use Tests\MysqlTestCase;
  */
 final class ReturnFlowHttpTest extends MysqlTestCase
 {
+    use EquipsOperativeProfiles;
+
     private static int $seq = 0;
 
     private function asUser(User $u): static
@@ -87,6 +90,7 @@ final class ReturnFlowHttpTest extends MysqlTestCase
         $owner    = $this->makeUser($business, RoleName::Owner);
         $admin    = $this->makeUser($business, RoleName::Admin);
         $operator = $this->makeUser($business, RoleName::Operator, $branch);
+        $this->equipOperator($operator, $branch->id); // Fase 5: perfiles operativos en S1 (flujo completo).
 
         $category = new Category(['name' => 'Cat '.$slug]);
         $category->business_id = $business->id;

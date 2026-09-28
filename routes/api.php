@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\OperativeProfileController;
 use App\Http\Controllers\Api\V1\CustomerCreditBalanceController;
 use App\Http\Controllers\Api\V1\CustomerCreditCheckController;
 use App\Http\Controllers\Api\V1\CustomerCreditStatusController;
@@ -90,7 +91,7 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureOperableUser::class])->group(function (): void {
 
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
@@ -107,6 +108,11 @@ Route::prefix('v1')->group(function (): void {
         // Controladores invocables (__invoke): se referencian por clase, no por método.
         Route::put('/users/{user}/password', UpdateUserPasswordController::class);
         Route::put('/users/{user}/email', UpdateUserEmailController::class);
+
+        // MOD-01 (Fase 3) · Perfiles operativos de ROL-03
+        Route::get('/operative-profiles', [OperativeProfileController::class, 'index'])->name('operative-profiles.index');
+        Route::get('/users/{user}/profiles', [UserController::class, 'showProfiles'])->name('users.profiles.show');
+        Route::put('/users/{user}/profiles', [UserController::class, 'updateProfiles'])->name('users.profiles.update');
 
         Route::apiResource('branches', BranchController::class);
 
@@ -202,6 +208,8 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('cash-registers', CashRegisterController::class);
 
         Route::get('cash-sessions', [CashSessionController::class, 'index']);
+        // 'current' ANTES del binding {cashSession} para que no se interprete como id.
+        Route::get('cash-sessions/current', [CashSessionController::class, 'current'])->name('cash-sessions.current');
         Route::post('cash-sessions', OpenCashSessionController::class);
         Route::get('cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
         Route::post('cash-sessions/{cashSession}/close', CloseCashSessionController::class);
@@ -236,6 +244,8 @@ Route::prefix('v1')->group(function (): void {
 
         // MOD-08 · Cuentas por Cobrar
         Route::get('accounts-receivable', [AccountReceivableController::class, 'index']);
+        // 'collectible' ANTES del binding {accountReceivable} para que no se interprete como id.
+        Route::get('accounts-receivable/collectible', [AccountReceivableController::class, 'collectible'])->name('accounts-receivable.collectible');
         Route::get('accounts-receivable/{accountReceivable}', [AccountReceivableController::class, 'show']);
         Route::get('accounts-receivable/{accountReceivable}/payments', ReceivablePaymentsController::class);
         Route::post('accounts-receivable/{accountReceivable}/payments', StoreReceivablePaymentController::class);
@@ -299,7 +309,10 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/', [KpiSnapshotController::class, 'index'])->name('kpi-snapshots.index');
             Route::post('/recalculate', [KpiSnapshotController::class, 'recalculate'])->name('kpi-snapshots.recalculate');
         });
-        Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis');
+        Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis'); // ROL-01 (KPIs, ruta canónica).
+        // Fase 7 · Dashboards agregados por rol (datos reales).
+        Route::get('dashboard/admin', [\App\Http\Controllers\Api\V1\DashboardController::class, 'admin'])->name('dashboard.admin');
+        Route::get('dashboard/operative', [\App\Http\Controllers\Api\V1\DashboardController::class, 'operative'])->name('dashboard.operative');
 
         // MOD-12 · Reportería consolidada (solo lectura) y definiciones reutilizables
         Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');

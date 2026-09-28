@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Resources\MeResource;
 use App\Http\Resources\UserResource;
 use App\Services\Auth\AuthService;
 use Illuminate\Http\Request;
@@ -31,9 +32,12 @@ final class AuthController extends Controller
         return new UserResource($user);
     }
 
-    public function me(Request $request): UserResource
+    public function me(Request $request): MeResource
     {
-        return new UserResource($request->user());
+        // Contexto suficiente para el frontend: rol, sucursal, perfiles, capacidades y negocio.
+        $user = $request->user()->load('roles', 'operativeProfiles', 'business');
+
+        return new MeResource($user);
     }
 
     public function logout(Request $request): Response

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\PhysicalCount;
 
+use App\Enums\RoleName;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\PhysicalCount;
+use App\Models\Warehouse;
+use Illuminate\Contracts\Validation\Validator;
 
 
 final class StorePhysicalCountRequest extends BaseTenantRequest
@@ -13,6 +16,22 @@ final class StorePhysicalCountRequest extends BaseTenantRequest
     public function authorize(): bool
     {
         return $this->user()?->can('create', PhysicalCount::class) ?? false;
+    }
+
+    /** @return array<int, callable> Fase 5: ROL-03 (bodeguero) solo cuenta bodegas de SU sucursal. */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $user = $this->user();
+            if ($user === null || $user->getRoleNames()->first() !== RoleName::Operator->value) {
+                return;
+            }
+
+            $branchId = Warehouse::query()->whereKey($this->input('warehouse_id'))->value('branch_id');
+            if ($branchId !== null && (int) $branchId !== (int) $user->branch_id) {
+                $validator->errors()->add('warehouse_id', 'La bodega pertenece a otra sucursal.');
+            }
+        }];
     }
 
     /**

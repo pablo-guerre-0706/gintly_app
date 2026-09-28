@@ -28,11 +28,17 @@ final class WarehouseController extends Controller
     public function index(IndexWarehouseRequest $request): AnonymousResourceCollection
     {
         // BusinessScope aísla el tenant. IndexWarehouseRequest valida filtros/orden/paginación (contrato MOD-03).
+        // Fase 5: ROL-03 solo visualiza bodegas de SU sucursal (no puede ampliar el alcance por filtro).
+        $user = $request->user();
         $warehouses = Warehouse::query()
             ->with('branch')
             ->when(
-                $request->validated('branch_id'),
-                fn ($q, $branchId) => $q->where('branch_id', $branchId)
+                $user->isOperator(),
+                fn ($q) => $q->where('branch_id', $user->branch_id)
+            )
+            ->when(
+                ! $user->isOperator() && $request->validated('branch_id'),
+                fn ($q) => $q->where('branch_id', $request->validated('branch_id'))
             )
             ->when(
                 $request->has('is_active'),

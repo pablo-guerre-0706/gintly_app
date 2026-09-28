@@ -23,6 +23,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\EquipsOperativeProfiles;
 use Tests\MysqlTestCase;
 
 /**
@@ -30,6 +31,8 @@ use Tests\MysqlTestCase;
  */
 final class PurchaseFlowHttpTest extends MysqlTestCase
 {
+    use EquipsOperativeProfiles;
+
     private static int $seq = 0;
 
     /**
@@ -126,6 +129,8 @@ final class PurchaseFlowHttpTest extends MysqlTestCase
         ]);
         $branch->business_id = $business->id;
         $branch->save();
+
+        $this->equipOperator($operator, $branch->id); // Fase 5: perfil bodeguero (recepción) en la sucursal.
 
         $warehouse = new Warehouse([
             'branch_id'  => $branch->id,

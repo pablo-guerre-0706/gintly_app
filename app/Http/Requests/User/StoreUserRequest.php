@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\User;
 
+use App\Enums\OperativeProfile;
+use App\Enums\RoleName;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\User;
 use Illuminate\Validation\Rule;
@@ -36,18 +38,25 @@ final class StoreUserRequest extends BaseTenantRequest
 
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
 
+            // ROL-03 EXIGE sucursal (aislamiento operativo) y al menos un perfil (Fase 3).
             'branch_id' => [
                 'nullable',
                 'integer',
+                'required_if:role,ROL-03',
                 $this->tenantExists('branches'),
             ],
 
-            // RF-01-01: exactamente un rol activo. `roles` no tiene borrado
-            // lógico; Spatie en modo teams admite roles del negocio y globales.
+            'profiles'   => ['required_if:role,ROL-03', 'array', 'min:1'],
+            'profiles.*' => ['string', 'distinct', Rule::in(OperativeProfile::values())],
+
+            // RF-01-01: exactamente un rol activo. Solo roles HUMANOS son asignables por la API
+            // (ROL-SYS jamás). La regla de RANGO (nivel ≤ actor) la aplica UserService::assertGrantable
+            // (403), idéntica a la de PUT /users/{user}/role.
             'role' => [
                 'required',
                 'string',
                 'max:255',
+                Rule::in(RoleName::assignableValues()),
                 Rule::exists('roles', 'name')->where(function ($query): void {
                     $query->where('guard_name', 'web')
                         ->where(fn ($q) => $q

@@ -51,6 +51,39 @@ trait InteractsWithTenant
         return $this->roleOf($actor)?->atLeast($minimum) ?? false;
     }
 
+    protected function isOperator(User $actor): bool
+    {
+        return $this->roleOf($actor) === RoleName::Operator;
+    }
+
+    /**
+     * Fase 5 · Compuerta de PERFIL para ROL-03 (autorización ADITIVA). Si el actor es ROL-03, exige
+     * que ALGÚN perfil asignado habilite la capacidad (operativeCan, fuente config/profiles.php); un
+     * ROL-03 sin perfiles queda bloqueado (opción B). ROL-01/ROL-02 no requieren perfil: su autoridad
+     * es el rol humano. IMPORTANTE: no basta con que el rol Spatie contenga la unión de permisos; el
+     * ROL-03 debe superar operativeCan().
+     */
+    protected function operatorGrants(User $actor, string $capability): bool
+    {
+        return $this->isOperator($actor) ? $actor->operativeCan($capability) : true;
+    }
+
+    /**
+     * Fase 5 · Alcance de SUCURSAL para ROL-03 (autorización ADITIVA). Si el actor es ROL-03, el
+     * recurso debe pertenecer a su propia sucursal (user.branch_id); ROL-01/ROL-02 operan a nivel de
+     * negocio. Un ROL-03 sin branch_id nunca supera el alcance.
+     */
+    protected function operatorInBranch(User $actor, ?int $branchId): bool
+    {
+        if (! $this->isOperator($actor)) {
+            return true;
+        }
+
+        return $branchId !== null
+            && $actor->branch_id !== null
+            && (int) $branchId === (int) $actor->branch_id;
+    }
+
     
     // Compara el negocio del usuario directamente contra la empresa dueña 
     //de la sesión para evitar mezclar datos    

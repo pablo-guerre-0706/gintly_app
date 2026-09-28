@@ -27,15 +27,20 @@ final class InvoicePolicy
             return Response::deny('La factura solicitada no pertenece a su negocio.');
         }
 
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        if (! $this->hasAtLeast($actor, RoleName::Operator) || ! $this->operatorGrants($actor, 'facturas.ver')) {
+            return Response::deny('No tiene autorización para consultar esta factura.');
+        }
+
+        // Fase 5: ROL-03 no consulta facturas de otra sucursal.
+        return $this->operatorInBranch($actor, $invoice->branch_id)
             ? Response::allow()
-            : Response::deny('No tiene autorización para consultar esta factura.');
+            : Response::deny('La factura pertenece a otra sucursal.');
     }
 
-    // Emitir factura: el cajero que cierra la venta.
+    // Emitir factura: el FACTURADOR. Fase 5: para ROL-03 exige ese perfil.
     public function create(User $actor): Response
     {
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        return $this->hasAtLeast($actor, RoleName::Operator) && $this->operatorGrants($actor, 'facturas.crear')
             ? Response::allow()
             : Response::deny('No tiene autorización para emitir facturas.');
     }
@@ -59,9 +64,12 @@ final class InvoicePolicy
     }
 
     // --- MOD-09: saldo pendiente de entrega (ROL-03+, RF-09-02) ---
+    // Fase 5: despachador (facturas.ver) y en su propia sucursal.
     public function viewDeliveryStatus(User $user, Invoice $invoice): bool
     {
         return $this->sharesBusinessWith($user, $invoice)
-            && $this->hasAtLeast($user, RoleName::Operator);
+            && $this->hasAtLeast($user, RoleName::Operator)
+            && $this->operatorGrants($user, 'facturas.ver')
+            && $this->operatorInBranch($user, $invoice->branch_id);
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Business;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 
 final class UserSeeder extends Seeder
@@ -35,12 +36,20 @@ final class UserSeeder extends Seeder
         // que materializa ROL-01/02/03 del negocio lo eliminamos, porque ya queda integrado en
         // BusinessObserver.
 
-        // 3) Usuario de sistema (transversal, team NULL) → ROL-SYS. Nunca huérfano.
-        // Nivel Pro: Si el ROL-SYS opera de manera global, pasamos el contexto del negocio asignado para la relación intermedia.
-        $system = $this->upsertUser('sistema@gintly.test', 'Sistema Gintly', $business->id);
-        
-        // Ajuste Crítico: Para evitar el Integrity Constraint Violation, le pasamos el ID del negocio a Spatie
-        // para que la tabla intermedia model_has_roles no intente insertar un valor NULL.
+        // 3) Cuenta de sistema (ROL-SYS): actor de procesos automáticos, NO iniciable.
+        // Se conserva para atribución/relación intermedia, pero NUNCA como cuenta humana utilizable:
+        // is_active=false + contraseña aleatoria inutilizable. AuthService además rechaza el login de ROL-SYS.
+        $system = User::updateOrCreate(
+            ['email' => 'sistema@gintly.test'],
+            [
+                'name'        => 'Sistema Gintly',
+                'business_id' => $business->id,
+                'password'    => Str::random(64), // cast 'hashed' la cifra; no es adivinable ni reutilizada.
+                'is_active'   => false,           // no iniciable.
+            ],
+        );
+
+        // Se pasa el business a Spatie para que model_has_roles no inserte team_id NULL.
         $registrar->setPermissionsTeamId($business->id);
         $system->syncRoles([RoleName::System->value]); // Exactamente un rol activo (regla de dominio).
 

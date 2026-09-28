@@ -58,6 +58,15 @@ final class StoreStockTransferRequest extends BaseTenantRequest
                         'La bodega destino debe ser distinta de la bodega origen.'
                     );
                 }
+
+                // Fase 5: ROL-03 solo inicia traspasos desde una bodega de SU sucursal (origen propio).
+                $user = $this->user();
+                if ($user !== null && $user->getRoleNames()->first() === \App\Enums\RoleName::Operator->value) {
+                    $originBranch = \App\Models\Warehouse::query()->whereKey($this->input('from_warehouse_id'))->value('branch_id');
+                    if ($originBranch !== null && (int) $originBranch !== (int) $user->branch_id) {
+                        $validator->errors()->add('from_warehouse_id', 'Solo puede iniciar traspasos desde una bodega de su sucursal.');
+                    }
+                }
             },
         ];
     }

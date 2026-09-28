@@ -41,7 +41,8 @@ final class AuthService
             && $user !== null
             && $user->is_active            // estado del usuario es el booleano is_active
             && $passwordValid
-            && $user->roles()->exists();   // sin rol no autentica
+            && $user->roles()->exists()    // sin rol no autentica
+            && ! $user->hasSystemRole();   // ROL-SYS es actor de procesos, NUNCA inicia sesión humana
  
         if (! $authorized) {
             // 401 agnóstico. No revela si falló negocio, estado, correo, clave o rol.

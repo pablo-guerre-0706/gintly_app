@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\CashSessionStatus;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\CashSession\IndexCashSessionRequest;
 use App\Http\Resources\CashSessionResource;
 use App\Models\CashSession;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class CashSessionController extends Controller
@@ -54,6 +57,26 @@ final class CashSessionController extends Controller
             ->paginate($request->perPage());
 
         return CashSessionResource::collection($sessions);
+    }
+
+    /**
+     * GET /cash-sessions/current — la sesión de caja ABIERTA del PROPIO usuario autenticado.
+     * Solo su sesión (opened_by = self); nunca la de otro. Respuesta estable {data:null} si no hay.
+     * Fase 7: contrato que el frontend consulta para saber si el cajero tiene caja abierta.
+     */
+    public function current(Request $request): JsonResponse|CashSessionResource
+    {
+        $session = CashSession::query()
+            ->where('opened_by', $request->user()->id)         // exclusivamente la propia.
+            ->where('status', CashSessionStatus::Abierta->value)
+            ->with(['cashRegister', 'openedBy'])
+            ->first();
+
+        if ($session === null) {
+            return response()->json(['data' => null]); // estable: no hay sesión activa.
+        }
+
+        return CashSessionResource::make($session);
     }
 
     public function show(CashSession $cashSession): CashSessionResource

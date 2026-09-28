@@ -28,8 +28,14 @@ final class StockLevelController extends Controller
         $this->authorize('viewAny', StockLevel::class);
 
         // IndexStockLevelRequest valida filtros/orden/paginación (contrato MOD-03).
+        // Fase 5: ROL-03 solo ve existencias de bodegas de SU sucursal (por la bodega).
+        $user = $request->user();
         $stock = StockLevel::query()
             ->with(['product', 'warehouse'])
+            ->when(
+                $user->isOperator(),
+                fn ($q) => $q->whereHas('warehouse', fn ($w) => $w->where('branch_id', $user->branch_id))
+            )
             ->when(
                 $request->validated('warehouse_id'),
                 fn ($q, $warehouseId) => $q->where('warehouse_id', $warehouseId)

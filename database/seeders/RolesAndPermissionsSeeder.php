@@ -172,26 +172,16 @@ final class RolesAndPermissionsSeeder extends Seeder
         return array_values(array_diff($this->allPermissions(), $this->ownerOnlyPermissions()));
     }
 
-    /** ROL-03 · Operativo (compras, cajero, facturador, bodeguero, despachador). @return array<int, string> */
+    /**
+     * ROL-03 · Operativo. Sus permisos son la UNIÓN EXACTA de las capacidades de los perfiles
+     * operativos (cajero/facturador/bodeguero/despachador), cuya fuente única es config/profiles.php
+     * (Fase 3/4). Así el rol nunca bloquea una capacidad de perfil; el perfil es la compuerta fina
+     * (RF item 5). NOTA: las Policies autorizan por NIVEL DE ROL (hasAtLeast), no por estos permisos;
+     * el catálogo de permisos es el modelo de capacidades (alimenta /me y el gateo de perfiles ROL-03).
+     * @return array<int, string>
+     */
     private function operatorPermissions(): array
     {
-        return [
-            // Lectura de apoyo
-            'catalogo.ver', 'bodegas.ver', 'inventario.ver', 'clientes.ver', 'proveedores.ver',
-            // Bodega
-            'inventario.conteo',
-            // Compras y recepción
-            'compras.ver', 'compras.crear', 'compras.recibir', 'cuentas_por_pagar.ver',
-            // Punto de venta
-            'ventas.ver', 'ventas.crear', 'facturas.ver', 'facturas.crear',
-            // Caja
-            'caja.abrir', 'caja.cerrar', 'caja.movimiento.crear',
-            // Cobros y crédito
-            'cuentas_por_cobrar.ver', 'cuentas_por_cobrar.abonar', 'clientes.credito.evaluar',
-            // Entregas
-            'entregas.ver', 'entregas.crear',
-            // Devoluciones
-            'devoluciones.ver', 'devoluciones.crear', 'notas_credito.ver',
-        ];
+        return \App\Enums\OperativeProfile::allCapabilities();
     }
 }

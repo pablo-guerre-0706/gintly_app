@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Users;
 
+use App\Enums\RoleName;
+use App\Exceptions\RoleAssignmentException;
 use App\Http\Requests\User\IndexUserRequest;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
@@ -77,6 +79,10 @@ final class UserService
 
     public function create(array $data): User
     {
+        // Regla de rango centralizada (defensa en profundidad, misma que PUT /role):
+        // el rol concedido debe ser HUMANO y de nivel ≤ al del actor. Bloquea ROL-SYS y ROL-01 desde ROL-02.
+        $this->assertGrantable((string) $data['role']);
+
         return DB::transaction(function () use ($data): User {
             $user = new User();
 
@@ -92,7 +98,12 @@ final class UserService
             // exactamente un rol activo. Team ya fijado (business del actor = business del nuevo usuario).
             $user->syncRoles([$data['role']]);
 
-            return $user->refresh()->load('roles');
+            // Fase 3: ROL-03 nace con sus perfiles operativos (exigidos por StoreUserRequest).
+            if ((string) $data['role'] === RoleName::Operator->value && ! empty($data['profiles'])) {
+                $this->syncProfiles($user, (array) $data['profiles']);
+            }
+
+            return $user->refresh()->load('roles', 'operativeProfiles');
         });
     }
 
@@ -176,13 +187,33 @@ final class UserService
         });
     }
 
-    /** Reemplaza el rol, no acumula. Team ya fijado por SetPermissionsTeamId. */
-    public function changeRole(User $user, string $role): User
+    /**
+     * Reemplaza el rol, no acumula. Team ya fijado por SetPermissionsTeamId.
+     * Fase 3: al CONVERTIR a ROL-03 se exige sucursal + perfiles (UpdateUserRoleRequest); al salir de
+     * ROL-03 se LIMPIAN los perfiles (no quedan capacidades operativas huérfanas).
+     *
+     * @param array{branch_id?:int|null, profiles?:array<int,string>} $data
+     */
+    public function changeRole(User $user, string $role, array $data = []): User
     {
-        return DB::transaction(function () use ($user, $role): User {
+        // Defensa en profundidad: además de la Policy assignRole del FormRequest.
+        $this->assertGrantable($role);
+
+        return DB::transaction(function () use ($user, $role, $data): User {
             $oldRole = $user->getRoleNames()->first();
 
             $user->syncRoles([$role]);
+
+            if ($role === RoleName::Operator->value) {
+                if (array_key_exists('branch_id', $data)) {
+                    $user->branch_id = $data['branch_id'];
+                    $user->save();
+                }
+                $this->syncProfiles($user, (array) ($data['profiles'] ?? []));
+            } else {
+                // Sale de ROL-03: sin perfiles operativos.
+                $user->operativeProfiles()->delete();
+            }
 
             // RF-01-03: segregación de funciones. Se conserva el rol previo y el nuevo.
             $this->audit->record(
@@ -192,8 +223,48 @@ final class UserService
                 new: ['role' => $role],
             );
 
-            return $user->load('roles');
+            return $user->load('roles', 'operativeProfiles');
         });
+    }
+
+    /**
+     * Reemplaza el conjunto de perfiles operativos (assigned_by = actor). Reutilizado por create y
+     * changeRole. Idempotente dentro de la transacción del llamador.
+     *
+     * @param array<int, string> $profiles
+     */
+    private function syncProfiles(User $user, array $profiles): void
+    {
+        $user->operativeProfiles()->delete();
+
+        foreach (array_values(array_unique($profiles)) as $profile) {
+            $row = new \App\Models\UserOperativeProfile();
+            $row->user_id     = $user->id;
+            $row->profile     = $profile;
+            $row->assigned_by = $this->actor()->id;
+            $row->business_id = $user->business_id;
+            $row->save();
+        }
+    }
+
+    /**
+     * Regla de rango única (fuente: RoleName::grantableValues). ROL-SYS nunca es concedible;
+     * nadie concede un rol de autoridad superior a la suya. Se aplica idéntica en create y changeRole.
+     */
+    private function assertGrantable(string $role): void
+    {
+        $target = RoleName::tryFrom($role);
+
+        if ($target === null || $target->isSystem()) {
+            throw RoleAssignmentException::systemRole();
+        }
+
+        $actorRoleName = $this->actor()->getRoleNames()->first();
+        $actorRole = $actorRoleName !== null ? RoleName::tryFrom((string) $actorRoleName) : null;
+
+        if ($actorRole === null || ! in_array($role, $actorRole->grantableValues(), true)) {
+            throw RoleAssignmentException::aboveActor();
+        }
     }
 
     private function actor(): User

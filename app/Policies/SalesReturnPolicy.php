@@ -34,8 +34,10 @@ final class SalesReturnPolicy
     }
 
     /** POST /sales-returns — registrar devolución (ROL-03+). */
+    // Fase 5: registrar devolución exige el perfil BODEGUERO (la sucursal la valida el servicio).
     public function create(User $user): bool
     {
-        return $this->hasAtLeast($user, RoleName::Operator);
+        return $this->hasAtLeast($user, RoleName::Operator)
+            && $this->operatorGrants($user, 'devoluciones.crear');
     }
 }

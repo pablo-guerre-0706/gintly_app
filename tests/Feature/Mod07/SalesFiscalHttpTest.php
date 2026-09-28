@@ -25,6 +25,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\EquipsOperativeProfiles;
 use Tests\MysqlTestCase;
 
 /**
@@ -36,6 +37,8 @@ use Tests\MysqlTestCase;
  */
 final class SalesFiscalHttpTest extends MysqlTestCase
 {
+    use EquipsOperativeProfiles;
+
     private static int $seq = 0;
 
     private function asUser(User $u): static
@@ -89,6 +92,9 @@ final class SalesFiscalHttpTest extends MysqlTestCase
         $branch2 = $this->makeBranch($business, 'S2 '.$slug);
         $warehouse  = $this->makeWarehouse($business, $branch, 'B1 '.$slug);
         $this->makeWarehouse($business, $branch2, 'B2 '.$slug);
+
+        // Fase 5: el operador opera en S1 con todos los perfiles (ejerce ventas/facturación/caja).
+        $this->equipOperator($operator, $branch->id);
 
         $category = new Category(['name' => 'Cat '.$slug]);
         $category->business_id = $business->id;
@@ -225,23 +231,26 @@ final class SalesFiscalHttpTest extends MysqlTestCase
     }
 
     /** Abre venta → agrega una línea → confirma. Devuelve [saleId, itemResponse]. */
-    private function confirmedSale(object $t, Product $product, string $qty = '1.000', ?Branch $branch = null, string $discount = '0.00'): array
+    private function confirmedSale(object $t, Product $product, string $qty = '1.000', ?Branch $branch = null, string $discount = '0.00', ?User $actor = null): array
     {
         $branch ??= $t->branch;
+        // Por defecto opera el cajero de S1; para ventas en OTRA sucursal se usa un actor no
+        // restringido por sucursal (ROL-01/02), pues el operador solo opera la suya (Fase 5).
+        $actor ??= $t->operator;
 
-        $saleId = $this->asUser($t->operator)->postJson('/api/v1/sales', [
+        $saleId = $this->asUser($actor)->postJson('/api/v1/sales', [
             'branch_id'   => $branch->id,
             'customer_id' => $t->customer->id,
         ])->assertCreated()->json('data.id');
 
-        $item = $this->asUser($t->operator)->postJson("/api/v1/sales/{$saleId}/items", [
+        $item = $this->asUser($actor)->postJson("/api/v1/sales/{$saleId}/items", [
             'product_id'      => $product->id,
             'quantity'        => $qty,
             'discount_amount' => $discount,
         ]);
 
         if ($item->status() === 201) {
-            $this->asUser($t->operator)->postJson("/api/v1/sales/{$saleId}/confirm")->assertOk();
+            $this->asUser($actor)->postJson("/api/v1/sales/{$saleId}/confirm")->assertOk();
         }
 
         return [$saleId, $item];
@@ -368,13 +377,58 @@ final class SalesFiscalHttpTest extends MysqlTestCase
         $this->makeTaxRule($t, TaxClass::Reduced, '0.050000', $t->branch);
         $product = $this->makeProduct($t, TaxClass::Reduced, '100.00');
 
-        // Sucursal 1 → regla específica 5 %.
-        [, $itemB1] = $this->confirmedSale($t, $product, '1.000', $t->branch);
+        // Sucursal 1 → regla específica 5 %. (Actor no restringido por sucursal: el owner.)
+        [, $itemB1] = $this->confirmedSale($t, $product, '1.000', $t->branch, '0.00', $t->owner);
         $itemB1->assertCreated()->assertJsonPath('data.tax_rate', '0.050000')->assertJsonPath('data.tax_amount', '5.00');
 
         // Sucursal 2 (sin regla específica) → fallback general 10 %.
-        [, $itemB2] = $this->confirmedSale($t, $product, '1.000', $t->branch2);
+        [, $itemB2] = $this->confirmedSale($t, $product, '1.000', $t->branch2, '0.00', $t->owner);
         $itemB2->assertCreated()->assertJsonPath('data.tax_rate', '0.100000')->assertJsonPath('data.tax_amount', '10.00');
+    }
+
+    // ---------------- Fase 5: facturación ROL-03 (sucursal + efectivo) ----------------
+
+    public function test_rol03_no_factura_venta_de_otra_sucursal(): void
+    {
+        $t = $this->seedTenant('a');
+        $product = $this->makeProduct($t, TaxClass::Standard, '100.00');
+
+        // Venta CONFIRMADA en S2 (por el owner, no restringido por sucursal).
+        [$saleId] = $this->confirmedSale($t, $product, '1.000', $t->branch2, '0.00', $t->owner);
+
+        // El facturador de S1 no puede facturarla.
+        $this->asUser($t->operator)->postJson('/api/v1/invoices', [
+            'sale_ids' => [$saleId], 'payment_type' => 'contado',
+            'payments' => [['method' => 'transferencia', 'amount' => '115.00']],
+        ])->assertStatus(422)->assertJsonValidationErrors(['sale_ids']);
+    }
+
+    public function test_cobro_efectivo_exige_perfil_cajero_y_sesion_propia(): void
+    {
+        $t = $this->seedTenant('a');
+        $product = $this->makeProduct($t, TaxClass::Standard, '100.00');
+
+        // Operador SOLO facturador (sin cajero), en S1.
+        $facturador = $this->makeUser($t->business, RoleName::Operator);
+        $this->equipOperator($facturador, $t->branch->id, ['facturador']);
+
+        [$saleId] = $this->confirmedSale($t, $product, '1.000', $t->branch, '0.00', $facturador);
+
+        // Contado en EFECTIVO sin perfil cajero ni sesión propia → 422.
+        $this->asUser($facturador)->postJson('/api/v1/invoices', [
+            'sale_ids' => [$saleId], 'payment_type' => 'contado', 'cash_session_id' => $t->session->id,
+            'payments' => [['method' => 'efectivo', 'amount' => '115.00']],
+        ])->assertStatus(422);
+    }
+
+    public function test_rol03_factura_su_sucursal_en_efectivo_con_cajero_propio(): void
+    {
+        $t = $this->seedTenant('a');
+        $product = $this->makeProduct($t, TaxClass::Standard, '100.00');
+
+        // El operador de S1 (todos los perfiles + sesión propia $t->session) factura en efectivo.
+        [$saleId] = $this->confirmedSale($t, $product, '1.000', $t->branch);
+        $this->invoiceCash($t, $saleId, '115.00')->assertCreated();
     }
 
     public function test_negocios_con_tasas_distintas_sin_contaminacion(): void

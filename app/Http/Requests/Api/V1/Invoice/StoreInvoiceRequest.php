@@ -108,6 +108,37 @@ final class StoreInvoiceRequest extends BaseTenantRequest
                         'No se puede emitir una factura a crédito al cliente genérico "Consumidor Final".'
                     );
                 }
+
+                // Fase 5 · Enforcement ROL-03 (facturador). ROL-01/02 no se acotan.
+                $user = $this->user();
+                if ($user !== null && $user->getRoleNames()->first() === RoleName::Operator->value) {
+                    // (a) Facturar SOLO ventas de su propia sucursal.
+                    $foreignSale = \App\Models\Sale::query()
+                        ->whereIn('id', (array) $this->input('sale_ids', []))
+                        ->where('branch_id', '!=', $user->branch_id)
+                        ->exists();
+                    if ($foreignSale) {
+                        $validator->errors()->add('sale_ids', 'Solo puede facturar ventas de su propia sucursal.');
+                    }
+
+                    // (b) Cobro en efectivo: exige perfil CAJERO y su PROPIA sesión abierta.
+                    if ($this->hasCashPayment()) {
+                        if (! $user->operativeCan('caja.movimiento.crear')) {
+                            $validator->errors()->add('payments', 'El cobro en efectivo exige el perfil de cajero.');
+                        }
+
+                        $ownsOpenSession = $this->filled('cash_session_id')
+                            && \App\Models\CashSession::query()
+                                ->whereKey($this->input('cash_session_id'))
+                                ->where('opened_by', $user->id)
+                                ->where('status', \App\Enums\CashSessionStatus::Abierta->value)
+                                ->exists();
+
+                        if (! $ownsOpenSession) {
+                            $validator->errors()->add('cash_session_id', 'El cobro en efectivo exige su propia sesión de caja abierta.');
+                        }
+                    }
+                }
             },
         ];
     }

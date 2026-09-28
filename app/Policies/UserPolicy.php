@@ -135,6 +135,25 @@ final class UserPolicy
         return Response::allow();
     }
 
+    /**
+     * Fase 3 · Gestión de perfiles operativos: mismo rango de gestión que el resto (ROL-02+,
+     * mismo negocio, no superior) Y el objetivo debe ser ROL-03 (los perfiles solo aplican a ROL-03).
+     */
+    public function manageProfiles(User $actor, User $target): Response
+    {
+        $manage = $this->canManage($actor, $target);
+
+        if ($manage->denied()) {
+            return $manage;
+        }
+
+        if ($this->roleOf($target) !== RoleName::Operator) {
+            return Response::deny('Los perfiles operativos solo aplican a usuarios ROL-03.');
+        }
+
+        return Response::allow();
+    }
+
     // Prohíbe que un usuario de menor rango edite o desactive a su jefe, evitando que un
     // administrador le robe el control al propietario.
     private function canManage(User $actor, User $target): Response

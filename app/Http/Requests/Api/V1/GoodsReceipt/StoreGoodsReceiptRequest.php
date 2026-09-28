@@ -52,6 +52,21 @@ final class StoreGoodsReceiptRequest extends BaseTenantRequest
         ];
     }
 
+    /** @return array<int, callable> Fase 5: ROL-03 (bodeguero) solo recibe en bodegas de SU sucursal. */
+    public function after(): array
+    {
+        return [function (\Illuminate\Validation\Validator $validator): void {
+            $user = $this->user();
+            if ($user === null || $user->getRoleNames()->first() !== \App\Enums\RoleName::Operator->value) {
+                return;
+            }
+            $branchId = \App\Models\Warehouse::query()->whereKey($this->input('warehouse_id'))->value('branch_id');
+            if ($branchId !== null && (int) $branchId !== (int) $user->branch_id) {
+                $validator->errors()->add('warehouse_id', 'Solo puede recibir en una bodega de su sucursal.');
+            }
+        }];
+    }
+
     /**
      * @return array<string, string>
      */

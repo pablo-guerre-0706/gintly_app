@@ -34,11 +34,16 @@ final class CashMovementPolicy
     }
 
     // El cajero registra movimientos manuales (retiros, egresos, ajustes).
+    // Fase 5: para ROL-03 exige el perfil CAJERO (además del rol operativo).
     public function create(User $actor): Response
     {
-        return $this->hasAtLeast($actor, RoleName::Operator)
+        if (! $this->hasAtLeast($actor, RoleName::Operator)) {
+            return Response::deny('No tiene autorización para registrar movimientos de caja.');
+        }
+
+        return $this->operatorGrants($actor, 'caja.movimiento.crear')
             ? Response::allow()
-            : Response::deny('No tiene autorización para registrar movimientos de caja.');
+            : Response::deny('Requiere el perfil de cajero para registrar movimientos de caja.');
     }
 
     public function update(User $actor, CashMovement $movement): Response

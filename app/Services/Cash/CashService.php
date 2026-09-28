@@ -213,6 +213,11 @@ final class CashService
         return DB::transaction(function () use ($actor, $cashSessionId, $amount, $saleId): \App\Models\CashMovement {
             $session = $this->lockOpenSession($actor->business_id, $cashSessionId);
 
+            // Invariante de dominio (no solo del FormRequest): el cobro en efectivo se asienta
+            // SOLO en la sesión propia del operador (ROL-03); ROL-01/ROL-02 pueden operar cualquiera.
+            // Impide que una llamada interna use la sesión de otro usuario saltándose la validación HTTP.
+            $this->assertCanOperateSession($actor, $session);
+
             $movement = new \App\Models\CashMovement([
                 'cash_session_id' => $session->id,
                 'type'            => CashMovementType::Ingreso,

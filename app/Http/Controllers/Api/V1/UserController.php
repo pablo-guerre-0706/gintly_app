@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\AssignProfilesRequest;
+use App\Http\Requests\User\IndexUserRequest;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\UpdateUserRoleRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Users\ProfileService;
 use App\Services\Users\UserService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
@@ -29,10 +31,12 @@ final class UserController extends Controller
         $this->authorizeResource(User::class, 'user');
     }
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexUserRequest $request): AnonymousResourceCollection
     {
+        // IndexUserRequest valida y sanea filtros, orden y paginación (contrato MOD-01).
+        // viewAny lo cubre authorizeResource; el aislamiento por negocio, el servicio.
         return UserResource::collection(
-            $this->users->paginate($request->integer('per_page', 15)),
+            $this->users->paginate($request),
         );
     }
 
@@ -65,6 +69,24 @@ final class UserController extends Controller
         // La FK de tenant la valida el binding (UserPolicy::sharesBusinessWith); la anti-escalación vive en UserPolicy.
         $this->authorize('update', $user);
 
-        return new UserResource($this->users->changeRole($user, $request->validated('role')));
-    }   
+        return new UserResource($this->users->changeRole($user, $request->validated('role'), $request->validated()));
+    }
+
+    /** GET /users/{user}/profiles — perfiles operativos del usuario (ROL-03). */
+    public function showProfiles(User $user): UserResource
+    {
+        $this->authorize('view', $user);
+
+        return new UserResource($user->load('operativeProfiles', 'roles'));
+    }
+
+    /** PUT /users/{user}/profiles — reemplaza el conjunto de perfiles operativos (ROL-03). */
+    public function updateProfiles(AssignProfilesRequest $request, User $user, ProfileService $profiles): UserResource
+    {
+        // Autorización (rango + objetivo ROL-03 del mismo negocio) en UserPolicy::manageProfiles vía el Request.
+        $actor = $request->user();
+        $updated = $profiles->replace($user, $request->validated('profiles'), $actor);
+
+        return new UserResource($updated->load('roles'));
+    }
 }

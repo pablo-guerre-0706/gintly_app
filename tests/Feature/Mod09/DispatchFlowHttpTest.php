@@ -26,6 +26,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\EquipsOperativeProfiles;
 use Tests\MysqlTestCase;
 
 /**
@@ -38,6 +39,8 @@ use Tests\MysqlTestCase;
  */
 final class DispatchFlowHttpTest extends MysqlTestCase
 {
+    use EquipsOperativeProfiles;
+
     private static int $seq = 0;
 
     private function asUser(User $u): static
@@ -87,8 +90,10 @@ final class DispatchFlowHttpTest extends MysqlTestCase
 
         $owner     = $this->makeUser($business, RoleName::Owner);
         $admin     = $this->makeUser($business, RoleName::Admin);
-        $operator  = $this->makeUser($business, RoleName::Operator, $branch);   // bodeguero de S1
-        $operator2 = $this->makeUser($business, RoleName::Operator, $branch2);  // bodeguero de S2
+        $operator  = $this->makeUser($business, RoleName::Operator, $branch);   // bodeguero/despachador de S1
+        $operator2 = $this->makeUser($business, RoleName::Operator, $branch2);  // bodeguero/despachador de S2
+        $this->equipOperator($operator, $branch->id);   // Fase 5: perfiles operativos (facturador+despachador+…).
+        $this->equipOperator($operator2, $branch2->id);
 
         $category = new Category(['name' => 'Cat '.$slug]);
         $category->business_id = $business->id;

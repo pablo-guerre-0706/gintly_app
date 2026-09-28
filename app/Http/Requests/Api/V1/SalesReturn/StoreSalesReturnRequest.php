@@ -47,6 +47,17 @@ final class StoreSalesReturnRequest extends BaseTenantRequest
 
     public function withValidator(Validator $validator): void
     {
+        // Fase 5: ROL-03 (bodeguero) solo procesa devoluciones de facturas de SU sucursal.
+        $validator->after(function (Validator $v): void {
+            $user = $this->user();
+            if ($user !== null && $user->getRoleNames()->first() === \App\Enums\RoleName::Operator->value) {
+                $branchId = \App\Models\Invoice::query()->whereKey($this->input('invoice_id'))->value('branch_id');
+                if ($branchId !== null && (int) $branchId !== (int) $user->branch_id) {
+                    $v->errors()->add('invoice_id', 'Solo puede procesar devoluciones de facturas de su sucursal.');
+                }
+            }
+        });
+
         // Coherencia motivo⇄destino: 'vencido'/'defecto_fabrica' NUNCA reingresan (RF-10-01).
         $validator->after(function (Validator $v): void {
             foreach ((array) $this->input('lines', []) as $i => $line) {

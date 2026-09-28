@@ -40,8 +40,8 @@ Route::prefix('register')->name('register.')->group(function () {
 // ==========================================
 // PANEL DE ADMINISTRACIÓN (DASHBOARD)
 // ==========================================
-Route::middleware(['auth'])->group(function () {
-    
+Route::middleware(['auth', \App\Http\Middleware\EnsureOperableUser::class])->group(function () {
+
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');

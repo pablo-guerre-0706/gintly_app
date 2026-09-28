@@ -5,16 +5,26 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Sale;
 
 use App\Http\Requests\BaseTenantRequest;
+use App\Http\Requests\Concerns\EnforcesOperatorBranch;
 use App\Models\Sale;
+use Illuminate\Contracts\Validation\Validator;
 
 /**
  * Abre el carrito. code y user_id de sistema/sesión. Nace 'abierta'.
  */
 final class StoreSaleRequest extends BaseTenantRequest
 {
+    use EnforcesOperatorBranch;
+
     public function authorize(): bool
     {
         return $this->user()?->can('create', Sale::class) ?? false;
+    }
+
+    /** @return array<int, callable> Fase 5: ROL-03 solo abre ventas en su propia sucursal. */
+    public function after(): array
+    {
+        return [fn (Validator $validator) => $this->assertOperatorBranch($validator)];
     }
 
     /**

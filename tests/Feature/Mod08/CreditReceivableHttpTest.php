@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Concerns\EquipsOperativeProfiles;
 use Tests\MysqlTestCase;
 
 /**
@@ -41,6 +42,8 @@ use Tests\MysqlTestCase;
  */
 final class CreditReceivableHttpTest extends MysqlTestCase
 {
+    use EquipsOperativeProfiles;
+
     private static int $seq = 0;
 
     /**
@@ -94,6 +97,7 @@ final class CreditReceivableHttpTest extends MysqlTestCase
 
         $branch    = $this->makeBranch($business, 'S1 '.$slug);
         $warehouse = $this->makeWarehouse($business, $branch, 'B1 '.$slug);
+        $this->equipOperator($operator, $branch->id); // Fase 5: perfiles operativos (cajero+facturador+…) en S1.
 
         $category = new Category(['name' => 'Cat '.$slug]);
         $category->business_id = $business->id;

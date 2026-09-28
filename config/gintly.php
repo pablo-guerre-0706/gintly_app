@@ -95,6 +95,9 @@ $morphMap = [
     'kpi_snapshot'          => \App\Models\KpiSnapshot::class,
     'report_definition'     => \App\Models\ReportDefinition::class,
 
+    // MOD-01 (Fase 3) — Perfiles operativos de ROL-03
+    'user_operative_profile' => \App\Models\UserOperativeProfile::class,
+
     // Onboarding / Registro (pre-tenant)
     // RegisterWizard es un modelo VIVO (RegisterWizardController + RegisterWizardRequest
     // + ruta web + migración create_register_wizards): captura el formulario de alta
