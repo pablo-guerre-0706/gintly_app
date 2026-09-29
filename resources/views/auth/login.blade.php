@@ -84,10 +84,13 @@
               name="business_slug"
               placeholder="mi-negocio"
               autocomplete="organization"
-              aria-describedby="business_slug-error"
+              aria-describedby="business_slug-help business_slug-error"
               class="px-3.5 py-2.5 w-full bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 hover:bg-white hover:border-[#146F8A]/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all duration-300 aria-invalid:border-rose-400 aria-invalid:ring-rose-200"
               required
             />
+            <p id="business_slug-help" class="text-[11px] leading-4 text-slate-500">
+              Código asignado al registrar tu negocio. Ejemplo: ferreteria-el-sol
+            </p>
             <p id="business_slug-error" data-field-error="business_slug" class="hidden text-xs font-medium text-rose-600" aria-live="polite"></p>
           </div>
 
@@ -110,8 +113,7 @@
           <div class="flex flex-col gap-1">
             <div class="flex justify-between items-center">
               <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Contraseña</label>
-              <!-- Si no usas ruta de recuperar contraseña, puedes cambiar el href="#" -->
-              <a href="#" class="text-[11px] font-semibold text-[#146F8A] hover:underline">¿Olvidaste tu contraseña?</a>
+              <span class="text-[11px] font-medium text-slate-400">Recuperación no disponible</span>
             </div>
             <input
               type="password"

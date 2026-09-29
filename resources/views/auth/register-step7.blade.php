@@ -34,9 +34,9 @@
 
             <!-- Botón de Acción Principal -->
             <div class="pt-0.5">
-                <a href="{{ route('dashboard') }}" 
+                <a href="{{ route('login') }}" 
                    class="inline-flex items-center justify-center gap-2.5 px-7 h-10 bg-[#146F8A] hover:bg-[#10596e] text-white font-bold text-xs tracking-wide rounded-xl shadow-lg shadow-[#146F8A]/25 transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 cursor-pointer">
-                    <span>Ingresa a Gintly</span>
+                    <span>Ir al inicio de sesión</span>
                     <svg class="w-3.5 h-3.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                     </svg>

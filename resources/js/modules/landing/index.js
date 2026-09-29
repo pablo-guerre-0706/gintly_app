@@ -66,20 +66,6 @@ function initBillingSwitch() {
     });
 }
 
-function initPlanButtons() {
-    document.querySelectorAll('[data-plan-action]').forEach((button) => {
-        button.addEventListener('click', () => {
-            button.style.transform = 'scale(0.96)';
-            button.style.backgroundColor = '#0f556b';
-            button.style.color = '#ffffff';
-
-            window.setTimeout(() => {
-                button.style.transform = 'scale(1)';
-            }, 150);
-        });
-    });
-}
-
 function initTestimonials() {
     const track = document.getElementById('testimonials-track');
     const container = document.getElementById('testimonials-container');
@@ -147,6 +133,5 @@ export default function initLanding() {
     initImageFallbacks();
     initFaq();
     initBillingSwitch();
-    initPlanButtons();
     initTestimonials();
 }

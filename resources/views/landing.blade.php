@@ -19,16 +19,17 @@
     ])
 </head>
 <body
-    class="bg-[url('/images/backgroundhero.png')] bg-cover bg-center bg-no-repeat bg-fixed font-sans text-white antialiased min-h-screen selection:bg-[#146F8A] selection:text-white"
+    class="min-h-screen overflow-x-clip bg-cover bg-center bg-no-repeat font-sans text-white antialiased selection:bg-[#146F8A] selection:text-white md:bg-fixed"
+    style="background-image: url('{{ asset('images/backgroundhero.png') }}');"
 >
 
     <!-- CONTENEDOR PRINCIPAL HERO -->
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mx-auto w-full max-w-[1440px] px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
 
         <!-- NAVBAR HEADER -->
-        <header class="mb-12 flex items-center justify-between gap-4 pt-2 transition-all duration-500">
+        <header class="mb-8 flex items-center justify-between gap-3 pt-2 transition-all duration-500 sm:mb-10 lg:mb-12 lg:gap-4">
             
-            <a href="#" class="flex items-center shrink-0 transition-transform duration-300 hover:scale-105">
+            <a href="{{ route('landing') }}" class="flex shrink-0 items-center transition-transform duration-300 hover:scale-105" aria-label="Gintly, ir al inicio">
                 <div class="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/4 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] p-2.5 transition-all duration-300 hover:bg-white/8">
                     <img 
                         src="{{ asset('images/logo.png') }}" 
@@ -42,11 +43,11 @@
                 </div>
             </a>
 
-            <nav class="flex h-14 flex-1 items-center justify-between rounded-full border border-white/20 bg-white/[0.04] p-1.5 pl-6 pr-1.5 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] transition-all duration-300">
+            <nav class="hidden h-14 min-w-0 flex-1 items-center justify-between rounded-full border border-white/20 bg-white/[0.04] p-1.5 pl-6 pr-1.5 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] transition-all duration-300 lg:flex">
                 <ul class="flex flex-1 items-center justify-evenly text-sm font-medium text-slate-200 max-w-3xl mx-auto px-4">
                     
                     <li>
-                        <a href="#" class="flex items-center gap-2.5 py-2 px-5 text-slate-200 hover:text-white rounded-full transition-all duration-300 ease-in-out hover:bg-[#12627a] hover:shadow-lg hover:-translate-y-0.5">
+                        <a href="#inicio" class="flex items-center gap-2.5 py-2 px-5 text-slate-200 hover:text-white rounded-full transition-all duration-300 ease-in-out hover:bg-[#12627a] hover:shadow-lg hover:-translate-y-0.5">
                             <svg class="h-4 w-4 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="1.8">
                                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                             </svg>
@@ -93,16 +94,25 @@
                     Contáctanos
                 </a>
             </nav>
+
+            <div class="flex min-w-0 items-center gap-2 lg:hidden">
+                <a href="{{ route('login') }}" class="inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 bg-white/10 px-4 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/20 sm:px-5 sm:text-sm">
+                    Iniciar sesión
+                </a>
+                <a href="{{ route('register.index') }}" class="inline-flex min-h-11 items-center justify-center rounded-full bg-[#146F8A] px-4 text-xs font-semibold text-white shadow-lg transition hover:bg-[#18809f] sm:px-5 sm:text-sm">
+                    Regístrate
+                </a>
+            </div>
         </header>
 
         <!-- SECCIÓN HERO -->
         <main>
-            <section class="grid grid-cols-1 items-center gap-10 pb-16 lg:grid-cols-12 min-h-[696px]">
+            <section id="inicio" class="grid min-w-0 grid-cols-1 items-center gap-10 py-8 sm:py-10 lg:min-h-[696px] lg:grid-cols-12 lg:py-0 lg:pb-16">
 
                 <!-- Columna Izquierda: Textos y Botones -->
-                <div class="flex flex-col justify-center space-y-8 lg:col-span-6">
+                <div class="min-w-0 flex flex-col justify-center space-y-6 sm:space-y-8 lg:col-span-6">
                     
-                    <h1 class="text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl lg:text-[56px] lg:leading-[64px] transition-all duration-500">
+                    <h1 class="break-words text-3xl font-semibold leading-tight tracking-tight text-white transition-all duration-500 sm:text-5xl lg:text-[56px] lg:leading-[64px]">
                         El sistema de facturación y gestión empresarial diseñado para Nicaragua.
                     </h1>
 
@@ -111,14 +121,14 @@
                     </p>
 
                     <!-- Botones -->
-                    <div class="flex flex-wrap items-center gap-6 pt-2">
+                    <div class="flex flex-wrap items-center gap-3 pt-2 sm:gap-6">
                         <a href="{{ route('register.index') }}" 
-                        class="inline-flex items-center justify-center rounded-full bg-[#146F8A] px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#146F8A]/30 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-[#18809f] hover:shadow-xl hover:shadow-[#146F8A]/50 active:translate-y-0 active:scale-100">
+                        class="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#146F8A] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#146F8A]/30 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-[#18809f] hover:shadow-xl hover:shadow-[#146F8A]/50 active:translate-y-0 active:scale-100 sm:flex-none sm:px-8">
                             Regístrate
                         </a>
 
                         <a href="{{ route('login') }}" 
-                        class="inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[#146F8A] shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-slate-50 hover:text-[#125c73] hover:shadow-xl hover:shadow-white/30 active:translate-y-0 active:scale-100">
+                        class="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-[#146F8A] shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-105 hover:bg-slate-50 hover:text-[#125c73] hover:shadow-xl hover:shadow-white/30 active:translate-y-0 active:scale-100 sm:flex-none sm:px-8">
                             Iniciar sesión
                         </a>
                     </div>
@@ -126,10 +136,10 @@
                 </div>
 
                 <!-- Columna Derecha: Tarjetas Compuestas -->
-                <div class="relative flex flex-col gap-6 lg:col-span-6">
+                <div class="relative flex min-w-0 flex-col gap-6 lg:col-span-6">
 
                     <!-- Tarjetas Superiores -->
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                         
                         <!-- Tarjeta 1: Personal -->
                         <div class="relative overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
@@ -158,7 +168,7 @@
                     </div>
 
                     <!-- Tarjeta Inferior Modelo Con Ondas -->
-                    <div class="relative flex min-h-[420px] w-full items-end justify-center overflow-hidden rounded-[24px] bg-linear-to-b from-[#A9D5E2] to-white shadow-xl transition-all duration-300 hover:shadow-2xl">
+                    <div class="relative flex min-h-[320px] w-full items-end justify-center overflow-hidden rounded-[24px] bg-linear-to-b from-[#A9D5E2] to-white shadow-xl transition-all duration-300 hover:shadow-2xl sm:min-h-[380px] lg:min-h-[420px]">
                         <div class="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/20 bg-[#146F8A]/10"></div>
                         <div class="absolute top-1/2 left-1/2 h-[450px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/15 bg-[#146F8A]/10"></div>
                         <div class="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#146F8A]/10 bg-transparent"></div>
@@ -166,7 +176,7 @@
                         <img 
                             src="{{ asset('images/men_hero.png') }}" 
                             alt="Gestión Hero" 
-                            class="relative z-10 max-h-[460px] w-auto object-contain pt-4 transition-transform duration-500 ease-out hover:scale-105"
+                            class="relative z-10 max-h-[460px] max-w-full object-contain object-bottom pt-4 transition-transform duration-500 ease-out hover:scale-105"
                         >
                     </div>
 
@@ -552,7 +562,7 @@
     </section>
 
   <!-- SECCIÓN HERO PRINCIPAL CON FONDO PNG Y CAPA OSCURA -->
-<section id="inicio" class="relative w-full h-[760px] bg-[#146F8A] overflow-hidden flex flex-col justify-center items-center">
+<section class="relative flex min-h-[620px] w-full flex-col items-center justify-center overflow-hidden bg-[#146F8A] py-20 sm:min-h-[700px] lg:min-h-[760px]">
     
     <!-- Fondo PNG personalizado -->
     <div class="absolute inset-0 pointer-events-none opacity-40 select-none">
@@ -614,10 +624,6 @@
                     Organiza, gestiona y centraliza la información financiera de forma segura.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 2: Inventario -->
@@ -631,10 +637,6 @@
                     Ajusta inventarios como: paquetes, stock y mercancía en tiempo real.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 3: Ventas y Clientes -->
@@ -648,10 +650,6 @@
                     Mantén una organización fluida de tus ventas diarias y base de clientes.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 4: Gestión de personal -->
@@ -665,10 +663,6 @@
                     Maneja roles y permisos específicos para cada usuario dentro del sistema.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 5: Compras y proveedores -->
@@ -682,10 +676,6 @@
                     Gestiona gastos, proveedores, facturas y pedidos de forma automatizada.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 6: Reportes -->
@@ -699,10 +689,6 @@
                     Informes y reportes a nivel interno para una toma de decisiones certera.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 7: Monitoreos -->
@@ -716,10 +702,6 @@
                     Registros de actividad, auditorías y control de caja en tiempo real.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
         <!-- Tarjeta 8: Perfiles de empresas -->
@@ -733,10 +715,6 @@
                     Maneja múltiples sucursales o empresas desde un mismo sistema central.
                 </p>
             </div>
-            <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-[#146F8A] hover:bg-[#0f556b] text-white text-sm font-medium rounded-lg transition-colors w-max gap-2">
-                Ver más 
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
         </div>
 
     </div>
@@ -882,7 +860,7 @@
     <div class="w-full h-[1px] bg-gray-200"></div>
 </div>
 <!-- SECCIÓN DE SUSCRIPCIONES Y PLANES INTERACTIVA -->
-<section class="w-full py-[80px] bg-white flex flex-col items-center justify-center font-sans">
+<section id="planes" class="flex w-full flex-col items-center justify-center bg-white py-20 font-sans">
     
     <div class="max-w-[1320px] w-full px-6 md:px-12 mb-[40px] flex flex-col items-center text-center gap-[12px]">
         <h2 class="text-[32px] font-semibold leading-[40px] tracking-[-0.5px] text-black">
@@ -893,7 +871,7 @@
         </p>
     </div>
 
-    <div class="relative flex flex-row items-center p-1.5 bg-[#EAEAEA] rounded-[16px] mb-[48px] border border-[#D9D9D9] w-[460px] max-w-full select-none cursor-pointer" id="billing-switch">
+    <div class="relative mb-12 flex w-[calc(100%-2rem)] max-w-[460px] select-none flex-row items-center rounded-2xl border border-[#D9D9D9] bg-[#EAEAEA] p-1.5" id="billing-switch">
         <div class="absolute left-1.5 top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-[#146F8A] rounded-[12px] transition-transform duration-300 ease-in-out shadow-sm" id="switch-indicator"></div>
         
         <button type="button" data-landing-billing="monthly" class="relative z-10 w-1/2 py-3 text-center text-[14px] font-medium transition-colors duration-300 text-white" id="btn-monthly">
@@ -906,8 +884,8 @@
 
     <div class="max-w-[1320px] w-full mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-3 gap-[32px] items-stretch">
 
-        <div class="group bg-white border border-[#CCCCCC] rounded-[24px] p-[32px] flex flex-col justify-between w-full shadow-sm transition-all duration-300 hover:shadow-xl hover:border-[#146F8A]/50">
-            <div>
+        <div class="group flex h-full w-full flex-col rounded-[24px] border border-[#CCCCCC] bg-white p-8 shadow-sm transition-all duration-300 hover:border-[#146F8A]/50 hover:shadow-xl" data-plan-card>
+            <div class="flex flex-1 flex-col">
                 <div class="flex flex-col items-start gap-[12px] w-full mb-[20px]">
                     <h3 class="text-[24px] font-semibold leading-[32px] tracking-[-0.5px] text-black">
                         Plan inicial
@@ -919,7 +897,7 @@
                 </div>
 
                 <div class="flex flex-col items-start gap-[8px] w-full mb-[24px]">
-                    <div class="flex flex-row items-baseline gap-[2px]">
+                    <div class="flex flex-row flex-wrap items-baseline gap-[2px]">
                         <span class="text-[32px] font-bold leading-[40px] tracking-[-0.5px] text-black price-main" 
                               data-monthly="C$ 1,160.00" data-annual="C$ 928.00">C$ 1,160.00</span>
                         <span class="text-[16px] font-normal text-[#666666]">/mes</span>
@@ -934,9 +912,9 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col items-start gap-[14px] w-full mb-[32px]">
+                <div class="mb-8 flex w-full flex-1 flex-col items-start gap-[14px]" data-plan-benefits>
                     <div class="flex flex-row items-start gap-[10px]">
-                        <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-(3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <svg class="mt-[3px] h-4 w-4 shrink-0 text-[#009933]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
                         <span class="text-[13px] font-normal leading-[18px] text-[#666666]">1 Caja / POS activo</span>
                     </div>
                     <div class="flex flex-row items-start gap-[10px]">
@@ -962,15 +940,15 @@
                 </div>
             </div>
 
-            <button type="button" data-plan-action class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-[16px] transition-all duration-300 active:scale-95 shadow-sm">
+            <a href="{{ route('register.index') }}" data-plan-cta class="mt-auto block w-full rounded-2xl bg-[#F2F2F2] py-3.5 text-center text-[14px] font-medium text-[#666666] shadow-sm transition-all duration-300 hover:bg-[#146F8A] hover:text-white active:scale-95">
                 Seleccionar Plan Inicial
-            </button>
+            </a>
         </div>
 
-        <div class="group bg-white border-2 border-[#146F8A] rounded-[24px] p-[32px] flex flex-col justify-between w-full shadow-lg relative transition-all duration-300 hover:shadow-2xl">
-            <div>
+        <div class="group relative flex h-full w-full flex-col rounded-[24px] border-2 border-[#146F8A] bg-white p-8 shadow-lg transition-all duration-300 hover:shadow-2xl" data-plan-card>
+            <span class="absolute start-8 top-0 -translate-y-1/2 rounded-full border border-[#146F8A]/30 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#146F8A] shadow-sm" data-plan-badge>Más Popular — Plan Comercio</span>
+            <div class="flex flex-1 flex-col">
                 <div class="flex flex-col items-start gap-[12px] w-full mb-[20px]">
-                    <span class="text-[12px] font-semibold text-[#146F8A] tracking-wide uppercase">Más Popular — Plan Comercio</span>
                     <h3 class="text-[24px] font-semibold leading-[32px] tracking-[-0.5px] text-black">
                         Plan Comercio
                     </h3>
@@ -981,7 +959,7 @@
                 </div>
 
                 <div class="flex flex-col items-start gap-[8px] w-full mb-[24px]">
-                    <div class="flex flex-row items-baseline gap-[2px]">
+                    <div class="flex flex-row flex-wrap items-baseline gap-[2px]">
                         <span class="text-[32px] font-bold leading-[40px] tracking-[-0.5px] text-black price-main"
                               data-monthly="C$ 2,280.00" data-annual="C$ 1,824.00">C$ 2,280.00</span>
                         <span class="text-[16px] font-normal text-[#666666]">/mes</span>
@@ -996,7 +974,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col items-start gap-[14px] w-full mb-[32px]">
+                <div class="mb-8 flex w-full flex-1 flex-col items-start gap-[14px]" data-plan-benefits>
                     <div class="flex flex-row items-start gap-[10px]">
                         <svg class="w-[16px] h-[16px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
                         <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Hasta 3 Cajas simultáneas</span>
@@ -1028,13 +1006,13 @@
                 </div>
             </div>
 
-            <button type="button" data-plan-action class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-[16px] transition-all duration-300 active:scale-95 shadow-sm">
+            <a href="{{ route('register.index') }}" data-plan-cta class="mt-auto block w-full rounded-2xl bg-[#F2F2F2] py-3.5 text-center text-[14px] font-medium text-[#666666] shadow-sm transition-all duration-300 hover:bg-[#146F8A] hover:text-white active:scale-95">
                 Comenzar Prueba Gratis de 7 Días
-            </button>
+            </a>
         </div>
 
-        <div class="group bg-white border border-[#CCCCCC] rounded-[24px] p-[32px] flex flex-col justify-between w-full shadow-sm transition-all duration-300 hover:shadow-xl hover:border-[#146F8A]/50">
-            <div>
+        <div class="group flex h-full w-full flex-col rounded-[24px] border border-[#CCCCCC] bg-white p-8 shadow-sm transition-all duration-300 hover:border-[#146F8A]/50 hover:shadow-xl" data-plan-card>
+            <div class="flex flex-1 flex-col">
                 <div class="flex flex-col items-start gap-[12px] w-full mb-[20px]">
                     <h3 class="text-[24px] font-semibold leading-[32px] tracking-[-0.5px] text-black">
                         Plan Cadena
@@ -1046,7 +1024,7 @@
                 </div>
 
                 <div class="flex flex-col items-start gap-[8px] w-full mb-[24px]">
-                    <div class="flex flex-row items-baseline gap-[2px]">
+                    <div class="flex flex-row flex-wrap items-baseline gap-[2px]">
                         <span class="text-[32px] font-bold leading-[40px] tracking-[-0.5px] text-black price-main"
                               data-monthly="C$ 4,400.00" data-annual="C$ 3,520.00">C$ 4,400.00</span>
                         <span class="text-[16px] font-normal text-[#666666]">/mes</span>
@@ -1061,9 +1039,9 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col items-start gap-[14px] w-full mb-[32px]">
+                <div class="mb-8 flex w-full flex-1 flex-col items-start gap-[14px]" data-plan-benefits>
                     <div class="flex flex-row items-start gap-[10px]">
-                        <svg class="w-[16px] h-[916px] text-[#009933] shrink-0 mt-[3px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
+                        <svg class="mt-[3px] h-4 w-4 shrink-0 text-[#009933]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10z"/></svg>
                         <span class="text-[13px] font-normal leading-[18px] text-[#666666]">Cajas ilimitadas</span>
                     </div>
                     <div class="flex flex-row items-start gap-[10px]">
@@ -1093,9 +1071,9 @@
                 </div>
             </div>
 
-            <button type="button" data-plan-action class="w-full py-3.5 bg-[#F2F2F2] hover:bg-[#146F8A] text-[#666666] hover:text-white font-medium text-[14px] rounded-[16px] transition-all duration-300 active:scale-95 shadow-sm">
+            <a href="{{ route('register.index') }}" data-plan-cta class="mt-auto block w-full rounded-2xl bg-[#F2F2F2] py-3.5 text-center text-[14px] font-medium text-[#666666] shadow-sm transition-all duration-300 hover:bg-[#146F8A] hover:text-white active:scale-95">
                 Seleccionar Plan Cadena
-            </button>
+            </a>
         </div>
 
     </div>
@@ -1193,7 +1171,7 @@
     </div>
 
 <!--Footer-->
-    <footer class="w-full min-h-[638px] bg-[#0C4353] text-white py-20 px-6 md:px-24 flex flex-col items-start gap-10 font-inter shrink-0 grow-0">
+    <footer id="contacto" class="w-full min-h-[638px] bg-[#0C4353] text-white py-20 px-6 md:px-24 flex flex-col items-start gap-10 font-inter shrink-0 grow-0">
     
     <div class="w-full max-w-[1320px] mx-auto flex flex-col md:flex-row justify-between items-start gap-12 md:gap-6">
         
@@ -1208,27 +1186,13 @@
                 </p>
             </div>
 
-            <a href="#prueba" class="inline-flex items-center justify-center px-6 py-2.5 gap-3 bg-[#146F8A] text-white rounded-full text-[12px] font-medium leading-[16px] transition-all duration-300 hover:bg-[#115b71] active:scale-95 shadow-sm">
+            <a href="{{ route('register.index') }}" class="inline-flex items-center justify-center px-6 py-2.5 gap-3 bg-[#146F8A] text-white rounded-full text-[12px] font-medium leading-[16px] transition-all duration-300 hover:bg-[#115b71] active:scale-95 shadow-sm">
                 <span>Prueba Gintly</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M4.5 9L7.5 6L4.5 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </a>
 
-            <div class="flex flex-row items-start gap-4 pt-2">
-                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 1">
-                    <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
-                </a>
-                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 2">
-                    <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
-                </a>
-                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 3">
-                    <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
-                </a>
-                <a href="#" class="flex justify-center items-center w-11.5 h-[38px] border border-[#146F8A] rounded-full transition-all duration-300 hover:bg-white/10 group" aria-label="Red Social 4">
-                    <span class="text-[#A9D5E2] font-light text-[18px] group-hover:text-white">+</span>
-                </a>
-            </div>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-12 w-full md:w-auto md:grow">
@@ -1236,30 +1200,30 @@
             <div class="flex flex-col items-start gap-6">
                 <h4 class="font-semibold text-[18px] leading-[26px] text-white h-[26px]">Producto</h4>
                 <ul class="flex flex-col items-start gap-4 text-[16px] leading-[24px] text-[#C5D8DE]">
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Módulos</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Funcionalidades</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Integraciones</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Novedades / Updates</a></li>
+                    <li>Módulos</li>
+                    <li>Funcionalidades</li>
+                    <li>Integraciones</li>
+                    <li>Novedades / Updates</li>
                 </ul>
             </div>
 
             <div class="flex flex-col items-start gap-6">
                 <h4 class="font-semibold text-[18px] leading-[26px] text-white h-[26px]">Soluciones</h4>
                 <ul class="flex flex-col items-start gap-4 text-[16px] leading-[24px] text-[#C5D8DE]">
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Control Financiero</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Gestión de Inventario</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Flujos de Trabajo</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Métricas y Reportes</a></li>
+                    <li>Control Financiero</li>
+                    <li>Gestión de Inventario</li>
+                    <li>Flujos de Trabajo</li>
+                    <li>Métricas y Reportes</li>
                 </ul>
             </div>
 
             <div class="flex flex-col items-start gap-6 col-span-2 sm:col-span-1">
                 <h4 class="font-semibold text-[18px] leading-[26px] text-white h-[26px]">Recursos y Soporte</h4>
                 <ul class="flex flex-col items-start gap-4 text-[16px] leading-[24px] text-[#C5D8DE]">
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Centro de Ayuda</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Guías de Uso</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Atención a Clientes</a></li>
-                    <li><a href="#" class="inline-block transition-all duration-300 hover:text-white hover:translate-x-1">Preguntas Frecuentes</a></li>
+                    <li>Centro de Ayuda</li>
+                    <li>Guías de Uso</li>
+                    <li>Atención a Clientes</li>
+                    <li>Preguntas Frecuentes</li>
                 </ul>
             </div>
 
@@ -1273,10 +1237,10 @@
         <p class="font-semibold text-[18px] leading-[26px]">
             Journey Map creador de Gintly, un sitio <a href="https://www.gintly.com" target="_blank" class="hover:underline">https://www.gintly.com</a>
         </p>
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 font-normal">
-            <a href="#" class="transition-colors hover:text-white">Políticas de privacidad</a>
-            <a href="#" class="transition-colors hover:text-white">Aviso legal</a>
-            <a href="#" class="transition-colors hover:text-white">Políticas de cookies</a>
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 font-normal" aria-label="Información legal pendiente de publicación">
+            <span>Políticas de privacidad</span>
+            <span>Aviso legal</span>
+            <span>Políticas de cookies</span>
         </div>
     </div>
 </footer>
