@@ -1,6 +1,10 @@
 @extends('layouts.panel')
 
 @section('title', 'Catálogo de productos y datos maestros')
+@section('document-title', 'Catálogo de productos')
+@section('page-title', 'Catálogo de productos')
+@section('breadcrumb-root', 'Catálogo')
+@section('breadcrumb-current', 'Productos')
 @section('page-script', 'catalog/products')
 
 @section('content')
@@ -22,7 +26,7 @@
     ]));
 @endphp
 
-<main
+<section
     id="catalogProductsRoot"
     data-products-url="/api/products"
     data-export-url="{{ $exportEndpoint ?? '' }}"
@@ -134,5 +138,5 @@
             </table>
         </div>
     </section>
-</main>
+</section>
 @endsection

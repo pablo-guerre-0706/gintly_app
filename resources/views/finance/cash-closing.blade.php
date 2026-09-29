@@ -1,6 +1,10 @@
 @extends('layouts.panel')
 
 @section('title', 'Cierre de caja')
+@section('document-title', 'Cierre de caja')
+@section('page-title', 'Cierre de caja')
+@section('breadcrumb-root', 'Operación')
+@section('breadcrumb-current', 'Cierre de caja')
 @section('page-script', 'finance/cash-closing')
 
 @section('content')
@@ -25,10 +29,10 @@
     ];
 @endphp
 
-<main
+<section
     id="cashClosingRoot"
     data-close-url="{{ $closeEndpoint ?? '' }}"
-    <main class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7">
+    class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7"
 >
     <header class="mb-7">
         <h1 class="text-[27px] font-bold tracking-[-.035em] text-[#171717]">
@@ -140,5 +144,5 @@
             </dl>
         </aside>
     </form>
-</main>
+</section>
 @endsection

@@ -11,8 +11,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/modules/security/auth.js',
                 'resources/js/modules/registration/wizard.js',
-                'resources/js/modules/customers/create.js',
-                'resources/js/modules/dashboard/index.js'
+                'resources/js/modules/customers/create.js'
             ],
             refresh: true,
         }),

@@ -1,5 +1,6 @@
 import { initNotifications } from './core/notifications';
 import { initLoading } from './core/loading';
+import { initPanelShell } from './shell/panel-shell';
 
 const modules = import.meta.glob([
     './modules/catalog/products.js',
@@ -12,6 +13,7 @@ const modules = import.meta.glob([
 
 initNotifications();
 initLoading();
+initPanelShell();
 
 async function bootPage() {
     const page = document.documentElement.dataset.page?.trim();

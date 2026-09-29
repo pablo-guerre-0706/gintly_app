@@ -1,6 +1,10 @@
 @extends('layouts.panel')
 
 @section('title', 'Conciliación y stocks')
+@section('document-title', 'Conciliación de inventario')
+@section('page-title', 'Conciliación y stocks')
+@section('breadcrumb-root', 'Inventario')
+@section('breadcrumb-current', 'Conciliación y stocks')
 @section('page-script', 'inventory/reconciliation')
 
 @section('content')
@@ -18,17 +22,11 @@
     ]));
 @endphp
 
-<main
+<section
     id="inventoryReconciliationRoot"
     data-export-url="{{ $exportEndpoint ?? '' }}"
     class="mx-auto w-full max-w-7xl bg-stone-100 px-6 py-7"
 >
-    <nav class="mb-7 text-[10px] text-[#8A8A8A]" aria-label="Breadcrumb">
-        <span>Gintly</span>
-        <span class="mx-2">›</span>
-        <strong class="font-semibold text-[#333]">Inventario y bodega</strong>
-    </nav>
-
     <header class="mb-7">
         <h1 class="text-[28px] font-bold tracking-[-.035em] text-[#171717]">
             Conciliación y stocks
@@ -152,5 +150,5 @@
             </table>
         </div>
     </section>
-</main>
+</section>
 @endsection

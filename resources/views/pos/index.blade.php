@@ -1,6 +1,10 @@
 @extends('layouts.panel')
 
 @section('title', 'Puntos de venta')
+@section('document-title', 'Punto de venta')
+@section('page-title', 'Punto de venta')
+@section('breadcrumb-root', 'Operación')
+@section('breadcrumb-current', 'Punto de venta')
 @section('page-script', 'pos/index')
 
 @section('content')
@@ -8,7 +12,7 @@
     $categories = ['Todos', 'Café', 'Bebidas', 'Comida', 'Postres'];
 @endphp
 
-<main
+<section
     id="posRoot"
     data-tax-rate="{{ $taxRate ?? '0.0000' }}"
     data-checkout-url="{{ $checkoutEndpoint ?? '' }}"
@@ -143,5 +147,5 @@
             class="mt-5 grid gap-3 md:grid-cols-2"
         ></div>
     </section>
-</main>
+</section>
 @endsection

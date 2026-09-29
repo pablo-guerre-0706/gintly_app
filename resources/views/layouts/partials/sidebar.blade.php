@@ -1,154 +1,77 @@
-@php
-    /**
-     * SIMULADOR DE ROLES Y PUESTOS (Cambia los valores para probar localmente)
-     * Roles principales: 'rol-01' (Propietario), 'rol-02' (Administrador), 'rol-03' (Usuario Operativo)
-     * Puestos para rol-03: 'cajero', 'facturador', 'bodeguero', 'despachador'
-     */
-    $currentRole = $currentRole ?? 'rol-01'; 
-    $puesto = $puesto ?? 'cajero'; 
-@endphp
+<aside
+    id="panel-sidebar"
+    class="shell-sidebar fixed inset-y-0 start-0 z-[60] flex h-dvh min-h-0 flex-col overflow-hidden bg-gintly-sidebar text-white shadow-[18px_0_48px_rgb(8_44_55/0.22)] transition-[width,transform] duration-200"
+    data-shell-sidebar
+    aria-label="Navegación principal"
+    tabindex="-1"
+>
+    <div class="flex h-[88px] shrink-0 items-center gap-3 border-b border-white/10 px-4">
+        <a
+            href="{{ route('dashboard') }}"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active"
+            aria-label="Gintly, ir al panel"
+            data-sidebar-link
+            data-nav-tooltip="Panel"
+        >
+            <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-gintly-brand text-xl" aria-hidden="true">
+                <i class="fa-solid fa-g" aria-hidden="true"></i>
+            </span>
+            <span class="shell-sidebar-label min-w-0">
+                <span class="block truncate text-xl font-semibold tracking-tight">Gintly</span>
+                <span class="block truncate text-xs text-white/65">Gestión empresarial</span>
+            </span>
+        </a>
 
-<!-- Contenedor Principal: Ancho fijo de 64 (w-64) o ajustable a tus 337px de Figma -->
-<div class="flex h-[880px] w-[337px] flex-col justify-between bg-[#041d26] p-6 text-slate-300 font-sans select-none border-r border-[#082d3b]">
- 
-    <!-- CONTENEDOR SUPERIOR -->
-    <div class="flex flex-col gap-6">
-        
-        <!-- Header: Logo e Icono de Menú -->
-        <div class="flex items-center justify-between px-2 pb-2">
-            <!-- Icono de Gintly (Capas apiladas como en la imagen) -->
-            <div class="flex items-center gap-3">
-                <div class="text-teal-400 text-xl">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <span class="text-sm font-bold tracking-wider text-white">GINTLY</span>
-            </div>
-            <!-- Icono de Menú Hamburguesa Derecho -->
-            <button class="text-slate-400 hover:text-white transition">
-                <i class="fa-solid fa-bars-staggered text-sm"></i>
+        <button
+            type="button"
+            class="grid size-11 shrink-0 place-items-center rounded-xl text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active"
+            data-sidebar-toggle
+            data-nav-tooltip="Contraer navegación"
+            aria-controls="panel-sidebar"
+            aria-expanded="true"
+            aria-label="Contraer navegación"
+        >
+            <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <div class="min-h-0 flex-1 overflow-y-auto px-3 py-5">
+        <div class="space-y-3 px-2" data-sidebar-loading aria-live="polite">
+            <span class="sr-only">Cargando navegación</span>
+            <div class="h-11 animate-pulse rounded-xl bg-white/10"></div>
+            <div class="h-11 animate-pulse rounded-xl bg-white/10"></div>
+            <div class="h-11 animate-pulse rounded-xl bg-white/10"></div>
+        </div>
+
+        <div class="rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white" data-sidebar-error role="alert" hidden>
+            <p class="font-semibold">No fue posible cargar tu acceso.</p>
+            <p class="mt-1 text-white/70" data-sidebar-error-message>Comprueba tu conexión e inténtalo otra vez.</p>
+            <button
+                type="button"
+                class="mt-4 min-h-11 rounded-xl bg-white px-4 py-2 font-semibold text-gintly-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active"
+                data-session-retry
+            >
+                Reintentar
             </button>
         </div>
 
-        <!-- Botón Único de Dashboard (Superior) -->
-        @if($currentRole === 'rol-01' || $currentRole === 'rol-02')
-            <div class="px-1">
-                <a href="{{ route('dashboard') }}" class="flex h-11 items-center rounded-xl bg-linear-to-r from-cyan-950/60 to-cyan-800/40 px-3 text-xs font-semibold text-white border border-cyan-800/30 transition hover:from-cyan-900/80 hover:to-cyan-700/50">
-                    <i class="fa-solid fa-border-all mr-3 text-sm text-cyan-400"></i> Dashboard
-                </a>
-            </div>
-        @endif
-
-        <hr class="border-[#082d3b] mx-1">
-
-        <!-- SECCIÓN GENERAL -->
-        <nav class="flex flex-col gap-1" aria-label="Navegación general">
-            <p class="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">General</p>
-
-            <!-- ACCESOS DE PROPIETARIO Y ADMINISTRADOR COMPLETO -->
-            @if($currentRole === 'rol-01' || $currentRole === 'rol-02')
-                <!-- Compras -->
-                <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                    <span class="flex items-center"><i class="fa-solid fa-cart-shopping mr-3 w-4 text-center group-hover:text-cyan-400"></i> Compras y proveedores</span>
-                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                </button>
-
-                <!-- Ventas -->
-                <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                    <span class="flex items-center"><i class="fa-solid fa-chart-line mr-3 w-4 text-center group-hover:text-cyan-400"></i> Ventas y operaciones</span>
-                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                </button>
-
-                <!-- Inventario y Bodega -->
-                <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                    <span class="flex items-center"><i class="fa-solid fa-box-archive mr-3 w-4 text-center group-hover:text-cyan-400"></i> Inventario y bodega</span>
-                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                </button>
-
-                <!-- Personal (Solo Propietario) -->
-                @if($currentRole === 'rol-01')
-                    <a href="#" class="flex h-11 items-center rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                        <i class="fa-solid fa-user-gear mr-3 w-4 text-center group-hover:text-cyan-400"></i> Personal
-                    </a>
-                @endif
-            @endif
-
-            <!-- ACCESOS FILTRADOS PARA ROL OPERATIVO (rol-03) -->
-            @if($currentRole === 'rol-03')
-                
-                <!-- Vistas específicas del Cajero -->
-                @if($puesto === 'cajero')
-                    <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                        <span class="flex items-center"><i class="fa-solid fa-cash-register mr-3 w-4 text-center"></i> Caja y Ventas</span>
-                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                    <a href="{{ route('catalog.products') }}" class="flex h-11 items-center rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white"><i class="fa-solid fa-boxes-stacked mr-3 w-4 text-center"></i> Catálogo</a>
-                @endif
-
-                <!-- Vistas específicas del Facturador -->
-                @if($puesto === 'facturador')
-                    <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                        <span class="flex items-center"><i class="fa-solid fa-file-invoice-dollar mr-3 w-4 text-center"></i> Facturación</span>
-                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                    <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                        <span class="flex items-center"><i class="fa-solid fa-users mr-3 w-4 text-center"></i> Clientes</span>
-                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                @endif
-
-                <!-- Vistas específicas del Bodeguero -->
-                @if($puesto === 'bodeguero')
-                    <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                        <span class="flex items-center"><i class="fa-solid fa-boxes-packing mr-3 w-4 text-center"></i> Gestión Stock</span>
-                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                @endif
-
-                <!-- Vistas específicas del Despachador -->
-                @if($puesto === 'despachador')
-                    <button class="flex h-11 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white group">
-                        <span class="flex items-center"><i class="fa-solid fa-truck-ramp-box mr-3 w-4 text-center"></i> Logística y Envíos</span>
-                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                @endif
-
-            @endif
-        </nav>
-
-        <!-- SECCIÓN HERRAMIENTAS -->
-        <nav class="flex flex-col gap-1" aria-label="Herramientas y soporte">
-            <p class="px-3 pb-2 pt-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Herramientas</p>
-
-            <a href="#" class="flex h-11 items-center rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white">
-                <i class="fa-solid fa-triangle-exclamation mr-3 w-4 text-center"></i> Centro de Alertas
-            </a>
-
-            @if($currentRole === 'rol-01' || $currentRole === 'rol-02')
-                <a href="#" class="flex h-11 items-center rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white">
-                    <i class="fa-solid fa-gear mr-3 w-4 text-center"></i> Configuración
-                </a>
-            @endif
-
-            <!-- Switch de Modo Oscuro tal cual la imagen -->
-            <div class="flex h-11 items-center justify-between rounded-xl px-3 text-xs font-medium text-slate-400">
-                <span class="flex items-center"><i class="fa-solid fa-moon mr-3 w-4 text-center"></i> Modo oscuro</span>
-                <label class="relative inline-flex cursor-pointer items-center">
-                    <input type="checkbox" checked class="peer sr-only">
-                    <div class="h-5 w-9 rounded-full bg-slate-800 border border-slate-700 after:absolute after:top-[4px] after:left-[4px] after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-all peer-checked:bg-cyan-500 peer-checked:after:translate-x-4"></div>
-                </label>
-            </div>
-
-            <a href="#" class="flex h-11 items-center rounded-xl px-3 text-xs font-medium text-slate-400 transition hover:bg-[#072834] hover:text-white">
-                <i class="fa-solid fa-circle-question mr-3 w-4 text-center"></i> Centro de ayuda
-            </a>
-        </nav>
+        <nav class="space-y-6" aria-label="Secciones del panel" data-sidebar-navigation hidden></nav>
     </div>
 
-    <!-- CONTENEDOR INFERIOR: LOGOUT -->
-    <div class="border-t border-[#082d3b] pt-4">
-        <a href="{{ route('login') }}" class="flex h-11 items-center rounded-xl px-3 text-xs font-semibold text-slate-300 transition hover:bg-red-950/20 hover:text-red-400 group">
-            <i class="fa-solid fa-arrow-right-from-bracket mr-3 w-4 text-center text-slate-400 group-hover:text-red-400"></i> Salir de la cuenta
-        </a>
+    <div class="shrink-0 border-t border-white/10 p-3">
+        <button
+            type="button"
+            class="flex min-h-11 w-full items-center gap-3 rounded-[14px] pe-3 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active"
+            data-logout
+            data-sidebar-logout
+            data-nav-tooltip="Cerrar sesión"
+            hidden
+        >
+            <span class="grid size-11 shrink-0 place-items-center" aria-hidden="true">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </span>
+            <span class="shell-sidebar-label" data-logout-label>Cerrar sesión</span>
+            <i class="fa-solid fa-circle-notch fa-spin ms-auto" data-logout-spinner aria-hidden="true" hidden></i>
+        </button>
     </div>
-
-</div>
+</aside>

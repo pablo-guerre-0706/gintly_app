@@ -1,56 +1,68 @@
+@php
+    $legacyTitle = trim($__env->yieldContent('title', 'Panel'));
+    $documentTitle = trim($__env->yieldContent('document-title', $legacyTitle));
+    $pageTitle = trim($__env->yieldContent('page-title', $legacyTitle));
+    $breadcrumbRoot = trim($__env->yieldContent('breadcrumb-root', 'Gintly'));
+    $breadcrumbCurrent = trim($__env->yieldContent('breadcrumb-current', $pageTitle));
+    $pageScript = trim($__env->yieldContent('page-script', ''));
+@endphp
 <!DOCTYPE html>
-<html
-    lang="es"
-    data-page="@yield('page-script')"
->
+<html lang="es" data-page="{{ $pageScript }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'ERP Multitenant') - Sistema</title>
-
-    <!-- Metadatos de infraestructura para el cliente HTTP Fetch -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="api-base-url" content="{{ url('/api/v1') }}">
-    <meta name="login-url" content="{{ url('/login') }}">
-
-    <!-- Inyección única y automática de Assets compilados por Vite -->
-    @vite([
-        'resources/css/app.css',
-        'resources/js/app.js',
-    ])
+    <meta name="login-url" content="{{ route('login') }}">
+    <title>{{ $documentTitle }} · Gintly</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
 </head>
-<body class="bg-stone-100 font-sans antialiased text-neutral-900">
+<body class="min-h-dvh bg-slate-50 font-sans text-gintly-text-primary antialiased">
+    <a class="fixed start-3 top-3 z-[10000] -translate-y-[200%] rounded-xl bg-white px-4 py-3 font-bold text-gintly-sidebar shadow-xl transition-transform focus:translate-y-0" href="#main-content">Saltar al contenido</a>
 
-    <!-- Contenedor maestro de la aplicación -->
-        <div class="mx-auto flex min-h-screen max-w-full bg-white shadow-sm overflow-hidden">
+    <div
+        class="shell-layout relative min-h-dvh bg-slate-50 transition-[padding-inline-start] duration-200"
+        data-panel-shell
+        data-url-login="{{ route('login') }}"
+        data-url-dashboard="{{ route('dashboard') }}"
+        data-url-pos="{{ route('pos.index') }}"
+        data-url-cash-closing="{{ route('finance.cash-closing') }}"
+        data-url-customers="{{ route('web.customers.index') }}"
+        data-url-customer-create="{{ route('web.customers.create') }}"
+        data-url-inventory-reconciliation="{{ route('inventory.reconciliation') }}"
+        data-url-catalog-products="{{ route('catalog.products') }}"
+    >
+        @include('layouts.partials.sidebar')
 
-        <!-- COMPONENTE SIDEBAR GLOBAL (Ancho estándar de barra lateral) -->
-        <aside class="w-64 min-h-screen bg-slate-900 text-white shrink-0">
-            @include('layouts.partials.sidebar')
-        </aside>
+        <div class="flex min-h-dvh min-w-0 flex-col" data-shell-surface>
+            @include('layouts.partials.navbar', [
+                'pageTitle' => $pageTitle,
+                'breadcrumbRoot' => $breadcrumbRoot,
+                'breadcrumbCurrent' => $breadcrumbCurrent,
+            ])
 
-        <!-- PANEL DERECHO CONSOLIDADO (Navbar + Contenido Central + Footer) -->
-        <div class="flex flex-1 flex-col bg-stone-100">
-
-            <!-- COMPONENTE NAVBAR GLOBAL (Alto estándar de cabecera) -->
-            <header class="h-24 bg-white border-b border-neutral-200 flex items-center px-8 shrink-0">
-                @include('layouts.partials.navbar')
-            </header>
-
-            <!-- CONTENIDO DINÁMICO DE CADA VISTA (Tus KPIs y pantallas pequeñas) -->
-            <main class="flex-1 bg-stone-100">
-                <div class="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+            <main id="main-content" class="min-w-0 flex-1" tabindex="-1">
+                <div class="mx-auto w-full max-w-[1512px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
                     @yield('content')
                 </div>
             </main>
 
-            <!-- 4. COMPONENTE FOOTER GLOBAL (Alto estándar de pie de página) -->
-            <footer class="h-20 bg-white border-t border-neutral-200 flex items-center px-8 shrink-0">
-                @include('layouts.partials.footer')
-            </footer>
-
+            @include('layouts.partials.footer')
         </div>
+
+        <button
+            type="button"
+            class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-[2px]"
+            data-shell-backdrop
+            aria-label="Cerrar navegación"
+            tabindex="-1"
+            hidden
+        ></button>
+
+        <div id="sidebar-tooltip" class="fixed z-[100] max-w-[220px] rounded-lg bg-black px-2.5 py-2 text-xs/5 text-white shadow-xl" data-sidebar-tooltip role="tooltip" hidden></div>
     </div>
+
     @stack('scripts')
 </body>
 </html>

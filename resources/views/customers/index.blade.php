@@ -1,11 +1,15 @@
 @extends('layouts.panel')
 
 @section('title', 'Clientes y Fidelidad')
+@section('document-title', 'Clientes')
+@section('page-title', 'Clientes y fidelidad')
+@section('breadcrumb-root', 'Operación')
+@section('breadcrumb-current', 'Clientes')
 @section('page-script', 'customers/index')
 
 @section('content')
 
-<main
+<section
     id="customersRoot"
     data-customers-url="{{ $customersEndpoint ?? route('customers.index') }}"
     class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7"
@@ -102,5 +106,5 @@
             </div>
         </aside>
     </section>
-</main>
+</section>
 @endsection

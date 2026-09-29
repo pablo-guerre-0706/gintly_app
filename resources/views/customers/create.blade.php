@@ -1,9 +1,13 @@
 @extends('layouts.panel')
 
 @section('title', 'Registrar Cliente')
+@section('document-title', 'Registrar cliente')
+@section('page-title', 'Registrar cliente')
+@section('breadcrumb-root', 'Clientes')
+@section('breadcrumb-current', 'Registrar cliente')
 
 @section('content')
-<main class="mx-auto w-full max-w-4xl bg-stone-100 px-6 py-7">
+<section class="mx-auto w-full max-w-4xl bg-stone-100 px-6 py-7">
     <header class="mb-7">
         <h1 class="text-[28px] font-bold tracking-[-.035em] text-[#171717]">Nuevo Cliente</h1>
         <p class="mt-1.5 text-[10px] leading-5 text-[#777]">Registre los datos del cliente. Los campos con asterisco (*) son requeridos.</p>
@@ -84,7 +88,7 @@
             </div>
         </form>
     </div>
-</main>
+</section>
 @endsection
 @push('scripts')
     @vite(['resources/js/modules/customers/create.js'])

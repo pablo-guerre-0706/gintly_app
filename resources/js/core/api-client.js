@@ -213,7 +213,7 @@ async function fetchJson(
     }
 }
 
-export async function initializeCsrf({ timeout = 30000 } = {}) {
+export async function initializeCsrf({ timeout = 30000, dispatchErrors = true } = {}) {
     try {
         return await fetchJson(csrfUrl(), { timeout });
     } catch (error) {
@@ -221,7 +221,9 @@ export async function initializeCsrf({ timeout = 30000 } = {}) {
             ? error
             : networkError(error);
 
-        dispatchError(normalized);
+        if (dispatchErrors) {
+            dispatchError(normalized);
+        }
         throw normalized;
     }
 }
@@ -234,6 +236,7 @@ export async function request(
         headers = {},
         timeout = 30000,
         redirectOn401 = true,
+        dispatchErrors = true,
     } = {},
 ) {
     const verb = method.toUpperCase();
@@ -263,7 +266,9 @@ export async function request(
             }
         }
 
-        dispatchError(normalized);
+        if (dispatchErrors) {
+            dispatchError(normalized);
+        }
         throw normalized;
     }
 }

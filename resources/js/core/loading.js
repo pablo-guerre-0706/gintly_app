@@ -1,6 +1,8 @@
+import { lockScroll, unlockScroll } from './scroll-lock';
+
 let initialized = false;
 let lockDepth = 0;
-let previousOverflow = '';
+const LOADING_LOCK = Symbol('global-loading');
 
 const buttonStates = new WeakMap();
 
@@ -65,8 +67,7 @@ export function showLoading({
     lockDepth += 1;
 
     if (lockDepth === 1) {
-        previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        lockScroll(LOADING_LOCK);
     }
 
     const label = element.querySelector('[data-loading-message]');
@@ -97,7 +98,7 @@ export function hideLoading({
     element.classList.remove('flex');
     element.setAttribute('aria-hidden', 'true');
 
-    document.body.style.overflow = previousOverflow;
+    unlockScroll(LOADING_LOCK);
 }
 
 export async function withLoading(
