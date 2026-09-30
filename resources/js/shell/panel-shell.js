@@ -2,10 +2,13 @@ import { ApiError } from '@/core/api-client';
 import { notify } from '@/core/notifications';
 import { getSessionContext, SessionContextError } from '@/core/session-context';
 import { AccountMenuController } from './account-menu-controller';
+import { AnomalyBellController } from './anomaly-bell-controller';
 import { initLogout } from './logout';
-import { authorizedNavigation, flattenedNavigation } from './navigation';
+import { authorizedNavigation, flattenedNavigation, isCurrentPageAuthorized } from './navigation';
 import { SearchController } from './search-controller';
 import { SidebarController } from './sidebar-controller';
+
+let shellPromise = null;
 
 function contextErrorMessage(error) {
     if (error instanceof ApiError) {
@@ -30,16 +33,35 @@ class PanelShellCoordinator {
             dashboard: root.dataset.urlDashboard,
             pos: root.dataset.urlPos,
             cashClosing: root.dataset.urlCashClosing,
+            salesSummary: root.dataset.urlSalesSummary,
             customers: root.dataset.urlCustomers,
             customerCreate: root.dataset.urlCustomerCreate,
             inventoryReconciliation: root.dataset.urlInventoryReconciliation,
+            inventorySummary: root.dataset.urlInventorySummary,
             catalogProducts: root.dataset.urlCatalogProducts,
+            purchasesHub: root.dataset.urlPurchasesHub,
+            financeHub: root.dataset.urlFinanceHub,
+            cashOverview: root.dataset.urlCashOverview,
+            receivables: root.dataset.urlReceivables,
+            payables: root.dataset.urlPayables,
+            intelligenceHub: root.dataset.urlIntelligenceHub,
+            suppliers: root.dataset.urlSuppliers,
+            externalSuppliers: root.dataset.urlExternalSuppliers,
+            anomalies: root.dataset.urlAnomalies,
+            audit: root.dataset.urlAudit,
+            organizationHub: root.dataset.urlOrganizationHub,
+            configurationHub: root.dataset.urlConfigurationHub,
+            help: root.dataset.urlHelp,
+            users: root.dataset.urlUsers,
+            profiles: root.dataset.urlProfiles,
+            branches: root.dataset.urlBranches,
         };
 
         this.sidebar = new SidebarController(root, {
             onBeforeOpen: () => {
                 this.account.close();
                 this.search.close();
+                this.anomalyBell.close();
             },
             onRetry: () => this.loadContext({ refresh: true }),
         });
@@ -47,12 +69,21 @@ class PanelShellCoordinator {
             onBeforeOpen: () => {
                 this.sidebar.close();
                 this.account.close();
+                this.anomalyBell.close();
             },
         });
         this.account = new AccountMenuController({
             onBeforeOpen: () => {
                 this.sidebar.close();
                 this.search.close();
+                this.anomalyBell.close();
+            },
+        });
+        this.anomalyBell = new AnomalyBellController({
+            onBeforeOpen: () => {
+                this.sidebar.close();
+                this.search.close();
+                this.account.close();
             },
         });
     }
@@ -61,13 +92,14 @@ class PanelShellCoordinator {
         this.sidebar.init();
         this.search.init();
         this.account.init();
+        this.anomalyBell.init();
 
         initLogout({
             loginUrl: this.root.dataset.urlLogin,
             beforeLogout: () => this.closeTransientSurfaces(),
         });
 
-        this.loadContext();
+        return this.loadContext();
     }
 
     loadContext({ refresh = false } = {}) {
@@ -91,11 +123,19 @@ class PanelShellCoordinator {
         this.sidebar.renderNavigation(groups);
         this.search.setItems(items);
         this.account.render(context);
+        this.anomalyBell.setContext(context);
         this.setReady();
+
+        if (!isCurrentPageAuthorized(context, this.urls)) {
+            this.renderAccessDenied();
+            return false;
+        }
 
         document.dispatchEvent(new CustomEvent('gintly:session-ready', {
             detail: context,
         }));
+
+        return true;
     }
 
     applyContextError(error) {
@@ -104,6 +144,7 @@ class PanelShellCoordinator {
         this.sidebar.setError(message);
         this.search.setEnabled(false);
         this.account.setEnabled(false);
+        this.anomalyBell.setUnavailable();
         this.setLogoutVisible(false);
 
         notify({
@@ -112,12 +153,39 @@ class PanelShellCoordinator {
             message,
             persistent: true,
         });
+
+        return false;
+    }
+
+    renderAccessDenied() {
+        const main = document.querySelector('#main-content');
+        const wrapper = document.createElement('div');
+        const card = document.createElement('section');
+        const title = document.createElement('h1');
+        const message = document.createElement('p');
+        const link = document.createElement('a');
+
+        wrapper.className = 'mx-auto w-full max-w-[1512px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8';
+        card.className = 'rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950';
+        card.setAttribute('role', 'alert');
+        title.className = 'text-lg font-bold';
+        title.textContent = 'Vista no disponible para tu experiencia';
+        message.className = 'mt-2 text-sm leading-6';
+        message.textContent = 'Este destino no corresponde al rol, las capacidades o los perfiles del contexto autenticado.';
+        link.className = 'mt-4 inline-flex min-h-11 items-center rounded-xl bg-gintly-brand px-4 text-sm font-semibold text-white';
+        link.href = this.urls.dashboard;
+        link.textContent = 'Volver al dashboard';
+        card.append(title, message, link);
+        wrapper.appendChild(card);
+        main?.replaceChildren(wrapper);
+        main?.focus();
     }
 
     setLoading() {
         this.sidebar.setLoading();
         this.search.setEnabled(false);
         this.account.setEnabled(false);
+        this.anomalyBell.setUnavailable();
         this.setLogoutVisible(false);
     }
 
@@ -136,6 +204,7 @@ class PanelShellCoordinator {
 
     closeTransientSurfaces() {
         this.account.close();
+        this.anomalyBell.close();
         this.search.close();
         this.sidebar.close();
     }
@@ -144,8 +213,10 @@ class PanelShellCoordinator {
 export function initPanelShell() {
     const root = document.querySelector('[data-panel-shell]');
 
-    if (!root || root.dataset.shellInitialized === 'true') return;
+    if (!root) return Promise.resolve(true);
+    if (shellPromise) return shellPromise;
 
     root.dataset.shellInitialized = 'true';
-    new PanelShellCoordinator(root).init();
+    shellPromise = new PanelShellCoordinator(root).init();
+    return shellPromise;
 }

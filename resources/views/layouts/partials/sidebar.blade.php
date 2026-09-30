@@ -13,8 +13,14 @@
             data-sidebar-link
             data-nav-tooltip="Panel"
         >
-            <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-gintly-brand text-xl" aria-hidden="true">
-                <i class="fa-solid fa-g" aria-hidden="true"></i>
+            <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-gintly-brand/20 p-1.5">
+                <img
+                    src="{{ asset('images/logo.png') }}"
+                    alt="Gintly"
+                    class="size-full object-contain"
+                    width="86"
+                    height="94"
+                >
             </span>
             <span class="shell-sidebar-label min-w-0">
                 <span class="block truncate text-xl font-semibold tracking-tight">Gintly</span>
@@ -35,7 +41,7 @@
         </button>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto px-3 py-5">
+    <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <div class="space-y-3 px-2" data-sidebar-loading aria-live="polite">
             <span class="sr-only">Cargando navegación</span>
             <div class="h-11 animate-pulse rounded-xl bg-white/10"></div>
@@ -55,23 +61,6 @@
             </button>
         </div>
 
-        <nav class="space-y-6" aria-label="Secciones del panel" data-sidebar-navigation hidden></nav>
-    </div>
-
-    <div class="shrink-0 border-t border-white/10 p-3">
-        <button
-            type="button"
-            class="flex min-h-11 w-full items-center gap-3 rounded-[14px] pe-3 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active"
-            data-logout
-            data-sidebar-logout
-            data-nav-tooltip="Cerrar sesión"
-            hidden
-        >
-            <span class="grid size-11 shrink-0 place-items-center" aria-hidden="true">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i>
-            </span>
-            <span class="shell-sidebar-label" data-logout-label>Cerrar sesión</span>
-            <i class="fa-solid fa-circle-notch fa-spin ms-auto" data-logout-spinner aria-hidden="true" hidden></i>
-        </button>
+        <nav class="space-y-2" aria-label="Secciones del panel" data-sidebar-navigation hidden></nav>
     </div>
 </aside>

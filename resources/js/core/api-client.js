@@ -138,6 +138,7 @@ function networkError(error) {
         message: timedOut
             ? 'La solicitud tardó demasiado tiempo. Intente nuevamente.'
             : defaultMessage(0),
+        code: timedOut ? 'request_aborted' : null,
         payload: null,
     });
 }
@@ -161,12 +162,20 @@ async function fetchJson(
         data = null,
         headers = {},
         timeout = 30000,
+        signal = null,
     } = {},
 ) {
     const verb = method.toUpperCase();
     const hasBody = !['GET', 'HEAD'].includes(verb) && data !== null;
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), timeout);
+    const abortFromCaller = () => controller.abort();
+
+    if (signal?.aborted) {
+        controller.abort();
+    } else {
+        signal?.addEventListener('abort', abortFromCaller, { once: true });
+    }
     const requestHeaders = new Headers({
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
@@ -210,6 +219,7 @@ async function fetchJson(
         throw networkError(error);
     } finally {
         window.clearTimeout(timer);
+        signal?.removeEventListener('abort', abortFromCaller);
     }
 }
 
@@ -235,6 +245,7 @@ export async function request(
         data = null,
         headers = {},
         timeout = 30000,
+        signal = null,
         redirectOn401 = true,
         dispatchErrors = true,
     } = {},
@@ -252,6 +263,7 @@ export async function request(
             data: ['GET', 'HEAD'].includes(verb) ? null : data,
             headers,
             timeout,
+            signal,
         });
     } catch (error) {
         const normalized = error instanceof ApiError

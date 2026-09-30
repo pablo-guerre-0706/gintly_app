@@ -84,6 +84,81 @@
             </div>
         </div>
 
+        <div class="relative" data-anomaly-bell data-search-background hidden>
+            <button
+                type="button"
+                class="relative grid size-11 place-items-center rounded-xl text-gintly-text-secondary transition hover:bg-gintly-control hover:text-gintly-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand disabled:cursor-wait disabled:opacity-60"
+                data-anomaly-trigger
+                aria-controls="anomaly-quick-view"
+                aria-expanded="false"
+                aria-haspopup="dialog"
+                aria-label="Consultar anomalías activas"
+                disabled
+            >
+                <i class="fa-regular fa-bell text-lg" aria-hidden="true"></i>
+                <span
+                    class="absolute end-0 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+                    data-anomaly-count
+                    aria-hidden="true"
+                    hidden
+                ></span>
+            </button>
+
+            <section
+                id="anomaly-quick-view"
+                class="absolute end-0 top-[calc(100%+0.75rem)] z-[70] w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                data-anomaly-panel
+                role="dialog"
+                aria-label="Anomalías activas"
+                hidden
+            >
+                <header class="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4">
+                    <div class="min-w-0">
+                        <h2 class="font-semibold text-gintly-text-primary">Alertas de anomalías</h2>
+                        <p class="mt-1 truncate text-xs text-gintly-text-secondary" data-anomaly-summary>
+                            Consultando estados activos…
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="grid size-11 shrink-0 place-items-center rounded-xl text-gintly-text-secondary transition hover:bg-gintly-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand"
+                        data-anomaly-refresh
+                        aria-label="Actualizar anomalías"
+                    >
+                        <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                    </button>
+                </header>
+
+                <div class="max-h-[min(65dvh,520px)] overflow-y-auto p-4">
+                    <div class="space-y-3" data-anomaly-loading>
+                        <span class="sr-only">Cargando anomalías</span>
+                        @for ($i = 0; $i < 3; $i++)
+                            <div class="h-[74px] animate-pulse rounded-xl bg-slate-100"></div>
+                        @endfor
+                    </div>
+
+                    <p class="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm text-emerald-800" data-anomaly-empty hidden>
+                        No hay anomalías activas.
+                    </p>
+
+                    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" data-anomaly-error role="alert" hidden>
+                        <p data-anomaly-error-message>No fue posible consultar las anomalías.</p>
+                        <button
+                            type="button"
+                            class="mt-3 min-h-11 rounded-xl border border-red-300 bg-white px-4 py-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                            data-anomaly-retry
+                        >
+                            Reintentar
+                        </button>
+                    </div>
+
+                    <ul class="space-y-3" data-anomaly-list hidden></ul>
+                </div>
+
+                <p class="sr-only" data-anomaly-live aria-live="polite"></p>
+            </section>
+        </div>
+
         <div class="relative" data-search-background>
             <button
                 type="button"

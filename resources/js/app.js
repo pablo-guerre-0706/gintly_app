@@ -5,17 +5,28 @@ import { initPanelShell } from './shell/panel-shell';
 const modules = import.meta.glob([
     './modules/catalog/products.js',
     './modules/customers/index.js',
+    './modules/dashboard/owner.js',
     './modules/finance/cash-closing.js',
+    './modules/hubs/index.js',
     './modules/inventory/reconciliation.js',
     './modules/landing/index.js',
+    './modules/organization/branches/index.js',
+    './modules/organization/users/access.js',
+    './modules/organization/users/create.js',
+    './modules/organization/users/index.js',
     './modules/pos/index.js',
+    './modules/reports/summary.js',
+    './modules/supervision/resource-list.js',
+    './modules/suppliers/explore.js',
 ]);
 
 initNotifications();
 initLoading();
-initPanelShell();
 
 async function bootPage() {
+    const shellReady = await initPanelShell();
+    if (shellReady === false) return;
+
     const page = document.documentElement.dataset.page?.trim();
 
     if (!page) {

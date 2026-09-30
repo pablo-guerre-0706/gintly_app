@@ -32,6 +32,7 @@ export class SidebarController {
         this.onBeforeOpen = onBeforeOpen;
         this.onRetry = onRetry;
         this.drawerOpener = null;
+        this.openGroupKey = null;
 
         this.mobileMedia = window.matchMedia('(max-width: 1023px)');
         this.desktopMedia = window.matchMedia('(min-width: 1280px)');
@@ -52,10 +53,28 @@ export class SidebarController {
         this.retryButton?.addEventListener('click', () => this.onRetry?.());
 
         this.navigation?.addEventListener('click', (event) => {
+            const groupTrigger = event.target.closest('[data-sidebar-group-trigger]');
+
+            if (groupTrigger) {
+                this.toggleGroup(groupTrigger.dataset.sidebarGroupTrigger);
+                return;
+            }
+
             if (event.target.closest('a[href]')) {
                 this.closeDrawer();
                 this.closeRailOverlay();
             }
+        });
+        this.navigation?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || !this.openGroupKey) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            const key = this.openGroupKey;
+            this.setOpenGroup(null);
+            this.navigation
+                .querySelector(`[data-sidebar-group-trigger="${key}"]`)
+                ?.focus();
         });
 
         this.sidebar.addEventListener('pointerover', (event) => {
@@ -198,6 +217,43 @@ export class SidebarController {
         this.closeRailOverlay({ restoreFocus });
     }
 
+    ensureExpandedForGroup() {
+        if (!this.isRailMode()) return;
+
+        if (this.desktopMedia.matches) {
+            this.persistPreference(false);
+            this.updateControls();
+            this.hideTooltip();
+            return;
+        }
+
+        this.openRailOverlay();
+    }
+
+    toggleGroup(key) {
+        if (!key) return;
+
+        this.ensureExpandedForGroup();
+        this.setOpenGroup(this.openGroupKey === key ? null : key);
+    }
+
+    setOpenGroup(key) {
+        this.openGroupKey = key;
+
+        this.navigation
+            ?.querySelectorAll('[data-sidebar-group-trigger]')
+            .forEach((trigger) => {
+                const isOpen = trigger.dataset.sidebarGroupTrigger === key;
+                trigger.setAttribute('aria-expanded', String(isOpen));
+                trigger.closest('[data-sidebar-group]')
+                    ?.classList.toggle('is-open', isOpen);
+
+                const panelId = trigger.getAttribute('aria-controls');
+                const panel = panelId ? document.getElementById(panelId) : null;
+                if (panel) panel.hidden = !isOpen;
+            });
+    }
+
     syncResponsiveState() {
         if (!this.mobileMedia.matches) {
             this.closeDrawer();
@@ -316,47 +372,120 @@ export class SidebarController {
     renderNavigation(groups) {
         this.navigation.replaceChildren();
         const currentPath = normalizedPath(window.location.href);
+        let activeGroup = null;
 
-        groups.forEach((group) => {
-            const section = document.createElement('section');
-            const heading = document.createElement('h2');
-            const list = document.createElement('ul');
+        const isActive = (entry) => {
+            const paths = entry.activePaths?.length > 0
+                ? entry.activePaths
+                : [normalizedPath(entry.url)];
 
-            heading.className = 'shell-sidebar-label px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500';
-            heading.textContent = group.label;
-            list.className = 'mt-2 space-y-1';
+            return paths.some((path) => (
+                path && (
+                    currentPath === path ||
+                    (entry.exact !== true && currentPath.startsWith(`${path}/`))
+                )
+            ));
+        };
 
-            group.items.forEach((item) => {
+        const createLink = (entry, nested = false) => {
+            const link = document.createElement('a');
+            const icon = document.createElement('i');
+            const label = document.createElement('span');
+            const active = isActive(entry);
+
+            link.href = entry.url;
+            link.className = [
+                'shell-nav-link flex min-h-11 items-center gap-3 rounded-[14px] text-sm font-medium no-underline transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active',
+                nested ? 'px-3 py-2.5 ps-5' : 'px-3 py-2.5',
+                active
+                    ? 'bg-gintly-active font-bold text-gintly-sidebar'
+                    : 'text-white/75 hover:bg-white/10 hover:text-white',
+            ].join(' ');
+            link.dataset.navTooltip = entry.label;
+            link.setAttribute('aria-label', entry.label);
+            if (active) link.setAttribute('aria-current', 'page');
+
+            icon.className = `fa-solid ${entry.icon} w-11 shrink-0 text-center text-base`;
+            icon.setAttribute('aria-hidden', 'true');
+            label.className = 'shell-sidebar-label min-w-0 flex-1 truncate';
+            label.textContent = entry.label;
+
+            link.append(icon, label);
+
+            if (entry.badge) {
+                const badge = document.createElement('span');
+                badge.className = 'shell-sidebar-label rounded-full border border-white/20 px-2 py-0.5 text-[10px] text-white/70';
+                badge.textContent = entry.badge;
+                link.appendChild(badge);
+            }
+
+            return { link, active };
+        };
+
+        groups.forEach((sectionDefinition) => {
+            if (sectionDefinition.direct || sectionDefinition.items.length === 1) {
+                const list = document.createElement('ul');
                 const listItem = document.createElement('li');
-                const link = document.createElement('a');
-                const icon = document.createElement('i');
-                const label = document.createElement('span');
-                const active = normalizedPath(item.url) === currentPath;
+                const { link } = createLink(sectionDefinition.items[0]);
 
-                link.href = item.url;
-                link.className = [
-                    'shell-nav-link flex min-h-11 items-center gap-3 rounded-[14px] px-3 py-2.5 text-sm font-medium no-underline transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active',
-                    active
-                        ? 'bg-gintly-active font-bold text-gintly-sidebar'
-                        : 'text-white/75 hover:bg-white/10 hover:text-white',
-                ].join(' ');
-                link.dataset.navTooltip = item.label;
-                link.setAttribute('aria-label', item.label);
-                if (active) link.setAttribute('aria-current', 'page');
-
-                icon.className = `fa-solid ${item.icon} w-11 shrink-0 text-center text-base`;
-                icon.setAttribute('aria-hidden', 'true');
-                label.className = 'shell-sidebar-label min-w-0 truncate';
-                label.textContent = item.label;
-
-                link.append(icon, label);
+                list.className = 'space-y-1';
                 listItem.appendChild(link);
                 list.appendChild(listItem);
+                this.navigation.appendChild(list);
+                return;
+            }
+
+            const section = document.createElement('section');
+            const trigger = document.createElement('button');
+            const triggerIcon = document.createElement('i');
+            const triggerLabel = document.createElement('span');
+            const caret = document.createElement('i');
+            const panel = document.createElement('ul');
+            const panelId = `sidebar-group-${sectionDefinition.key}`;
+            const hasActiveItem = sectionDefinition.items.some(isActive);
+
+            section.dataset.sidebarGroup = sectionDefinition.key;
+            section.className = 'shell-nav-group';
+            section.classList.toggle('is-open', hasActiveItem);
+            trigger.type = 'button';
+            trigger.className = [
+                'shell-nav-group-trigger flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-start text-sm font-semibold transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-active',
+                hasActiveItem
+                    ? 'text-gintly-active'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white',
+            ].join(' ');
+            trigger.dataset.sidebarGroupTrigger = sectionDefinition.key;
+            trigger.dataset.navTooltip = sectionDefinition.label;
+            trigger.setAttribute('aria-controls', panelId);
+            trigger.setAttribute('aria-expanded', String(hasActiveItem));
+
+            triggerIcon.className = `fa-solid ${sectionDefinition.icon} w-11 shrink-0 text-center text-base`;
+            triggerIcon.setAttribute('aria-hidden', 'true');
+            triggerLabel.className = 'shell-sidebar-label min-w-0 flex-1 truncate';
+            triggerLabel.textContent = sectionDefinition.label;
+            caret.className = 'shell-sidebar-label fa-solid fa-chevron-down text-xs transition-transform';
+            caret.setAttribute('aria-hidden', 'true');
+            trigger.append(triggerIcon, triggerLabel, caret);
+
+            panel.id = panelId;
+            panel.className = 'mt-1 space-y-1 border-s border-white/10 ps-1';
+            panel.dataset.sidebarGroupPanel = sectionDefinition.key;
+            panel.hidden = !hasActiveItem;
+
+            sectionDefinition.items.forEach((entry) => {
+                const listItem = document.createElement('li');
+                const { link } = createLink(entry, true);
+                listItem.appendChild(link);
+                panel.appendChild(listItem);
             });
 
-            section.append(heading, list);
+            if (hasActiveItem) activeGroup = sectionDefinition.key;
+            section.append(trigger, panel);
             this.navigation.appendChild(section);
         });
+
+        this.openGroupKey = activeGroup;
     }
 }

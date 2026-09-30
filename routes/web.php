@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\RegisterWizardController;
+declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\RegisterWizardController;
+use App\Http\Middleware\EnsureOperableUser;
+use Illuminate\Support\Facades\Route;
 
 // ==========================================
 // RUTAS PÚBLICAS Y LANDING PAGE
@@ -40,7 +42,7 @@ Route::prefix('register')->name('register.')->group(function () {
 // ==========================================
 // PANEL DE ADMINISTRACIÓN (DASHBOARD)
 // ==========================================
-Route::middleware(['auth', \App\Http\Middleware\EnsureOperableUser::class])->group(function () {
+Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
 
     Route::get('/dashboard', function () {
         return view('dashboard');
@@ -57,8 +59,83 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureOperableUser::class])->gro
     Route::view('/customers', 'customers.index')->name('web.customers.index');
     Route::view('/customers/create', 'customers.create')->name('web.customers.create');
 
+    // Vistas directivas ROL-01. Estas rutas solo entregan estructura Blade;
+    // los datos y la autorización de recurso permanecen en /api/v1.
+    Route::view('/sales/summary', 'reports.summary', [
+        'reportType' => 'ventas',
+        'reportTitle' => 'Resumen e historial de ventas',
+        'reportDescription' => 'Consulta la facturación consolidada por período y sucursal.',
+        'breadcrumbRoot' => 'Ventas y clientes',
+    ])->name('panel.sales.summary');
+
+    Route::view('/inventory/summary', 'reports.summary', [
+        'reportType' => 'inventario',
+        'reportTitle' => 'Resumen consolidado de inventario',
+        'reportDescription' => 'Vista consolidada del negocio para supervisar exactitud, desviaciones y faltantes detectados.',
+        'breadcrumbRoot' => 'Inventario y bodega',
+    ])->name('panel.inventory.summary');
+
+    Route::view('/finance/cash-overview', 'reports.summary', [
+        'reportType' => 'caja',
+        'reportTitle' => 'Estado consolidado de cajas',
+        'reportDescription' => 'Revisa cierres y diferencias agregadas sin ejecutar operaciones de caja.',
+        'breadcrumbRoot' => 'Finanzas y créditos',
+    ])->name('panel.finance.cash-overview');
+
+    Route::view('/finance/receivables', 'reports.summary', [
+        'reportType' => 'cartera',
+        'reportTitle' => 'Cuentas por cobrar',
+        'reportDescription' => 'Analiza la exposición, recuperación y cartera vencida del negocio.',
+        'breadcrumbRoot' => 'Finanzas y créditos',
+    ])->name('panel.finance.receivables');
+
+    Route::view('/finance/payables', 'supervision.resource-list', [
+        'resourceType' => 'payables',
+        'pageTitle' => 'Cuentas por pagar',
+        'pageDescription' => 'Consulta obligaciones vigentes con proveedores registrados.',
+        'breadcrumbRoot' => 'Finanzas y créditos',
+    ])->name('panel.finance.payables');
+
     Route::view('/inventory/reconciliation', 'inventory.reconciliation')->name('inventory.reconciliation');
 
     Route::view('/catalog/products', 'catalog.products')->name('catalog.products');
+
+    // Hubs de navegación del panel. Son rutas exclusivamente presentacionales:
+    // los datos y la autorización funcional se resuelven mediante /api/v1.
+    Route::view('/purchases', 'hubs.purchases')->name('panel.purchases');
+    Route::view('/finance', 'hubs.finance')->name('panel.finance');
+    Route::view('/intelligence', 'hubs.intelligence')->name('panel.intelligence');
+    Route::view('/organization', 'hubs.organization')->name('panel.organization');
+    Route::view('/settings', 'hubs.settings')->name('panel.settings');
+    Route::view('/help', 'hubs.help')->name('panel.help');
+
+    Route::view('/suppliers', 'supervision.resource-list', [
+        'resourceType' => 'suppliers',
+        'pageTitle' => 'Proveedores registrados',
+        'pageDescription' => 'Directorio interno de proveedores pertenecientes al negocio.',
+        'breadcrumbRoot' => 'Compras y proveedores',
+    ])->name('panel.suppliers.index');
+    Route::view('/suppliers/explore', 'suppliers.explore')->name('panel.suppliers.explore');
+
+    Route::view('/intelligence/anomalies', 'supervision.resource-list', [
+        'resourceType' => 'anomalies',
+        'pageTitle' => 'Centro de anomalías',
+        'pageDescription' => 'Consulta excepciones detectadas y su estado actual.',
+        'breadcrumbRoot' => 'Inteligencia y control',
+    ])->name('panel.anomalies.index');
+    Route::view('/intelligence/audit', 'supervision.resource-list', [
+        'resourceType' => 'audit',
+        'pageTitle' => 'Auditoría',
+        'pageDescription' => 'Revisa la bitácora inmutable de acciones del negocio.',
+        'breadcrumbRoot' => 'Inteligencia y control',
+    ])->name('panel.audit.index');
+
+    Route::view('/organization/users', 'organization.users.index')->name('panel.users.index');
+    Route::view('/organization/users/create', 'organization.users.create')->name('panel.users.create');
+    Route::view('/organization/users/{user}/access', 'organization.users.access')
+        ->whereNumber('user')
+        ->name('panel.users.access');
+    Route::view('/organization/profiles', 'organization.profiles.index')->name('panel.profiles.index');
+    Route::view('/organization/branches', 'organization.branches.index')->name('panel.branches.index');
 
 });
