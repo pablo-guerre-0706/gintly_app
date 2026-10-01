@@ -5,7 +5,10 @@ import { initPanelShell } from './shell/panel-shell';
 const modules = import.meta.glob([
     './modules/catalog/products.js',
     './modules/customers/index.js',
-    './modules/dashboard/owner.js',
+    './modules/dashboard/index.js',
+    './modules/administration/anomalies.js',
+    './modules/administration/cash-sessions.js',
+    './modules/administration/reconciliations.js',
     './modules/finance/cash-closing.js',
     './modules/hubs/index.js',
     './modules/inventory/reconciliation.js',

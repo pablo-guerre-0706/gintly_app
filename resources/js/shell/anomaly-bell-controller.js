@@ -92,6 +92,14 @@ export class AnomalyBellController {
             }
         });
         window.addEventListener('pagehide', cancelActiveAnomaliesRequest, { once: true });
+        document.addEventListener('gintly:anomalies-invalidated', () => {
+            if (!this.enabled) return;
+            if (this.request) {
+                void this.request.finally(() => this.load({ force: true }));
+                return;
+            }
+            void this.load({ force: true });
+        });
     }
 
     setContext(context) {

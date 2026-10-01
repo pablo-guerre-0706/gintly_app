@@ -117,12 +117,20 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
     ])->name('panel.suppliers.index');
     Route::view('/suppliers/explore', 'suppliers.explore')->name('panel.suppliers.explore');
 
-    Route::view('/intelligence/anomalies', 'supervision.resource-list', [
-        'resourceType' => 'anomalies',
-        'pageTitle' => 'Centro de anomalías',
-        'pageDescription' => 'Consulta excepciones detectadas y su estado actual.',
+    Route::view('/intelligence/anomalies', 'administration.anomalies')->name('panel.anomalies.index');
+    Route::view('/intelligence/reconciliations', 'administration.reconciliations')->name('panel.reconciliations.index');
+    Route::view('/intelligence/kpi-snapshots', 'supervision.resource-list', [
+        'resourceType' => 'kpiSnapshots',
+        'pageTitle' => 'Instantáneas KPI',
+        'pageDescription' => 'Consulta los indicadores calculados que el Backend autoriza para administración.',
         'breadcrumbRoot' => 'Inteligencia y control',
-    ])->name('panel.anomalies.index');
+    ])->name('panel.kpi-snapshots.index');
+    Route::view('/intelligence/report-definitions', 'supervision.resource-list', [
+        'resourceType' => 'reportDefinitions',
+        'pageTitle' => 'Definiciones de reportes',
+        'pageDescription' => 'Consulta las definiciones reutilizables configuradas para el negocio.',
+        'breadcrumbRoot' => 'Inteligencia y control',
+    ])->name('panel.report-definitions.index');
     Route::view('/intelligence/audit', 'supervision.resource-list', [
         'resourceType' => 'audit',
         'pageTitle' => 'Auditoría',
@@ -137,5 +145,45 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
         ->name('panel.users.access');
     Route::view('/organization/profiles', 'organization.profiles.index')->name('panel.profiles.index');
     Route::view('/organization/branches', 'organization.branches.index')->name('panel.branches.index');
+
+    // Supervisión administrativa ROL-02. Estas rutas no ejecutan lógica de
+    // negocio; cada vista consume exclusivamente contratos /api/v1 existentes.
+    Route::view('/administration/invoices', 'supervision.resource-list', [
+        'resourceType' => 'invoices',
+        'pageTitle' => 'Supervisión de facturas',
+        'pageDescription' => 'Consulta facturas emitidas sin habilitar creación, cobro ni anulación.',
+        'breadcrumbRoot' => 'Ventas y clientes',
+    ])->name('panel.admin.invoices');
+    Route::view('/administration/warehouses', 'supervision.resource-list', [
+        'resourceType' => 'warehouses',
+        'pageTitle' => 'Bodegas',
+        'pageDescription' => 'Supervisa las bodegas y su asignación por sucursal.',
+        'breadcrumbRoot' => 'Catálogo e inventario',
+    ])->name('panel.admin.warehouses');
+    Route::view('/administration/physical-counts', 'supervision.resource-list', [
+        'resourceType' => 'physicalCounts',
+        'pageTitle' => 'Conteos físicos',
+        'pageDescription' => 'Consulta conteos pendientes y diferencias registradas para validación administrativa.',
+        'breadcrumbRoot' => 'Catálogo e inventario',
+    ])->name('panel.admin.physical-counts');
+    Route::view('/administration/purchase-orders', 'supervision.resource-list', [
+        'resourceType' => 'purchaseOrders',
+        'pageTitle' => 'Órdenes de compra',
+        'pageDescription' => 'Supervisa órdenes de compra y su estado contractual.',
+        'breadcrumbRoot' => 'Compras y proveedores',
+    ])->name('panel.admin.purchase-orders');
+    Route::view('/administration/goods-receipts', 'supervision.resource-list', [
+        'resourceType' => 'goodsReceipts',
+        'pageTitle' => 'Recepciones',
+        'pageDescription' => 'Consulta recepciones y discrepancias sin ejecutar recepción física ni resolución reservada.',
+        'breadcrumbRoot' => 'Compras y proveedores',
+    ])->name('panel.admin.goods-receipts');
+    Route::view('/administration/cash-registers', 'supervision.resource-list', [
+        'resourceType' => 'cashRegisters',
+        'pageTitle' => 'Cajas registradoras',
+        'pageDescription' => 'Supervisa cajas registradas y su estado por sucursal.',
+        'breadcrumbRoot' => 'Caja y finanzas',
+    ])->name('panel.admin.cash-registers');
+    Route::view('/administration/cash-sessions', 'administration.cash-sessions')->name('panel.admin.cash-sessions');
 
 });

@@ -43,6 +43,9 @@
         data-url-suppliers="{{ route('panel.suppliers.index') }}"
         data-url-external-suppliers="{{ route('panel.suppliers.explore') }}"
         data-url-anomalies="{{ route('panel.anomalies.index') }}"
+        data-url-reconciliations="{{ route('panel.reconciliations.index') }}"
+        data-url-kpi-snapshots="{{ route('panel.kpi-snapshots.index') }}"
+        data-url-report-definitions="{{ route('panel.report-definitions.index') }}"
         data-url-audit="{{ route('panel.audit.index') }}"
         data-url-organization-hub="{{ route('panel.organization') }}"
         data-url-configuration-hub="{{ route('panel.settings') }}"
@@ -50,6 +53,13 @@
         data-url-users="{{ route('panel.users.index') }}"
         data-url-profiles="{{ route('panel.profiles.index') }}"
         data-url-branches="{{ route('panel.branches.index') }}"
+        data-url-admin-invoices="{{ route('panel.admin.invoices') }}"
+        data-url-admin-warehouses="{{ route('panel.admin.warehouses') }}"
+        data-url-admin-physical-counts="{{ route('panel.admin.physical-counts') }}"
+        data-url-admin-purchase-orders="{{ route('panel.admin.purchase-orders') }}"
+        data-url-admin-goods-receipts="{{ route('panel.admin.goods-receipts') }}"
+        data-url-admin-cash-registers="{{ route('panel.admin.cash-registers') }}"
+        data-url-admin-cash-sessions="{{ route('panel.admin.cash-sessions') }}"
     >
         @include('layouts.partials.sidebar')
 

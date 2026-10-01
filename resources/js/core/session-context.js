@@ -47,6 +47,10 @@ function normalize(payload) {
         throw new SessionContextError('El contexto autenticado no contiene una identidad válida.');
     }
 
+    if (data.is_active !== true) {
+        throw new SessionContextError('La cuenta autenticada no está activa.');
+    }
+
     const capabilities = normalizedArray(data.capabilities, 'capacidades');
     const profiles = normalizedArray(data.profiles, 'perfiles');
 

@@ -4,17 +4,17 @@
 @section('page-title', 'Dashboard')
 @section('breadcrumb-root', 'Gintly')
 @section('breadcrumb-current', 'Dashboard')
-@section('page-script', 'dashboard/owner')
+@section('page-script', 'dashboard/index')
 
 @section('content')
-<div data-owner-dashboard>
-    <div class="rounded-2xl border border-slate-200 bg-white p-6" data-dashboard-gate aria-live="polite">
-        <div class="flex items-center gap-3 text-sm text-gintly-text-secondary">
-            <i class="fa-solid fa-circle-notch fa-spin text-gintly-brand" aria-hidden="true"></i>
-            <span>Validando acceso al dashboard…</span>
-        </div>
+<div class="rounded-2xl border border-slate-200 bg-white p-6" data-dashboard-router-gate aria-live="polite">
+    <div class="flex items-center gap-3 text-sm text-gintly-text-secondary">
+        <i class="fa-solid fa-circle-notch fa-spin text-gintly-brand" aria-hidden="true"></i>
+        <span>Validando acceso al dashboard…</span>
     </div>
+</div>
 
+<div data-owner-dashboard hidden>
     <div class="space-y-8" data-dashboard-content hidden>
         <section class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between" aria-labelledby="owner-dashboard-title">
             <div class="min-w-0">
@@ -121,4 +121,6 @@
         </x-dashboard.async-section>
     </div>
 </div>
+
+@include('dashboard.admin')
 @endsection

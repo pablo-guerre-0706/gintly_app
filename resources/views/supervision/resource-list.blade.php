@@ -20,10 +20,10 @@
                 Buscar
                 <input class="min-h-11 rounded-xl border border-gintly-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand" type="search" name="search" minlength="2" placeholder="Nombre o identificación fiscal">
             </label>
-            <label class="grid min-w-0 flex-1 gap-2 text-sm font-semibold text-gintly-text-primary" data-status-field hidden>
-                Estado
-                <select class="min-h-11 rounded-xl border border-gintly-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand" name="status" data-status-options>
-                    <option value="">Todos los estados</option>
+            <label class="grid min-w-0 flex-1 gap-2 text-sm font-semibold text-gintly-text-primary" data-filter-field hidden>
+                <span data-filter-label>Filtro</span>
+                <select class="min-h-11 rounded-xl border border-gintly-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand" data-filter-options>
+                    <option value="" data-filter-placeholder>Todos</option>
                 </select>
             </label>
             <button class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gintly-brand px-5 text-sm font-semibold text-white hover:bg-gintly-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand disabled:opacity-60" type="submit" data-resource-submit>

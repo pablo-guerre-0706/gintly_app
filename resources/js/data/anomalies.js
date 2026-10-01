@@ -95,7 +95,7 @@ export function getActiveAnomalies({ force = false } = {}) {
     requestController = new AbortController();
     const controller = requestController;
 
-    pendingRequest = Promise.all(
+    const request = Promise.all(
         ACTIVE_STATUSES.map((status) => fetchStatus(status, controller.signal)),
     ).then((pages) => {
         const totals = Object.fromEntries(pages.map((page) => [page.status, page.total]));
@@ -114,12 +114,22 @@ export function getActiveAnomalies({ force = false } = {}) {
         return result;
     }).finally(() => {
         if (requestController === controller) requestController = null;
-        pendingRequest = null;
+        if (pendingRequest === request) pendingRequest = null;
     });
+
+    pendingRequest = request;
 
     return pendingRequest;
 }
 
 export function cancelActiveAnomaliesRequest() {
     requestController?.abort();
+}
+
+export function invalidateActiveAnomalies() {
+    requestController?.abort();
+    requestController = null;
+    pendingRequest = null;
+    cachedResult = null;
+    cachedAt = 0;
 }

@@ -1,5 +1,4 @@
 import { api, ApiError, initializeCsrf } from '@/core/api-client';
-import { getSessionContext, SessionContextError } from '@/core/session-context';
 import { getActiveAnomalies } from '@/data/anomalies';
 import {
     ageLabel,
@@ -47,7 +46,6 @@ async function getWithCsrfRecovery(path, query = {}) {
 }
 
 function sectionErrorMessage(error) {
-    if (error instanceof SessionContextError) return error.message;
     if (!(error instanceof ApiError)) return 'No fue posible cargar esta sección.';
     if (error.status === 403) return 'Tu cuenta no tiene acceso a esta información.';
     if (error.status === 419) return 'La sesión de seguridad expiró. Intenta nuevamente.';
@@ -310,7 +308,6 @@ function renderAlerts(result) {
 class OwnerDashboard {
     constructor(root) {
         this.root = root;
-        this.gate = root.querySelector('[data-dashboard-gate]');
         this.content = root.querySelector('[data-dashboard-content]');
         this.refresh = root.querySelector('[data-dashboard-refresh]');
         this.contextLine = root.querySelector('[data-dashboard-context]');
@@ -362,27 +359,21 @@ class OwnerDashboard {
         });
     }
 
-    async init() {
+    async init(context) {
         this.refresh.addEventListener('click', () => this.loadAll({ force: true }));
         this.root.addEventListener('click', (event) => {
             const retry = event.target.closest('[data-dashboard-retry]');
             if (retry) void this.loadSection(retry.dataset.dashboardRetry, { force: true });
         });
 
-        try {
-            this.context = await getSessionContext();
-        } catch (error) {
-            this.renderGateError(sectionErrorMessage(error));
-            return;
-        }
+        this.context = context;
 
         if (this.context.role !== 'ROL-01' || !this.context.capabilities.includes('panel.ver')) {
-            this.renderGateError('Este dashboard directivo requiere el rol de propietario y la capacidad panel.ver.');
-            return;
+            throw new Error('El dashboard directivo requiere ROL-01 y panel.ver.');
         }
 
         this.renderContext();
-        this.gate.hidden = true;
+        this.root.hidden = false;
         this.content.hidden = false;
         await this.loadAll();
     }
@@ -392,25 +383,6 @@ class OwnerDashboard {
         const business = this.context.business.name || 'Negocio autenticado';
 
         this.contextLine.textContent = `${now} · ${business} · Vista consolidada`;
-    }
-
-    renderGateError(message) {
-        const heading = document.createElement('h1');
-        const body = document.createElement('p');
-        const retry = document.createElement('button');
-
-        this.gate.replaceChildren();
-        this.gate.className = 'rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900';
-        this.gate.setAttribute('role', 'alert');
-        heading.className = 'text-lg font-semibold';
-        heading.textContent = 'Dashboard no disponible';
-        body.className = 'mt-2 text-sm';
-        body.textContent = message;
-        retry.type = 'button';
-        retry.className = 'mt-4 min-h-11 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold';
-        retry.textContent = 'Reintentar';
-        retry.addEventListener('click', () => window.location.reload());
-        this.gate.append(heading, body, retry);
     }
 
     setRefreshLoading(loading) {
@@ -457,10 +429,11 @@ class OwnerDashboard {
     }
 }
 
-export default function init() {
+export async function initOwnerDashboard(context) {
     const root = document.querySelector('[data-owner-dashboard]');
-    if (!root || root.dataset.initialized === 'true') return;
+    if (!root || root.dataset.initialized === 'true') return false;
 
     root.dataset.initialized = 'true';
-    void new OwnerDashboard(root).init();
+    await new OwnerDashboard(root).init(context);
+    return true;
 }

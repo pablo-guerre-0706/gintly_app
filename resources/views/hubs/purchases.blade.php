@@ -13,8 +13,8 @@
         note="Explorar proveedores usa una frontera externa separada del directorio interno. No creará proveedores registrados ni aprobará resultados automáticamente."
         :items="[
             ['title' => 'Proveedores registrados', 'description' => 'Directorio interno de proveedores del negocio.', 'icon' => 'fa-building', 'capabilities' => ['proveedores.ver'], 'url' => route('panel.suppliers.index')],
-            ['title' => 'Órdenes de compra', 'description' => 'Seguimiento del ciclo de órdenes emitidas.', 'icon' => 'fa-file-circle-check', 'capabilities' => ['compras.ver']],
-            ['title' => 'Recepciones', 'description' => 'Registro operativo de mercancía recibida.', 'icon' => 'fa-dolly', 'capabilities' => ['compras.recibir']],
+            ['title' => 'Órdenes de compra', 'description' => 'Supervisión del ciclo de órdenes emitidas.', 'icon' => 'fa-file-circle-check', 'capabilities' => ['compras.ver'], 'roles' => ['ROL-02'], 'url' => route('panel.admin.purchase-orders')],
+            ['title' => 'Recepciones', 'description' => 'Consulta administrativa de recepciones y discrepancias.', 'icon' => 'fa-dolly', 'capabilities' => ['compras.ver'], 'roles' => ['ROL-02'], 'url' => route('panel.admin.goods-receipts')],
             ['title' => 'Explorar proveedores', 'description' => 'Proveedores potenciales externos, separados del directorio interno.', 'icon' => 'fa-map-location-dot', 'roles' => ['ROL-01', 'ROL-02'], 'badge' => 'Externo', 'url' => route('panel.suppliers.explore')],
         ]"
     />

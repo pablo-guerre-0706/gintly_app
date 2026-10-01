@@ -48,6 +48,9 @@ class PanelShellCoordinator {
             suppliers: root.dataset.urlSuppliers,
             externalSuppliers: root.dataset.urlExternalSuppliers,
             anomalies: root.dataset.urlAnomalies,
+            reconciliations: root.dataset.urlReconciliations,
+            kpiSnapshots: root.dataset.urlKpiSnapshots,
+            reportDefinitions: root.dataset.urlReportDefinitions,
             audit: root.dataset.urlAudit,
             organizationHub: root.dataset.urlOrganizationHub,
             configurationHub: root.dataset.urlConfigurationHub,
@@ -55,6 +58,13 @@ class PanelShellCoordinator {
             users: root.dataset.urlUsers,
             profiles: root.dataset.urlProfiles,
             branches: root.dataset.urlBranches,
+            adminInvoices: root.dataset.urlAdminInvoices,
+            adminWarehouses: root.dataset.urlAdminWarehouses,
+            adminPhysicalCounts: root.dataset.urlAdminPhysicalCounts,
+            adminPurchaseOrders: root.dataset.urlAdminPurchaseOrders,
+            adminGoodsReceipts: root.dataset.urlAdminGoodsReceipts,
+            adminCashRegisters: root.dataset.urlAdminCashRegisters,
+            adminCashSessions: root.dataset.urlAdminCashSessions,
         };
 
         this.sidebar = new SidebarController(root, {
