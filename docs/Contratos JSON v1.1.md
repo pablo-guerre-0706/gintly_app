@@ -280,7 +280,13 @@
 
 "authorization_reconciliation": { "note": "Reconciliación de autorización (Fases 2/3/5/6/7) fusionada en el bloque canónico MOD-01.", 
 
-"enforcement_fase5": "Autorización ADITIVA de ROL-03 por FLUJO (además del rol humano): perfil requerido (operativeCan, config/profiles.php) + sucursal (user.branch_id) + negocio. Las Policies autorizan por nivel de rol; NINGÚN ROL-03 obtiene una operación solo porque su rol Spatie contiene la unión de permisos: debe superar el perfil y el alcance. Gates de perfil: caja abrir/cerrar/movimiento (cajero); ventas crear/confirmar y facturas crear (facturador); CxC abonar (cajero); conteo/traspaso/recepción/devolución (bodeguero); entregas (despachador). Efectivo: perfil cajero + sesión propia abierta + caja de su sucursal (CashService::assertCanOperateSession). Un facturador que cobre efectivo necesita también cajero. Sucursal en la entrada: venta (branch_id), conteo/recepción (bodega), traspaso (origen propio; finalización por bodeguero de la sucursal RECEPTORA), devolución (factura), retiro (MOD-09) → 422/403 si no coincide con user.branch_id. Productos/categorías/clientes siguen siendo datos maestros del negocio (no acotados por sucursal). ROL-01/ROL-02 no usan perfiles ni se acotan a sucursal.", 
+"enforcement_fase5": "Autorización ADITIVA de ROL-03 por FLUJO (además del rol humano): perfil requerido (operativeCan, config/profiles.php) + sucursal (user.branch_id) + negocio. Las Policies autorizan por nivel de rol; NINGÚN ROL-03 obtiene una operación solo porque su rol Spatie contiene la unión de permisos: debe superar el perfil y el alcance. Gates de perfil: caja abrir/cerrar/movimiento (cajero); ventas crear/confirmar y facturas crear (facturador); CxC abonar (cajero); conteo/traspaso/recepción/devolución (bodeguero); entregas (despachador). Efectivo: perfil cajero + sesión propia abierta + caja de su sucursal (CashService::assertCanOperateSession). Un facturador que cobre efectivo necesita también cajero. Sucursal en la entrada: venta (branch_id), conteo/recepción (bodega), traspaso (origen propio; finalización por bodeguero de la sucursal RECEPTORA), devolución (factura), retiro (MOD-09) → 422/403 si no coincide con user.branch_id. Productos/categorías/clientes/proveedores siguen siendo datos maestros del negocio (no acotados por sucursal; la compuerta es la capacidad). ROL-01/ROL-02 no usan perfiles ni se acotan a sucursal.", 
+
+"branch_isolation_indices": "Microcierre ROL-03 (aislamiento de SUCURSAL en LISTADOS). El detalle/mutación ya los protege la Policy (operatorInBranch); la otra mitad es el scope del índice: cada índice llama `->forOperator($user)` (trait ScopesToOperatorBranch, punto único y comprobable). Para ROL-03 devuelve SOLO filas de su sucursal; para ROL-01/ROL-02, alcance de negocio; para un ROL-03 sin sucursal, NINGUNA fila (cierre en falso). Un branch_id enviado por query NO amplía el alcance. Resolución de sucursal: DIRECTA (ventas, facturas, órdenes de compra, devoluciones, retiros) o INDIRECTA (conteos/recepciones→bodega; traspasos→bodega origen O destino; CxP→orden; notas de crédito→factura). Índices acotados: /sales, /invoices, /physical-counts, /stock-transfers, /goods-receipts, /purchase-orders, /accounts-payable, /sales-returns, /credit-notes, /dispatches; ya acotados previamente: /warehouses, /stock, /cash-registers (activa), /cash-sessions (opened_by=self), /accounts-receivable/collectible. Detalle cross-branch (mismo negocio) → 403; recurso de otro negocio → 404 (BusinessScope). Cross-tenant nunca aparece en índices.", 
+
+"bodeguero_capacidades_usables": "Reconciliación de capacidades del BODEGUERO que estaban declaradas en config/profiles.php pero eran INUTILIZABLES (Policy exigía Admin). Ahora funcionan, acotadas a su sucursal y SIN conceder potestades de ROL-01/ROL-02: proveedores.ver → GET /suppliers y /suppliers/{id} (dato maestro del negocio, sin aislar por sucursal); compras.ver → GET /purchase-orders (índice y detalle de su sucursal); compras.crear → POST /purchase-orders (BORRADOR; branch_id debe ser su sucursal, 422 si no); cuentas_por_pagar.ver → GET /accounts-payable (de su sucursal, por la orden); devoluciones.ver → GET /sales-returns (+/items) de su sucursal; notas_credito.ver → GET /credit-notes de su sucursal. EXCLUSIVO e inalterado: aprobar/suspender proveedor (ROL-01), emitir/cancelar/editar orden (ROL-02), pagar CxP (ROL-02), descongelar CxP (ROL-01), resolver discrepancia 3-Way (ROL-01), reembolso en efectivo de devolución (ROL-01), reversión de retiro (ROL-02).", 
+
+"read_capabilities_rol03": "Microcierre de CAPACIDAD DE LECTURA (viewAny/view). Invariante ROL-03: la lectura exige DOS controles independientes y ADITIVOS — (1) capacidad efectiva del perfil (operativeCan, fuente config/profiles.php) y (2) alcance de sucursal (en el índice vía Model::forOperator; en el detalle vía operatorInBranch). El scope NO reemplaza la capacidad: un ROL-03 de la sucursal correcta pero SIN la capacidad del perfil recibe 403. Ningún permiso Spatie agregado del rol ROL-03 (unión de perfiles) permite saltarse la compuerta fina (operativeCan). ROL-01/ROL-02 conservan su acceso por nivel (operatorGrants devuelve true para no-operativos). Mapa capacidad↔recurso (GET índice y detalle): ventas.ver → /sales; facturas.ver → /invoices; entregas.ver → /dispatches; inventario.traspaso → /stock-transfers; compras.ver → /goods-receipts; bodegas.ver → /warehouses; catalogo.ver → /products y /categories; inventario.ver → /stock; inventario.conteo → /physical-counts; clientes.ver → /customers; cuentas_por_cobrar.ver → /accounts-receivable/collectible (cajero); proveedores.ver → /suppliers; compras.ver → /purchase-orders; cuentas_por_pagar.ver → /accounts-payable; devoluciones.ver → /sales-returns; notas_credito.ver → /credit-notes. Caja (/cash-registers, /cash-sessions, /cash-movements): NO existe una capacidad de LECTURA en config/profiles.php (las capacidades de caja — caja.abrir/cerrar/movimiento.crear — son de MUTACIÓN); la lectura se gobierna por PROPIEDAD (opened_by=self) y sucursal (branch_id + is_active), más /cash-movements restringido a ROL-01/ROL-02; no se inventa una capacidad de lectura. Crear cliente en mostrador sigue abierto a cualquier ROL-03 (no se degrada la mutación).", 
 
 "rol_sys": "ROL-SYS = procesos automáticos; NO humano. No asignable por la API (allowlist de roles humanos), no inicia sesión (AuthService lo rechaza → 401), fuera de la jerarquía humana (RoleName::atLeast lo excluye). El middleware EnsureOperableUser corta CADA petición autenticada (API y web) de cuentas ROL-SYS o inactivas → 403 e invalida la sesión (logout guard web + session invalidate; sin bucles de redirección). Cuentas ROL-SYS existentes: neutralizadas (is_active=false + contraseña aleatoria) y sesiones persistidas invalidadas por migración; no se borran (auditoría).", 
 
@@ -329,7 +335,7 @@
 
 "categories": [ 
 
-{ "method": "GET", "path": "/categories", "roles": ["ROL-02", "ROL-03"], 
+{ "method": "GET", "path": "/categories", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil facturador: catalogo.ver)"], 
 
 "query": { "parent_id": "int|opt", "is_active": "bool|opt", "tree": "bool|opt", "search": "string|opt|min:2|max:120" }, 
 
@@ -397,7 +403,7 @@
 
 "products": [ 
 
-{ "method": "GET", "path": "/products", "roles": ["ROL-02", "ROL-03"], 
+{ "method": "GET", "path": "/products", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil facturador: catalogo.ver)"], 
 
 "query": { "type": "enum[simple,compound,service]|opt", "category_id": "int|opt", "is_active": "bool|opt", "available": "bool|opt", "search": "string|opt" }, 
 
@@ -485,7 +491,7 @@
 
 "warehouses": [ 
 
-{ "method": "GET", "path": "/warehouses", "roles": ["ROL-02", "ROL-03"], 
+{ "method": "GET", "path": "/warehouses", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: bodegas.ver — índice y detalle acotados a su sucursal)"], 
 
 "query": { "branch_id": "int|opt", "is_active": "bool|opt", "is_default": "bool|opt" }, 
 
@@ -513,7 +519,7 @@
 
 - "stock_levels": [ 
 
-- { "method": "GET", "path": "/stock", "roles": ["ROL-02", "ROL-03"], 
+- { "method": "GET", "path": "/stock", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.ver)"], 
 
 "query": { "warehouse_id": "int|opt", "product_id": "int|opt", "below_min": "bool|opt", "search": "string|opt" }, 
 
@@ -535,7 +541,7 @@
 
 "physical_counts": [ 
 
-- { "method": "GET", "path": "/physical-counts", "roles": ["ROL-02", "ROL-03"], 
+- { "method": "GET", "path": "/physical-counts", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.conteo — acotado a su sucursal)"], 
 
 "query": { "warehouse_id": "int|opt", "status": "enum[abierto,justificado,ajustado]|opt", "product_id": "int|opt" }, "response_200": "Paginated<PhysicalCountResource>" }, 
 
@@ -573,7 +579,7 @@
 
 "stock_transfers": [ 
 
-- { "method": "GET", "path": "/stock-transfers", "roles": ["ROL-02", "ROL-03"], 
+- { "method": "GET", "path": "/stock-transfers", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.traspaso — su sucursal como origen o destino)"], 
 
 "query": { "from_warehouse_id": "int|opt", "to_warehouse_id": "int|opt", "status": "enum[pendiente,completado,cancelado]| opt" }, 
 
@@ -697,7 +703,7 @@
 
 "suppliers": [ 
 
-{ "method": "GET", "path": "/suppliers", "roles": ["ROL-02", "ROL-01"], "query": { "search": "string|opt (nombre o tax_id)", "status": "enum[pendiente,aprobado,suspendido]|opt", "is_active": "bool|opt" }, "note": "v2.1: filtros ya validados por IndexSupplierRequest y ahora aplicados (antes solo se aplicaba search). Aditivos y opcionales; sin impacto para clientes que no los envíen.", "response_200": "Paginated<SupplierResource>" }, 
+{ "method": "GET", "path": "/suppliers", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: proveedores.ver)"], "query": { "search": "string|opt (nombre o tax_id)", "status": "enum[pendiente,aprobado,suspendido]|opt", "is_active": "bool|opt" }, "note": "v2.1: filtros ya validados por IndexSupplierRequest y ahora aplicados (antes solo se aplicaba search). Aditivos y opcionales; sin impacto para clientes que no los envíen.", "response_200": "Paginated<SupplierResource>" }, 
 
 { "method": "POST", "path": "/suppliers", "roles": ["ROL-02"], 
 
@@ -721,11 +727,11 @@
 
 "purchase_orders": [ 
 
-{ "method": "GET", "path": "/purchase-orders", "roles": ["ROL-02", "ROL-01"], 
+{ "method": "GET", "path": "/purchase-orders", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: compras.ver — índice y detalle acotados a su sucursal)"], 
 
 "query": { "supplier_id": "int|opt", "status": "enum[borrador,emitida,parcial,recibida,cancelada]| opt" }, "response_200": "Paginated<PurchaseOrderResource>" }, 
 
-{ "method": "POST", "path": "/purchase-orders", "roles": ["ROL-02"], 
+{ "method": "POST", "path": "/purchase-orders", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: compras.crear — BORRADOR; branch_id debe ser su sucursal, 422 si no)"], 
 
 "request": { "supplier_id": "int|required|same_tenant|approved", "branch_id": "int|required| same_tenant", "ordered_at": "date|required", 
 
@@ -747,7 +753,7 @@
 
 "goods_receipts": [ 
 
-{ "method": "GET", "path": "/goods-receipts", "roles": ["ROL-02", "ROL-03"], 
+{ "method": "GET", "path": "/goods-receipts", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: compras.ver — acotado a su sucursal por la bodega)"], 
 
 "query": { "purchase_order_id": "int|opt", "match_status": "enum[ok,discrepancia,bloqueada]|opt" }, 
 
@@ -760,6 +766,8 @@
 "supplier_invoice_number": "string(60)|nullable", "supplier_invoice_total": "decimal(14,2)| nullable", "tolerance": "decimal|opt|default:0.00", 
 
 "lines": [ { "purchase_order_item_id": "int|required", "received_quantity": "decimal(14,3)|>0", "invoiced_unit_cost": "decimal(14,4)|>=0" } ] }, 
+
+"branch_isolation_rol03": "ROL-03 (bodeguero): la ORDEN y la BODEGA deben ser de SU sucursal (purchase_order.branch_id === warehouse.branch_id === user.branch_id). Defensa en DOS capas: StoreGoodsReceiptRequest (422 por campo: purchase_order_id si la orden es de otra sucursal, warehouse_id si la bodega lo es; un ROL-03 sin sucursal falla cerrado) y GoodsReceiptService (AuthorizationException/403 dentro de la transacción, ANTES de persistir goods_receipts/items/inventario/CxP, para que una invocación interna directa no omita el FormRequest). Recurso de otro negocio → 422 (exists multitenant), sin revelar su existencia. ROL-01/ROL-02 no se acotan (alcance de negocio). Al rechazarse NO se persiste ninguna recepción, CxP ni afectación de inventario (rollback). El hook post-commit de discrepancia_3way no se altera.", 
 
 "note": "Ejecuta 3-Way Match (recibido⇄ordenado⇄facturado, costo facturado⇄pactado, total⇄suma). SIEMPRE persiste goods_receipt_items como evidencia. Si 'ok': ingresa a inventario por línea + acumula received_quantity + CxP 'pendiente'. Si discrepancia: NO ingresa, CxP 'congelada'.", 
 
@@ -793,7 +801,7 @@
 
 { "http": 403, "when": "Rol != ROL-01." }, { "http": 409, "when": "El recibo no está en estado 'discrepancia'." } ] } ], "accounts_payable": [ 
 
-{ "method": "GET", "path": "/accounts-payable", "roles": ["ROL-02", "ROL-01"], 
+{ "method": "GET", "path": "/accounts-payable", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: cuentas_por_pagar.ver — acotado a su sucursal por la orden)"], 
 
 "query": { "supplier_id": "int|opt", "status": "enum[pendiente,congelada,parcial,pagada]|opt", "overdue": "bool|opt" }, 
 
@@ -862,7 +870,7 @@
 
 "customers": [ 
 
-{ "method": "GET", "path": "/customers", "roles": ["ROL-02", "ROL-03"], 
+{ "method": "GET", "path": "/customers", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil cajero/facturador: clientes.ver)"], 
 
 "query": { "search": "string|opt|min:2 (nombre, document_number, email o phone_number)", "document_type": "enum[cedula,ruc,pasaporte]|opt", "is_active": "bool|opt (1/0)", "include_generic": "bool|opt|default:false (1/0)", "sort": "enum[name,document_number,is_active,created_at]|opt", "direction": "enum[asc,desc]|opt", "page": "int|opt", "per_page": "int|opt|max:100|default:25" }, 
 
@@ -1152,7 +1160,7 @@
 
 "sales": [ 
 
-{ "method": "GET", "path": "/sales", "roles": ["ROL-03", "ROL-02"], 
+{ "method": "GET", "path": "/sales", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil facturador: ventas.ver — índice y detalle acotados a su sucursal)"], 
 
 "query": { "status": "enum[abierta,confirmada,facturada,anulada]|opt", "customer_id": "int|opt", "branch_id": "int|opt", "from": "date|opt", "to": "date|opt" }, 
 
@@ -1188,7 +1196,7 @@
 
 "invoices": [ 
 
-{ "method": "GET", "path": "/invoices", "roles": ["ROL-02", "ROL-01", "ROL-03"], 
+{ "method": "GET", "path": "/invoices", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil cajero/facturador/despachador: facturas.ver — acotado a su sucursal)"], 
 
 "query": { "status": "enum[emitida,anulada]|opt", "payment_type": "enum[contado,credito]|opt", "payment_status": "enum[pagada,parcial,pendiente]|opt", "customer_id": "int|opt", "folio": "string| opt", "from": "date|opt", "to": "date|opt" }, 
 
@@ -1475,7 +1483,7 @@
 
 "dispatches": [ 
 
-{ "method": "GET", "path": "/dispatches", "roles": ["ROL-03", "ROL-02", "ROL-01"], 
+{ "method": "GET", "path": "/dispatches", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil despachador: entregas.ver — acotado a su sucursal)"], 
 
 "query": { "invoice_id": "int|opt (tenant)", "warehouse_id": "int|opt (tenant)", "status": "enum[registrado,revertido]|opt", "from": "date|opt (dispatched_at)", "to": "date|opt (dispatched_at)", "per_page": "int|opt", "sort": "allowlist[id,code,dispatched_at,status,created_at]; fuera de la lista → 422", "direction": "asc|desc" }, 
 
@@ -1627,7 +1635,7 @@
 
 "sales_returns": [ 
 
-{ "method": "GET", "path": "/sales-returns", "roles": ["ROL-02", "ROL-01"], 
+{ "method": "GET", "path": "/sales-returns", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: devoluciones.ver — índice, detalle e items acotados a su sucursal)"], 
 
 "query": { "invoice_id": "int|opt (tenant)", "customer_id": "int|opt (tenant)", "status": "enum[registrada,procesada,anulada]|opt", "from": "date|opt (returned_at)", "to": "date|opt (returned_at)", "per_page": "int|opt", "sort": "allowlist[id,code,returned_at,status,total_returned,created_at]; fuera de la lista → 422", "direction": "asc|desc" }, 
 
@@ -1683,7 +1691,7 @@
 
 "credit_notes": [ 
 
-{ "method": "GET", "path": "/credit-notes", "roles": ["ROL-02", "ROL-01"], 
+{ "method": "GET", "path": "/credit-notes", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: notas_credito.ver — acotado a su sucursal por la factura)"], 
 
 "query": { "invoice_id": "int|opt (tenant)", "customer_id": "int|opt (tenant)", "resolution_type": "enum[reembolso_efectivo,nota_credito_saldo,reduccion_cxc]|opt", "status": "enum[emitida,anulada]|opt", "per_page": "int|opt", "sort": "allowlist[id,folio,issued_at,status,total_amount,created_at]; fuera de la lista → 422", "direction": "asc|desc" }, 
 
