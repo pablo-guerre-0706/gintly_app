@@ -123,4 +123,5 @@
 </div>
 
 @include('dashboard.admin')
+@include('dashboard.operator')
 @endsection

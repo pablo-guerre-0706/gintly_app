@@ -2,6 +2,7 @@ import { ApiError } from '@/core/api-client';
 import { getSessionContext, SessionContextError } from '@/core/session-context';
 import { initAdminDashboard } from './admin';
 import { initOwnerDashboard } from './owner';
+import { initOperatorDashboard } from './operator';
 
 function contextMessage(error) {
     if (error instanceof SessionContextError) return error.message;
@@ -32,7 +33,8 @@ export default async function init() {
         let initialization;
         if (context.role === 'ROL-01') initialization = initOwnerDashboard(context);
         else if (context.role === 'ROL-02') initialization = initAdminDashboard(context);
-        else throw new SessionContextError('El dashboard operativo ROL-03 se implementará en su fase específica.');
+        else if (context.role === 'ROL-03') initialization = initOperatorDashboard(context);
+        else throw new SessionContextError('El rol autenticado no dispone de un dashboard válido.');
         gate.hidden = true;
         await initialization;
     } catch (error) { renderGateError(gate, contextMessage(error)); }

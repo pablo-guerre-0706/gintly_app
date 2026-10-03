@@ -8,22 +8,17 @@
 @section('page-script', 'pos/index')
 
 @section('content')
-@php
-    $categories = ['Todos', 'Café', 'Bebidas', 'Comida', 'Postres'];
-@endphp
-
 <section
     id="posRoot"
-    data-tax-rate="{{ $taxRate ?? '0.0000' }}"
-    data-checkout-url="{{ $checkoutEndpoint ?? '' }}"
     class="min-h-screen bg-[#F5F5F4] px-5 py-7 lg:px-7"
+    aria-busy="true"
 >
     <header class="mb-6">
         <h1 class="text-[27px] font-bold tracking-[-.035em] text-[#181818]">
             Puntos de venta
         </h1>
         <p class="mt-1 text-[11px] text-[#777]">
-            Busca productos, registra el efectivo recibido y completa la venta.
+            Busca productos y emite la factura con un medio de pago autorizado.
         </p>
     </header>
 
@@ -45,22 +40,6 @@
                 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A8A8A]">⌕</span>
             </label>
 
-            <nav class="mt-4 flex flex-wrap gap-2" aria-label="Categorías">
-                @foreach ($categories as $category)
-                    <button
-                        type="button"
-                        data-filter="{{ Str::slug($category) }}"
-                        @class([
-                            'rounded-lg border px-4 py-2 text-[10px] font-medium transition',
-                            'border-[#07839B] bg-[#07839B] text-white' => $loop->first,
-                            'border-[#D9D9D9] bg-white text-[#666] hover:bg-[#F7F7F7]' => !$loop->first,
-                        ])
-                    >
-                        {{ $category }}
-                    </button>
-                @endforeach
-            </nav>
-
             <div
                 id="posProducts"
                 class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
@@ -79,8 +58,16 @@
             </header>
 
             <form id="posForm" class="mt-4 flex min-h-0 flex-1 flex-col">
-                <input type="hidden" name="branch_id" value="{{ $branchId ?? '' }}">
-                <input type="hidden" name="customer_id" value="{{ $defaultCustomerId ?? '' }}">
+                <label class="mb-3 block text-[10px] font-semibold text-[#444]">
+                    Cliente
+                    <select
+                        name="customer_id"
+                        required
+                        class="mt-1 min-h-11 w-full rounded-lg border border-[#DDD] bg-white px-3 text-[10px] text-[#333] outline-none focus:border-[#07839B] focus:ring-2 focus:ring-[#07839B]/20"
+                    >
+                        <option value="">Cargando clientes…</option>
+                    </select>
+                </label>
                 <input id="paymentMethod" type="hidden" value="efectivo">
 
                 <div
@@ -98,11 +85,10 @@
                 </div>
 
                 <dl class="mt-4 space-y-2 rounded-lg bg-[#F7F7F7] p-3 text-[10px]">
-                    <div class="flex justify-between"><dt>Subtotal</dt><dd id="posSubtotal">C$ 0.00</dd></div>
-                    <div class="flex justify-between"><dt>IVA</dt><dd id="posTax">C$ 0.00</dd></div>
-                    <div class="flex justify-between border-t border-[#DDD] pt-2 font-bold">
-                        <dt>Total a cobrar</dt><dd id="posTotal">C$ 0.00</dd>
+                    <div class="flex justify-between font-bold">
+                        <dt>Subtotal estimado</dt><dd id="posSubtotal">C$ 0.00</dd>
                     </div>
+                    <p class="text-[8px] leading-4 text-[#777]">El Backend calculará impuestos y total definitivo al confirmar la venta.</p>
                 </dl>
 
                 <fieldset class="mt-3 grid grid-cols-3 gap-2">
@@ -126,26 +112,11 @@
                     data-submit
                     class="mt-3 h-11 rounded-lg bg-[#07839B] text-[11px] font-semibold text-white transition hover:bg-[#066F84] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Finalizar venta e imprimir ticket
+                    Confirmar venta y emitir factura
                 </button>
             </form>
         </aside>
     </section>
-
-    <section class="mt-6 rounded-[14px] bg-white p-5 shadow-sm">
-        <header>
-            <h2 class="text-[22px] font-bold tracking-[-.03em] text-[#1D1D1D]">
-                Historial de compras
-            </h2>
-            <p class="mt-1 text-[10px] text-[#777]">
-                Visualiza el historial reciente de ventas registradas.
-            </p>
-        </header>
-
-        <div
-            id="posHistory"
-            class="mt-5 grid gap-3 md:grid-cols-2"
-        ></div>
-    </section>
+    <p class="mt-4 text-sm text-[#555]" data-pos-live role="status" aria-live="polite"></p>
 </section>
 @endsection

@@ -9,9 +9,9 @@ use App\Models\AccountReceivable;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Customer;
-use App\Models\CustomerAddress;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Models\UserOperativeProfile;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
@@ -60,27 +60,34 @@ final class CustomerFlowHttpTest extends MysqlTestCase
         app(RolesAndPermissionsSeeder::class)->run();
 
         $business = Business::create([
-            'name'     => 'Negocio '.$slug,
-            'slug'     => $slug.'-'.(++self::$seq),
-            'plan'     => 'basic',
-            'status'   => 'active',
+            'name' => 'Negocio '.$slug,
+            'slug' => $slug.'-'.(++self::$seq),
+            'plan' => 'basic',
+            'status' => 'active',
             'tax_rate' => '0.1500',
             'timezone' => 'America/Managua',
         ]);
 
-        $owner    = $this->makeUser($business, RoleName::Owner);
-        $admin    = $this->makeUser($business, RoleName::Admin);
+        $owner = $this->makeUser($business, RoleName::Owner);
+        $admin = $this->makeUser($business, RoleName::Admin);
         $operator = $this->makeUser($business, RoleName::Operator);
+
+        // Microcierre lectura ROL-03: el operador de mostrador consulta clientes porque posee
+        // clientes.ver (perfil CAJERO). Crear sigue abierto a cualquier operador (registro en mostrador).
+        $cajeroProfile = new UserOperativeProfile(['profile' => 'cajero']);
+        $cajeroProfile->user_id = $operator->id;
+        $cajeroProfile->business_id = $business->id;
+        $cajeroProfile->save();
 
         // Sucursal explícita: la CxC real exige factura (invoice_id NOT NULL) y toda
         // factura exige branch_id. Es la dependencia imprescindible del guarda CxC.
-        $branch = new Branch();
+        $branch = new Branch;
         $branch->forceFill([
             'business_id' => $business->id,
-            'name'        => 'Sucursal '.$slug,
-            'address'     => 'Dir. '.$slug,
-            'opened_at'   => now()->toDateString(),
-            'is_active'   => true,
+            'name' => 'Sucursal '.$slug,
+            'address' => 'Dir. '.$slug,
+            'opened_at' => now()->toDateString(),
+            'is_active' => true,
         ])->saveQuietly();
 
         $generic = Customer::withoutGlobalScopes()
@@ -98,41 +105,41 @@ final class CustomerFlowHttpTest extends MysqlTestCase
      */
     private function makeReceivable(object $t, int $customerId, string $status): AccountReceivable
     {
-        $invoice = new Invoice();
+        $invoice = new Invoice;
         $invoice->forceFill([
-            'business_id'     => $t->business->id,
-            'branch_id'       => $t->branch->id,
-            'customer_id'     => $customerId,
-            'issued_by'       => $t->owner->id,
-            'folio'           => 'F-'.(++self::$seq),
-            'payment_type'    => 'credito',
-            'payment_status'  => 'pendiente',
-            'status'          => 'emitida',
-            'subtotal'        => '100.00',
-            'tax_amount'      => '0.00',
+            'business_id' => $t->business->id,
+            'branch_id' => $t->branch->id,
+            'customer_id' => $customerId,
+            'issued_by' => $t->owner->id,
+            'folio' => 'F-'.(++self::$seq),
+            'payment_type' => 'credito',
+            'payment_status' => 'pendiente',
+            'status' => 'emitida',
+            'subtotal' => '100.00',
+            'tax_amount' => '0.00',
             'discount_amount' => '0.00',
-            'total'           => '100.00',
-            'paid_amount'     => '0.00',
-            'issued_at'       => now(),
+            'total' => '100.00',
+            'paid_amount' => '0.00',
+            'issued_at' => now(),
         ])->saveQuietly();
 
         // total_amount fijo en 100; paid_amount/due_date definen el estado.
         [$paid, $due] = match ($status) {
             'pendiente' => ['0.00',   null],
-            'parcial'   => ['40.00',  null],
-            'vencida'   => ['0.00',   now()->subDays(10)->toDateString()],
-            'pagada'    => ['100.00', null],
+            'parcial' => ['40.00',  null],
+            'vencida' => ['0.00',   now()->subDays(10)->toDateString()],
+            'pagada' => ['100.00', null],
         };
 
-        $ar = new AccountReceivable();
+        $ar = new AccountReceivable;
         $ar->forceFill([
-            'business_id'  => $t->business->id,
-            'customer_id'  => $customerId,
-            'invoice_id'   => $invoice->id,
+            'business_id' => $t->business->id,
+            'customer_id' => $customerId,
+            'invoice_id' => $invoice->id,
             'total_amount' => '100.00',
-            'paid_amount'  => $paid,
-            'status'       => $status,
-            'due_date'     => $due,
+            'paid_amount' => $paid,
+            'status' => $status,
+            'due_date' => $due,
         ])->saveQuietly();
 
         return $ar;
@@ -141,9 +148,9 @@ final class CustomerFlowHttpTest extends MysqlTestCase
     private function makeUser(Business $business, RoleName $role): User
     {
         $user = new User([
-            'name'      => $role->value.' '.(++self::$seq),
-            'email'     => 'u'.self::$seq.'@test.local',
-            'password'  => Hash::make('secret-Password-123'),
+            'name' => $role->value.' '.(++self::$seq),
+            'email' => 'u'.self::$seq.'@test.local',
+            'password' => Hash::make('secret-Password-123'),
             'is_active' => true,
         ]);
         $user->business_id = $business->id;
@@ -160,11 +167,11 @@ final class CustomerFlowHttpTest extends MysqlTestCase
     private function customerPayload(array $overrides = []): array
     {
         return array_merge([
-            'name'            => 'Cliente '.(++self::$seq),
-            'document_type'   => 'cedula',
+            'name' => 'Cliente '.(++self::$seq),
+            'document_type' => 'cedula',
             'document_number' => 'DOC-'.self::$seq,
-            'email'           => 'c'.self::$seq.'@test.local',
-            'credit_limit'    => '0.00',
+            'email' => 'c'.self::$seq.'@test.local',
+            'credit_limit' => '0.00',
         ], $overrides);
     }
 
@@ -197,9 +204,9 @@ final class CustomerFlowHttpTest extends MysqlTestCase
         $customerId = $this->asUser($t->operator)->postJson('/api/v1/customers', $this->customerPayload())->json('data.id');
 
         $this->asUser($t->operator)->postJson("/api/v1/customers/{$customerId}/addresses", [
-            'label'        => 'Casa',
+            'label' => 'Casa',
             'address_line' => 'Calle 1',
-            'is_default'   => true,
+            'is_default' => true,
         ])->assertCreated();
 
         $this->asUser($t->operator)->getJson("/api/v1/customers/{$customerId}")
@@ -468,8 +475,8 @@ final class CustomerFlowHttpTest extends MysqlTestCase
             ->assertOk()
             ->assertJsonStructure([
                 'data',
-                'links'  => ['first', 'last', 'prev', 'next'],
-                'meta'   => ['current_page', 'per_page', 'total', 'last_page'],
+                'links' => ['first', 'last', 'prev', 'next'],
+                'meta' => ['current_page', 'per_page', 'total', 'last_page'],
             ])
             ->assertJsonPath('meta.per_page', 2)
             ->assertJsonPath('meta.current_page', 1)

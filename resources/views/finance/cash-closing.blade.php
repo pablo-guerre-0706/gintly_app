@@ -21,47 +21,39 @@
         ['label'=>'C$ 1','value'=>'1.00','type'=>'Moneda'],
     ];
 
-    $summary = [
-        ['title'=>'Fondo de apertura','value'=>$session['opening_amount_label'] ?? '—'],
-        ['title'=>'Turno','value'=>$session['shift_label'] ?? '—'],
-        ['title'=>'Transacciones','value'=>$session['transactions_label'] ?? '—'],
-        ['title'=>'Ajustes registrados','value'=>$session['adjustments_label'] ?? '—'],
-    ];
 @endphp
 
 <section
     id="cashClosingRoot"
-    data-close-url="{{ $closeEndpoint ?? '' }}"
     class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7"
+    aria-busy="true"
 >
     <header class="mb-7">
         <h1 class="text-[27px] font-bold tracking-[-.035em] text-[#171717]">
             Cierre de caja
         </h1>
-        <p class="mt-1 text-[10px] text-[#777]">
-            {{ $session['register_label'] ?? 'Caja' }} ·
-            {{ $session['user_name'] ?? auth()->user()?->name }} ·
-            {{ $session['branch_name'] ?? 'Sucursal' }} ·
-            {{ $session['time_label'] ?? '' }}
-        </p>
+        <p class="mt-1 text-[10px] text-[#777]" data-cash-closing-context>Consultando tu sesión activa…</p>
     </header>
+
+    <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" data-cash-closing-error role="alert" hidden></div>
 
     <div class="mb-6 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-3 text-xs leading-5 text-indigo-700">
         Arqueo ciego activo. El saldo teórico se mantiene oculto hasta confirmar el conteo físico.
         Ingresa la cantidad de cada denominación disponible en caja.
     </div>
 
-    <section class="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4" aria-label="Resumen de caja">
-        @foreach ($summary as $item)
-            <article class="rounded-[11px] border border-[#DDD] bg-white px-4 py-5 shadow-sm">
-                <p class="text-[10px] text-[#7C7C7C]">{{ $item['title'] }}</p>
-                <p class="mt-2 text-[15px] font-bold text-[#222]">{{ $item['value'] }}</p>
-            </article>
+    <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de caja">
+        @foreach ([['Sesión', 'session'], ['Caja', 'register'], ['Fondo de apertura', 'opening'], ['Apertura', 'opened']] as [$title, $key])
+        <article class="min-w-0 rounded-[11px] border border-[#DDD] bg-white px-4 py-5 shadow-sm">
+            <p class="text-[10px] text-[#7C7C7C]">{{ $title }}</p>
+            <p class="mt-2 break-words text-[15px] font-bold text-[#222]" data-cash-closing-summary="{{ $key }}">—</p>
+        </article>
         @endforeach
     </section>
 
-    <form id="cashClosingForm" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <section class="card overflow-hidden">
+    <form id="cashClosingForm" class="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <section class="card min-w-0 overflow-x-auto">
+            <div class="min-w-[580px]">
             <div class="grid grid-cols-[1fr_85px_140px_145px] bg-[#F1F1F1] px-3 py-3 text-[9px] font-semibold text-[#555]">
                 <span>Denominación</span><span>Tipo</span>
                 <span class="text-center">Cantidad</span><span class="text-right">Sub-Total</span>
@@ -112,16 +104,12 @@
             </label>
 
             <div class="mt-5 flex justify-end gap-3">
-                <a
-                    href="{{ route('dashboard') }}"
-                    class="inline-flex h-10 items-center rounded-md border border-[#DDD] bg-[#F4F4F4] px-5 text-[9px] font-medium text-[#666]"
-                >Guardar borrador</a>
-
                 <button
                     type="submit"
                     data-submit
                     class="h-10 rounded-md bg-[#07839B] px-6 text-[9px] font-semibold text-white disabled:opacity-60"
                 >Confirmar arqueo</button>
+            </div>
             </div>
         </section>
 

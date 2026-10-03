@@ -1,5 +1,5 @@
-<header class="sticky top-0 z-40 flex h-16 min-w-0 items-center justify-between gap-3 border-b border-gintly-border bg-white/95 px-4 backdrop-blur-md md:h-[72px] md:px-6 lg:h-[88px] xl:h-[108px] xl:gap-8 xl:px-8 xl:py-6" data-shell-header>
-    <div class="flex min-w-0 flex-1 items-center gap-3 lg:gap-5" data-search-background>
+<header class="sticky top-0 z-40 grid h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-gintly-border bg-white/95 px-4 backdrop-blur-md md:h-[72px] md:grid-cols-[minmax(150px,.8fr)_minmax(220px,1.4fr)_auto] md:px-6 lg:h-[88px] lg:grid-cols-[minmax(180px,.8fr)_minmax(260px,1.4fr)_auto] lg:gap-5 xl:h-[108px] xl:grid-cols-[minmax(190px,.7fr)_minmax(280px,1.5fr)_auto] xl:px-8 xl:py-6" data-shell-header>
+    <div class="flex min-w-0 items-center gap-3 lg:gap-5" data-search-background>
         <button
             type="button"
             class="grid size-11 shrink-0 place-items-center rounded-xl text-gintly-sidebar transition hover:bg-gintly-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand lg:hidden"
@@ -11,7 +11,7 @@
             <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
 
-        <div class="min-w-0 flex-1 lg:flex-none lg:max-w-[320px] xl:max-w-[420px]">
+        <div class="min-w-0 flex-1">
             <nav class="hidden min-w-0 items-center gap-2 text-[18px]/[26px] sm:flex" aria-label="Miga de pan">
                 <span class="truncate font-normal text-gintly-text-secondary" title="{{ $breadcrumbRoot }}">
                     {{ $breadcrumbRoot }}
@@ -31,7 +31,47 @@
         </div>
     </div>
 
-    <div class="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:flex-1 lg:gap-4">
+    <div
+        id="navigation-search"
+        class="shell-navigation-search fixed inset-0 z-[80] hidden min-w-0 bg-slate-950/60 p-3 backdrop-blur-[2px] md:relative md:inset-auto md:z-auto md:block md:w-full md:max-w-[606px] md:justify-self-end md:bg-transparent md:p-0 md:backdrop-blur-none"
+        data-navigation-search
+    >
+        <div class="relative mx-auto w-full max-w-[606px] rounded-2xl bg-white p-4 shadow-2xl md:max-w-none md:rounded-none md:bg-transparent md:p-0 md:shadow-none" role="search">
+            <div class="flex items-center justify-between gap-3 md:hidden">
+                <h2 id="navigation-search-title" class="text-lg font-semibold text-gintly-text-primary">Buscar en la navegación</h2>
+                <button
+                    type="button"
+                    class="grid size-11 place-items-center rounded-xl text-gintly-text-secondary hover:bg-gintly-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand"
+                    data-mobile-search-close
+                    aria-label="Cerrar búsqueda"
+                >
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-gintly-text-secondary" aria-hidden="true"></i>
+                <input
+                    type="search"
+                    class="h-[42px] w-full min-w-0 rounded-2xl border border-gintly-border bg-gintly-control py-2 pe-11 ps-11 text-sm text-gintly-text-primary outline-none transition placeholder:text-gintly-text-secondary focus:border-gintly-brand focus:bg-white focus:ring-2 focus:ring-gintly-brand/20"
+                    placeholder="Buscar en la navegación"
+                    autocomplete="off"
+                    data-navigation-search-input
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="navigation-search-results"
+                    aria-expanded="false"
+                    aria-label="Buscar destinos de navegación"
+                >
+                <kbd class="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-gintly-border bg-white px-1.5 py-0.5 text-[11px] text-gintly-text-secondary 2xl:block">⌘K</kbd>
+            </div>
+
+            <div class="shell-search-popover" id="navigation-search-results" data-navigation-search-results role="listbox" hidden></div>
+            <p class="shell-search-popover text-center text-sm text-gintly-text-secondary" data-navigation-search-empty hidden>Sin coincidencias</p>
+        </div>
+    </div>
+
+    <div class="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:gap-4">
         <button
             type="button"
             class="grid size-11 place-items-center rounded-xl text-gintly-text-secondary transition hover:bg-gintly-control hover:text-gintly-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand md:hidden"
@@ -43,46 +83,6 @@
         >
             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
         </button>
-
-        <div
-            id="navigation-search"
-            class="shell-navigation-search fixed inset-0 z-[80] hidden bg-slate-950/60 p-3 backdrop-blur-[2px] md:relative md:inset-auto md:z-auto md:block md:w-[clamp(260px,36vw,480px)] md:bg-transparent md:p-0 md:backdrop-blur-none xl:w-[min(40vw,606px)]"
-            data-navigation-search
-        >
-            <div class="relative mx-auto w-full max-w-[606px] rounded-2xl bg-white p-4 shadow-2xl md:max-w-none md:rounded-none md:bg-transparent md:p-0 md:shadow-none" role="search">
-                <div class="flex items-center justify-between gap-3 md:hidden">
-                    <h2 id="navigation-search-title" class="text-lg font-semibold text-gintly-text-primary">Buscar en la navegación</h2>
-                    <button
-                        type="button"
-                        class="grid size-11 place-items-center rounded-xl text-gintly-text-secondary hover:bg-gintly-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand"
-                        data-mobile-search-close
-                        aria-label="Cerrar búsqueda"
-                    >
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                    </button>
-                </div>
-
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-gintly-text-secondary" aria-hidden="true"></i>
-                    <input
-                        type="search"
-                        class="h-[42px] w-full rounded-2xl border border-gintly-border bg-gintly-control py-2 pe-11 ps-11 text-sm text-gintly-text-primary outline-none transition placeholder:text-gintly-text-secondary focus:border-gintly-brand focus:bg-white focus:ring-2 focus:ring-gintly-brand/20"
-                        placeholder="Buscar en la navegación"
-                        autocomplete="off"
-                        data-navigation-search-input
-                        role="combobox"
-                        aria-autocomplete="list"
-                        aria-controls="navigation-search-results"
-                        aria-expanded="false"
-                        aria-label="Buscar destinos de navegación"
-                    >
-                    <kbd class="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-gintly-border bg-white px-1.5 py-0.5 text-[11px] text-gintly-text-secondary xl:block">⌘K</kbd>
-                </div>
-
-                <div class="shell-search-popover" id="navigation-search-results" data-navigation-search-results role="listbox" hidden></div>
-                <p class="shell-search-popover text-center text-sm text-gintly-text-secondary" data-navigation-search-empty hidden>Sin coincidencias</p>
-            </div>
-        </div>
 
         <div class="relative" data-anomaly-bell data-search-background hidden>
             <button
@@ -172,7 +172,7 @@
                 disabled
             >
                 <span class="grid size-11 shrink-0 place-items-center rounded-full bg-gintly-sidebar text-sm font-semibold text-white xl:size-[60px] xl:text-base" data-user-initials aria-hidden="true">…</span>
-                <span class="hidden min-w-0 max-w-40 xl:block">
+                <span class="hidden min-w-0 max-w-40 2xl:block">
                     <span class="block truncate text-sm font-semibold text-gintly-text-primary" data-user-name>Cargando…</span>
                     <span class="block truncate text-xs text-gintly-text-secondary" data-user-role></span>
                 </span>

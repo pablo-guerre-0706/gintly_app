@@ -939,12 +939,13 @@ final class ReturnFlowHttpTest extends MysqlTestCase
             'lines'      => [['sale_item_id' => $siId, 'quantity' => '2.000', 'reason_code' => 'insatisfaccion']],
         ])->assertCreated()->json('data.id');
 
-        // ROL-03 registra (ok) pero NO lista (viewAny = ROL-02+).
-        $this->asUser($t->operator)->getJson('/api/v1/sales-returns')->assertStatus(403);
-        $this->asUser($t->operator)->getJson("/api/v1/sales-returns/{$returnId}")->assertStatus(403);
-        $this->asUser($t->operator)->getJson('/api/v1/credit-notes')->assertStatus(403);
+        // Microcierre ROL-03: el BODEGUERO (devoluciones.ver/notas_credito.ver) consulta las devoluciones y
+        // notas de crédito DE SU SUCURSAL (el operador del flujo opera en S1, donde nació la devolución).
+        $this->asUser($t->operator)->getJson('/api/v1/sales-returns')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->asUser($t->operator)->getJson("/api/v1/sales-returns/{$returnId}")->assertOk();
+        $this->asUser($t->operator)->getJson('/api/v1/credit-notes')->assertOk();
 
-        // ROL-02 consulta.
+        // ROL-02 consulta (alcance de negocio).
         $this->asUser($t->admin)->getJson('/api/v1/sales-returns')->assertOk()->assertJsonPath('meta.total', 1);
         $this->asUser($t->admin)->getJson("/api/v1/sales-returns/{$returnId}")->assertOk();
     }

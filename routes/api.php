@@ -21,16 +21,16 @@ use App\Http\Controllers\Api\V1\CashRegisterController;
 use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CashSessionMovementsController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CompleteStockTransferController;
 use App\Http\Controllers\Api\V1\ConfirmSaleController;
-use App\Http\Controllers\Api\V1\CustomerAddressController;
-use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CreditNoteController;
+use App\Http\Controllers\Api\V1\CustomerAddressController;
 use App\Http\Controllers\Api\V1\CustomerController;
-use App\Http\Controllers\Api\V1\OperativeProfileController;
 use App\Http\Controllers\Api\V1\CustomerCreditBalanceController;
 use App\Http\Controllers\Api\V1\CustomerCreditCheckController;
 use App\Http\Controllers\Api\V1\CustomerCreditStatusController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
@@ -44,14 +44,14 @@ use App\Http\Controllers\Api\V1\IssuePurchaseOrderController;
 use App\Http\Controllers\Api\V1\JustifyPhysicalCountController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
 use App\Http\Controllers\Api\V1\OpenCashSessionController;
+use App\Http\Controllers\Api\V1\OperativeProfileController;
 use App\Http\Controllers\Api\V1\PayAccountPayableController;
 use App\Http\Controllers\Api\V1\PhysicalCountController;
-use App\Http\Controllers\Api\V1\ProductController;
-use App\Http\Controllers\Api\V1\RecipeController;
-use App\Http\Controllers\Api\V1\UpdatePasswordController;
 use App\Http\Controllers\Api\V1\POSController;
+use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReceivablePaymentsController;
+use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportDefinitionController;
@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\V1\ResolveGoodsReceiptController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SaleItemController;
 use App\Http\Controllers\Api\V1\SalesReturnController;
+use App\Http\Controllers\Api\V1\SalesReturnEligibilityController;
 use App\Http\Controllers\Api\V1\StockLevelController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\StoreInvoiceController;
@@ -68,21 +69,19 @@ use App\Http\Controllers\Api\V1\SuspendSupplierController;
 use App\Http\Controllers\Api\V1\TaxRuleController;
 use App\Http\Controllers\Api\V1\UnblockAccountPayableController;
 use App\Http\Controllers\Api\V1\UnitController;
-use App\Http\Controllers\Api\V1\UpdateUserEmailController; //
+use App\Http\Controllers\Api\V1\UpdatePasswordController; //
+use App\Http\Controllers\Api\V1\UpdateUserEmailController;
 use App\Http\Controllers\Api\V1\UpdateUserPasswordController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\VoidInvoiceController;
 use App\Http\Controllers\Api\V1\WarehouseController;
+use App\Http\Middleware\EnsureOperableUser;
+use App\Models\InventoryAdjustment;
+use App\Models\PhysicalCount;
 use App\Models\Product;
+use App\Models\StockTransfer;
 use App\Models\User;
-use App\Models\ProductRecipe;
-use App\Models\StockLevel;
 use Illuminate\Support\Facades\Route;
-
-
-
-
-
 
 // 'v1' se antepone para componer /api/v1 conforme al contrato MOD-01 V2.
 Route::prefix('v1')->group(function (): void {
@@ -91,7 +90,7 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
 
-    Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureOperableUser::class])->group(function (): void {
+    Route::middleware(['auth:sanctum', EnsureOperableUser::class])->group(function (): void {
 
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
@@ -99,7 +98,7 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/me/password', UpdatePasswordController::class);
         // Route::get('/pos', [POSController::class, 'index'])->name('pos.index');
         // Route::get('/finance/cash-closing', [FinanceController::class, 'cashClosing'])
-            // ->name('finance.cash-closing');
+        // ->name('finance.cash-closing');
 
         // apiResource genera los parámetros {user} y {branch}, que son los
         // que esperan routeId() en los FormRequest y el ignore() del unique.
@@ -159,9 +158,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('inventory-movements', [InventoryMovementController::class, 'index']);
 
         // Binding de modelos para parámetros no convencionales.
-        Route::model('physical_count', \App\Models\PhysicalCount::class);
-        Route::model('stock_transfer', \App\Models\StockTransfer::class);
-        Route::model('inventory_adjustment', \App\Models\InventoryAdjustment::class);
+        Route::model('physical_count', PhysicalCount::class);
+        Route::model('stock_transfer', StockTransfer::class);
+        Route::model('inventory_adjustment', InventoryAdjustment::class);
 
         // MOD-04
         // Proveedores: apiResource + aprobar/suspender (ROL-01).
@@ -218,7 +217,6 @@ Route::prefix('v1')->group(function (): void {
         Route::get('cash-movements', [CashMovementController::class, 'index']);
         Route::post('cash-movements', [CashMovementController::class, 'store']);
 
-
         // MOD-07 - Ventas, Facturacion e Inmutabilidad
         Route::get('sales', [SaleController::class, 'index']);
         Route::post('sales', [SaleController::class, 'store']);
@@ -253,7 +251,6 @@ Route::prefix('v1')->group(function (): void {
         Route::get('customers/{customer}/credit-status', CustomerCreditStatusController::class);
         Route::post('customers/{customer}/credit-check', CustomerCreditCheckController::class);
 
-
         // MOD-09 · Entregas y Retiros de Mercancía
         Route::get('dispatches', [DispatchController::class, 'index'])->name('dispatches.index');
         Route::post('dispatches', [DispatchController::class, 'store'])->name('dispatches.store');
@@ -265,10 +262,13 @@ Route::prefix('v1')->group(function (): void {
         Route::get('invoices/{invoice}/delivery-status', [InvoiceDeliveryController::class, 'show'])
             ->name('invoices.delivery-status');
 
-
         // MOD-10 · Devoluciones, Reingresos y Mermas
         Route::get('sales-returns', [SalesReturnController::class, 'index'])->name('sales-returns.index');
         Route::post('sales-returns', [SalesReturnController::class, 'store'])->name('sales-returns.store');
+        // Lectura para PREPARAR devoluciones (bodeguero con devoluciones.crear, sin facturas.ver).
+        // Registradas ANTES del binding {salesReturn} para que 'eligible-invoices' no se interprete como id.
+        Route::get('sales-returns/eligible-invoices', [SalesReturnEligibilityController::class, 'index'])->name('sales-returns.eligible-invoices.index');
+        Route::get('sales-returns/eligible-invoices/{invoice}/items', [SalesReturnEligibilityController::class, 'items'])->name('sales-returns.eligible-invoices.items');
         Route::get('sales-returns/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales-returns.show');
         Route::get('sales-returns/{salesReturn}/items', [SalesReturnController::class, 'items'])->name('sales-returns.items');
 
@@ -311,8 +311,8 @@ Route::prefix('v1')->group(function (): void {
         });
         Route::get('dashboard/kpis', [KpiSnapshotController::class, 'dashboard'])->name('dashboard.kpis'); // ROL-01 (KPIs, ruta canónica).
         // Fase 7 · Dashboards agregados por rol (datos reales).
-        Route::get('dashboard/admin', [\App\Http\Controllers\Api\V1\DashboardController::class, 'admin'])->name('dashboard.admin');
-        Route::get('dashboard/operative', [\App\Http\Controllers\Api\V1\DashboardController::class, 'operative'])->name('dashboard.operative');
+        Route::get('dashboard/admin', [DashboardController::class, 'admin'])->name('dashboard.admin');
+        Route::get('dashboard/operative', [DashboardController::class, 'operative'])->name('dashboard.operative');
 
         // MOD-12 · Reportería consolidada (solo lectura) y definiciones reutilizables
         Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
@@ -324,9 +324,6 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 });
-
-
-
 
 /*
 MOD-01 · POST   /api/v1/auth/login       · LoginRequest           · RF-01-02  · público

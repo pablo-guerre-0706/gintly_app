@@ -1,0 +1,101 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Api\V1\SalesReturn;
+
+use App\Enums\ReturnDestination;
+use App\Enums\ReturnReasonCode;
+use App\Http\Requests\BaseTenantRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+
+final class StoreSalesReturnRequest extends BaseTenantRequest
+{
+    public function authorize(): bool
+    {
+        return true; // SalesReturnPolicy::create en el controlador.
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('notes') && trim((string) $this->input('notes')) === '') {
+            $this->merge(['notes' => null]);
+        }
+    }
+
+    public function rules(): array
+    {
+        return [
+            // invoices, cash_sessions y sale_items NO son soft-deletable ⇒ excludeTrashed:false
+            // evita whereNull('deleted_at') sobre columna inexistente (SQLSTATE 42S22 → 500).
+            'invoice_id'      => ['required', 'integer', $this->tenantExists('invoices', 'id', excludeTrashed: false)],
+            'cash_session_id' => ['nullable', 'integer', $this->tenantExists('cash_sessions', 'id', excludeTrashed: false)],
+            'notes'           => ['nullable', 'string', 'max:500'],
+
+            'lines'                 => ['required', 'array', 'min:1'],
+            // distinct: prohíbe repetir la misma línea de venta dentro de una devolución.
+            'lines.*.sale_item_id'  => ['required', 'integer', 'distinct', $this->tenantExists('sale_items', 'id', excludeTrashed: false)],
+            'lines.*.quantity'      => ['required', 'numeric', 'decimal:0,3', 'gt:0'],
+            'lines.*.reason_code'   => ['required', 'string', Rule::in(ReturnReasonCode::values())],
+            'lines.*.destination'   => ['nullable', 'string', Rule::in(ReturnDestination::values())],
+            'lines.*.warehouse_id'  => ['nullable', 'integer', $this->tenantExists('warehouses')], // soft-deletable
+        ];
+        // AL SERVICE (bajo lock): devolvible por línea (ERR-10/422), vía de resarcimiento (ERR-10B/422),
+        // autoridad ROL-01 del reembolso (403), pertenencia de la línea a la factura.
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        // Fase 5: ROL-03 (bodeguero) solo procesa devoluciones de facturas de SU sucursal.
+        $validator->after(function (Validator $v): void {
+            $user = $this->user();
+            if ($user !== null && $user->getRoleNames()->first() === \App\Enums\RoleName::Operator->value) {
+                $branchId = \App\Models\Invoice::query()->whereKey($this->input('invoice_id'))->value('branch_id');
+                if ($branchId !== null && (int) $branchId !== (int) $user->branch_id) {
+                    $v->errors()->add('invoice_id', 'Solo puede procesar devoluciones de facturas de su sucursal.');
+                }
+            }
+        });
+
+        // Coherencia motivo⇄destino: 'vencido'/'defecto_fabrica' NUNCA reingresan (RF-10-01).
+        $validator->after(function (Validator $v): void {
+            foreach ((array) $this->input('lines', []) as $i => $line) {
+                $destination = $line['destination'] ?? null;
+                $reason      = $line['reason_code'] ?? null;
+
+                if ($destination === ReturnDestination::Reingreso->value
+                    && is_string($reason)
+                    && ! ReturnReasonCode::from($reason)->allowsReentry()
+                ) {
+                    $v->errors()->add(
+                        "lines.$i.destination",
+                        'Un producto vencido o con defecto de fábrica no puede reingresar al stock; corresponde merma.'
+                    );
+                }
+            }
+        });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'lines.min'                    => 'La devolución debe incluir al menos una línea.',
+            'lines.*.quantity.gt'          => 'La cantidad a devolver debe ser mayor que cero.',
+            'lines.*.sale_item_id.distinct' => 'No repitas la misma línea de venta dentro de una devolución.',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'invoice_id'           => 'factura',
+            'cash_session_id'      => 'sesión de caja',
+            'lines.*.sale_item_id' => 'línea de venta',
+            'lines.*.quantity'     => 'cantidad',
+            'lines.*.reason_code'  => 'motivo',
+            'lines.*.destination'  => 'destino',
+            'lines.*.warehouse_id' => 'bodega',
+        ];
+    }
+}

@@ -1,0 +1,109 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use App\Enums\FiscalCondition;
+use App\Enums\TaxClass;
+use App\Models\Concerns\BelongsToBusiness;
+use App\Models\DispatchItem;
+use App\Models\SalesReturnItem;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+
+final class SaleItem extends Model
+{
+    use BelongsToBusiness;
+    use HasFactory;
+
+    public $timestamps = false;
+
+    protected $fillable = [
+        'sale_id',
+        'product_id',
+        'description',
+        'quantity',
+        'unit_price',
+        'unit_cost',
+        'is_taxable',
+        'discount_amount',
+        'line_total',
+        'recipe_snapshot',
+        // Fotografía fiscal congelada (MOD-07):
+        'tax_class',
+        'fiscal_condition',
+        'tax_rate',
+        'taxable_base',
+        'tax_amount',
+        'tax_rule_id',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'quantity'            => 'decimal:3',
+            'unit_price'          => 'decimal:2',
+            'unit_cost'           => 'decimal:4',
+            'is_taxable'          => 'boolean',
+            'discount_amount'     => 'decimal:2',
+            'line_total'          => 'decimal:2',
+            'recipe_snapshot'     => 'array',
+            'dispatched_quantity' => 'decimal:3',
+            'returned_quantity'   => 'decimal:3',
+            'tax_class'           => TaxClass::class,
+            'fiscal_condition'    => FiscalCondition::class,
+            'tax_rate'            => 'decimal:6',
+            'taxable_base'        => 'decimal:2',
+            'tax_amount'          => 'decimal:2',
+        ];
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function taxRule(): BelongsTo
+    {
+        return $this->belongsTo(TaxRule::class);
+    }
+
+    // Cantidad aún no entregada = facturada − despachada. Accesor P10 (MOD-09).
+    public function pendingQuantity(): string
+    {
+        return bcsub((string) $this->quantity, (string) ($this->dispatched_quantity ?? '0'), 3);
+    }
+
+    public function dispatchItems(): HasMany
+    {
+        return $this->hasMany(DispatchItem::class);
+    }
+
+    public function returnableQuantity(): string
+    {
+        return bcsub((string) $this->dispatched_quantity, (string) $this->returned_quantity, 3);
+    }
+
+    public function salesReturnItems(): HasMany
+    {
+        return $this->hasMany(SalesReturnItem::class);
+    }
+
+    /**
+     * True si la línea corresponde a un producto compuesto (tiene receta
+     * congelada). Rige la reserva y el retiro de insumos.
+     */
+    public function isCompound(): bool
+    {
+        return ! empty($this->recipe_snapshot);
+    }
+}

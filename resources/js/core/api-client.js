@@ -84,17 +84,21 @@ function cookie(name) {
 }
 
 function appendQuery(url, query) {
+    const valueForQuery = (value) => typeof value === 'boolean'
+        ? (value ? '1' : '0')
+        : String(value);
+
     Object.entries(query ?? {}).forEach(([key, value]) => {
         if (value === null || value === undefined || value === '') {
             return;
         }
 
         if (Array.isArray(value)) {
-            value.forEach((item) => url.searchParams.append(key, String(item)));
+            value.forEach((item) => url.searchParams.append(key, valueForQuery(item)));
             return;
         }
 
-        url.searchParams.set(key, String(value));
+        url.searchParams.set(key, valueForQuery(value));
     });
 }
 

@@ -186,4 +186,71 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
     ])->name('panel.admin.cash-registers');
     Route::view('/administration/cash-sessions', 'administration.cash-sessions')->name('panel.admin.cash-sessions');
 
+    // Experiencia operativa ROL-03. Estas rutas solo entregan vistas; perfiles,
+    // capacidades, sucursal y autorización definitiva se resuelven en /api/v1.
+    Route::view('/operations/cash', 'operations.cash')->name('panel.operations.cash');
+    Route::view('/operations/receivables', 'operations.receivables')->name('panel.operations.receivables');
+    Route::view('/operations/stock', 'operations.resource-list', [
+        'resourceType' => 'stock',
+        'pageTitle' => 'Existencias de mi sucursal',
+        'pageDescription' => 'Consulta existencias únicamente en las bodegas de tu sucursal asignada.',
+        'breadcrumbRoot' => 'Inventario y bodega',
+    ])->name('panel.operations.stock');
+    Route::view('/operations/physical-counts/new', 'operations.physical-count')->name('panel.operations.physical-count');
+    Route::view('/operations/dispatches', 'operations.dispatches')->name('panel.operations.dispatches');
+    Route::view('/operations/invoices', 'operations.resource-list', [
+        'resourceType' => 'invoices', 'pageTitle' => 'Facturas de mi sucursal',
+        'pageDescription' => 'Consulta documentos emitidos dentro de tu alcance operativo.',
+        'breadcrumbRoot' => 'Consultas compartidas',
+    ])->name('panel.operations.invoices');
+    Route::view('/operations/sales', 'operations.resource-list', [
+        'resourceType' => 'sales', 'pageTitle' => 'Ventas de mi sucursal',
+        'pageDescription' => 'Consulta el estado de ventas de tu sucursal; las operaciones de facturación se realizan en el punto de venta.',
+        'breadcrumbRoot' => 'Ventas y facturación',
+    ])->name('panel.operations.sales');
+    Route::view('/operations/warehouses', 'operations.resource-list', [
+        'resourceType' => 'warehouses', 'pageTitle' => 'Bodegas de mi sucursal',
+        'pageDescription' => 'Consulta las bodegas asignadas a tu sucursal.',
+        'breadcrumbRoot' => 'Inventario y bodega',
+    ])->name('panel.operations.warehouses');
+    Route::view('/operations/stock-transfers', 'operations.resource-list', [
+        'resourceType' => 'transfers', 'pageTitle' => 'Traspasos de inventario',
+        'pageDescription' => 'Consulta traspasos cuyo origen o destino pertenece a tu sucursal.',
+        'breadcrumbRoot' => 'Inventario y bodega',
+    ])->name('panel.operations.transfers');
+    Route::view('/operations/stock-transfers/new', 'operations.stock-transfer-create')->name('panel.operations.transfers.create');
+    Route::view('/operations/purchase-orders', 'operations.resource-list', [
+        'resourceType' => 'purchaseOrders', 'pageTitle' => 'Órdenes de compra',
+        'pageDescription' => 'Consulta órdenes de compra de tu sucursal.',
+        'breadcrumbRoot' => 'Compras y recepción',
+    ])->name('panel.operations.purchase-orders');
+    Route::view('/operations/purchase-orders/new', 'operations.purchase-order-create')->name('panel.operations.purchase-orders.create');
+    Route::view('/operations/goods-receipts', 'operations.resource-list', [
+        'resourceType' => 'goodsReceipts', 'pageTitle' => 'Recepciones de mercancía',
+        'pageDescription' => 'Consulta recepciones realizadas en bodegas de tu sucursal.',
+        'breadcrumbRoot' => 'Compras y recepción',
+    ])->name('panel.operations.goods-receipts');
+    Route::view('/operations/goods-receipts/new', 'operations.goods-receipt-create')->name('panel.operations.goods-receipts.create');
+    Route::view('/operations/suppliers', 'operations.resource-list', [
+        'resourceType' => 'suppliers', 'pageTitle' => 'Proveedores registrados',
+        'pageDescription' => 'Consulta proveedores internos del negocio. Esta vista no aprueba ni suspende proveedores.',
+        'breadcrumbRoot' => 'Compras y recepción',
+    ])->name('panel.operations.suppliers');
+    Route::view('/operations/accounts-payable', 'operations.resource-list', [
+        'resourceType' => 'payables', 'pageTitle' => 'Cuentas por pagar',
+        'pageDescription' => 'Consulta obligaciones vinculadas con órdenes de tu sucursal, sin realizar pagos ni desbloqueos.',
+        'breadcrumbRoot' => 'Compras y recepción',
+    ])->name('panel.operations.payables');
+    Route::view('/operations/sales-returns', 'operations.resource-list', [
+        'resourceType' => 'returns', 'pageTitle' => 'Devoluciones',
+        'pageDescription' => 'Consulta devoluciones de facturas de tu sucursal.',
+        'breadcrumbRoot' => 'Devoluciones',
+    ])->name('panel.operations.returns');
+    Route::view('/operations/sales-returns/new', 'operations.sales-return-create')->name('panel.operations.returns.create');
+    Route::view('/operations/credit-notes', 'operations.resource-list', [
+        'resourceType' => 'creditNotes', 'pageTitle' => 'Notas de crédito',
+        'pageDescription' => 'Consulta notas de crédito relacionadas con facturas de tu sucursal.',
+        'breadcrumbRoot' => 'Devoluciones',
+    ])->name('panel.operations.credit-notes');
+
 });

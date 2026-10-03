@@ -11,15 +11,15 @@
 
 <section
     id="customersRoot"
-    data-customers-url="{{ $customersEndpoint ?? route('customers.index') }}"
     class="mx-auto w-full max-w-6xl bg-stone-100 px-6 py-7"
+    aria-busy="true"
 >
     <header class="mb-7">
         <h1 class="text-[28px] font-bold tracking-[-.035em] text-[#171717]">
             Clientes y Fidelidad
         </h1>
         <p class="mt-1.5 text-[10px] leading-5 text-[#777]">
-            Revisa el saldo de los clientes que compran al fiado, verifica sus límites de crédito disponibles y procesa los abonos a sus deudas pendientes.
+            Consulta la información básica y el límite de crédito registrado de los clientes del negocio.
         </p>
     </header>
 
@@ -43,55 +43,16 @@
                 <a
                     href="{{ route('web.customers.create') }}"
                     class="flex h-10 items-center justify-center rounded-lg bg-cyan-800 px-5 text-xs font-semibold text-white transition hover:bg-cyan-900"
+                    data-create-customer
+                    hidden
                 >
                 <span class="mr-2 text-sm font-normal">⊕</span>
                     Registra a nuevo cliente
                 </a>
             </div>
 
-            <nav class="mt-6 flex flex-wrap gap-3" aria-label="Filtros de clientes">
-                @foreach ([['all','Todas (6)'], ['frequent','Clientes frecuentes (4)'], ['occasional','Ocasional (2)']] as [$key,$label])
-                    <button
-                        type="button"
-                        data-profile-filter="{{ $key }}"
-                        @class([
-                            'h-[36px] rounded-[10px] border px-4 text-[10px] font-medium transition',
-                            'border-[#087F98] bg-[#087F98] text-white' => $loop->first,
-                            'border-[#D7D7D7] bg-[#F7F7F7] text-[#696969]' => !$loop->first,
-                        ])
-                    >{{ $label }}</button>
-                @endforeach
-            </nav>
-
             <div id="customersList" class="mt-7 space-y-5" aria-live="polite">
-                {{-- Lista poblada por el módulo JS (data-customers-url). El pre-render server-side
-                     es opcional: por defecto vacío para no depender de datos inyectados por la ruta. --}}
-                @foreach ($customers ?? [] as $customer)
-                    <article
-                        tabindex="0"
-                        data-customer-card
-                        data-type="{{ $customer['profile_type'] }}"
-                        data-customer="{{ json_encode($customer, JSON_UNESCAPED_UNICODE) }}"
-                        class="grid cursor-pointer gap-4 rounded-[14px] border border-[#D6D6D6] bg-white px-5 py-5 transition hover:border-[#9ABFC8] hover:shadow-sm sm:grid-cols-[1.35fr_1fr_110px]"
-                    >
-                        <div class="min-w-0">
-                            <h2 class="truncate text-[12px] font-bold text-[#202020]">{{ $customer['name'] }}</h2>
-                            <x-status-badge class="mt-2" type="info" :text="$customer['profile_label']" />
-                            <p class="mt-3 text-[8px] text-[#696969]">Cédula: {{ $customer['document_number'] }}</p>
-                            <p class="mt-2 truncate text-[8px] text-[#777]">Dirección: {{ $customer['address'] }}</p>
-                        </div>
-
-                        <dl class="space-y-2 pt-1 text-[8px] text-[#777]">
-                            <div><dt class="inline font-semibold">Número celular:</dt> <dd class="inline">{{ $customer['phone_number'] }}</dd></div>
-                            <div><dt class="inline font-semibold">Límite de crédito:</dt> <dd class="inline">C$ {{ $customer['credit_limit'] }}</dd></div>
-                        </dl>
-
-                        <div class="text-right">
-                            <p class="text-[19px] font-bold tracking-[-.02em] text-[#202020]">C$ {{ $customer['balance'] }}</p>
-                            <p class="mt-2 text-[10px] text-[#777]">{{ $customer['purchase_count'] }} compras</p>
-                        </div>
-                    </article>
-                @endforeach
+                <p class="py-16 text-center text-sm text-[#777]">Consultando clientes…</p>
             </div>
         </div>
 
@@ -102,7 +63,7 @@
                     <path d="M7 48c0-11 6-18 15-18s15 7 15 18z"/><path d="M29 48c0-11 6-18 14-18s14 7 14 18z"/>
                 </svg>
                 <p class="mt-5 text-[12px] font-medium text-[#4C5563]">Selecciona un cliente</p>
-                <p class="mt-3 text-[10px] text-[#536071]">para ver su perfil e historial de compras</p>
+                <p class="mt-3 text-[10px] text-[#536071]">para ver su información registrada</p>
             </div>
         </aside>
     </section>

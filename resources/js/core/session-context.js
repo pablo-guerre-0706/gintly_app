@@ -15,6 +15,8 @@ const PROFILE_LABELS = Object.freeze({
     despachador: 'Despachador',
 });
 
+const OPERATIVE_PROFILES = new Set(Object.keys(PROFILE_LABELS));
+
 let contextPromise = null;
 
 export class SessionContextError extends Error {
@@ -58,7 +60,10 @@ function normalize(payload) {
         throw new SessionContextError('La cuenta no contiene capacidades efectivas para el panel.');
     }
 
-    if (data.role === 'ROL-03' && profiles.length === 0) {
+    if (
+        data.role === 'ROL-03' &&
+        (profiles.length === 0 || profiles.some((profile) => !OPERATIVE_PROFILES.has(profile)))
+    ) {
         throw new SessionContextError('La cuenta operativa no contiene perfiles válidos.');
     }
 
@@ -69,6 +74,10 @@ function normalize(payload) {
     const branchId = Number.isInteger(data.branch_id)
         ? data.branch_id
         : null;
+
+    if (data.role === 'ROL-03' && (!Number.isInteger(branchId) || branchId < 1)) {
+        throw new SessionContextError('La cuenta operativa no contiene una sucursal válida.');
+    }
 
     return Object.freeze({
         identity: Object.freeze({

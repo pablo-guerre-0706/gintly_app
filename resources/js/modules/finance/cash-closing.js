@@ -1,23 +1,29 @@
-import { api, ApiError } from '@/core/api-client';
+import { api, ApiError, initializeCsrf } from '@/core/api-client';
 import { withLoading, setButtonLoading } from '@/core/loading';
 import { notify } from '@/core/notifications';
-import { add, multiply, money, SCALE } from '@/core/money';
+import { denominationTotal } from '@/core/cash-denominations';
+import { money } from '@/core/money';
+import { formatDateTime } from '@/dashboard/formatters';
 
 const fmt = value => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 let submitting = false;
+let activeSession = null;
 
 function calculate() {
-    let total = '0.00';
+    const lines = [];
 
     document.querySelectorAll('[data-denomination]').forEach((input) => {
         const count = input.value.replace(/\D/g, '') || '0';
-        const line = multiply(String(input.dataset.denomination), count, SCALE.MONEY);
+        const denomination = { value: String(input.dataset.denomination), qty: count };
+        const line = denominationTotal([denomination]) ?? '0.00';
 
         input.value = count;
         const lineTotal = input.closest('div')?.querySelector('[data-line-total]');
         if (lineTotal) lineTotal.textContent = fmt(line);
-        total = add(total, line, SCALE.MONEY);
+        lines.push(denomination);
     });
+
+    const total = denominationTotal(lines) ?? '0.00';
 
     const countedTotal = document.querySelector('#countedTotal');
     if (countedTotal) countedTotal.textContent = fmt(total);
@@ -25,13 +31,17 @@ function calculate() {
 }
 
 function payload() {
-    const denominations = {};
+    const denominations = [];
 
     document.querySelectorAll('[data-denomination]').forEach((input) => {
-        denominations[String(input.dataset.denomination)] = input.value || '0';
+        denominations.push({
+            value: String(input.dataset.denomination),
+            qty: Number.parseInt(input.value || '0', 10),
+        });
     });
 
     return {
+        counted_amount: calculate(),
         counted_denominations: denominations,
         closing_notes: document.querySelector('#closingNotes')?.value.trim() || null,
     };
@@ -82,7 +92,7 @@ function persistedClosing(error) {
 async function closeCash(button) {
     if (submitting) return;
 
-    const endpoint = document.querySelector('#cashClosingRoot')?.dataset.closeUrl;
+    const endpoint = activeSession ? `/cash-sessions/${activeSession.id}/close` : null;
 
     if (!endpoint) {
         notify({ type: 'error', message: 'Endpoint de cierre de caja no configurado.' });
@@ -94,8 +104,16 @@ async function closeCash(button) {
     let completed = false;
 
     try {
+        const send = () => api.post(endpoint, payload(), { dispatchErrors: false });
         const response = await withLoading(
-            () => api.post(endpoint, payload()),
+            async () => {
+                try { return await send(); }
+                catch (error) {
+                    if (!(error instanceof ApiError) || error.status !== 419) throw error;
+                    await initializeCsrf({ dispatchErrors: false });
+                    return send();
+                }
+            },
             { message: 'Procesando arqueo...' },
         );
 
@@ -132,6 +150,40 @@ async function closeCash(button) {
     }
 }
 
+function renderSession(session) {
+    activeSession = session;
+    const context = document.querySelector('[data-cash-closing-context]');
+    if (context) context.textContent = `${session.cash_register?.name ?? `Caja #${session.cash_register_id}`} · Sesión propia #${session.id}`;
+    const values = {
+        session: `#${session.id}`,
+        register: session.cash_register?.name ?? `Caja #${session.cash_register_id}`,
+        opening: fmt(session.opening_amount),
+        opened: formatDateTime(session.opened_at),
+    };
+    Object.entries(values).forEach(([key, value]) => {
+        const element = document.querySelector(`[data-cash-closing-summary="${key}"]`);
+        if (element) element.textContent = value;
+    });
+    document.querySelector('#cashClosingRoot')?.setAttribute('aria-busy', 'false');
+}
+
+async function loadCurrentSession() {
+    const root = document.querySelector('#cashClosingRoot');
+    const errorBox = root?.querySelector('[data-cash-closing-error]');
+    try {
+        const response = await api.get('/cash-sessions/current', {}, { dispatchErrors: false });
+        if (!response?.data) throw new Error('No tienes una sesión de caja abierta para cerrar.');
+        renderSession(response.data);
+    } catch (error) {
+        if (errorBox) {
+            errorBox.hidden = false;
+            errorBox.textContent = error instanceof ApiError ? error.message : error.message;
+        }
+        root?.querySelectorAll('form input, form textarea, form button').forEach((control) => { control.disabled = true; });
+        root?.setAttribute('aria-busy', 'false');
+    }
+}
+
 export default function init() {
     const root = document.querySelector('#cashClosingRoot');
     if (!root || root.dataset.initialized === 'true') return;
@@ -148,4 +200,5 @@ export default function init() {
     });
 
     calculate();
+    return loadCurrentSession();
 }
