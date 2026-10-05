@@ -37,6 +37,7 @@ class PanelShellCoordinator {
             customersCreate: root.dataset.urlCustomersCreate,
             inventoryReconciliation: root.dataset.urlInventoryReconciliation,
             inventorySummary: root.dataset.urlInventorySummary,
+            inventoryStock: root.dataset.urlInventoryStock,
             catalogProducts: root.dataset.urlCatalogProducts,
             purchasesHub: root.dataset.urlPurchasesHub,
             financeHub: root.dataset.urlFinanceHub,

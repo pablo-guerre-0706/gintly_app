@@ -28,6 +28,10 @@
     >
         {{-- Catálogo --}}
         <div class="min-w-0">
+            <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm" aria-live="polite">
+                <p data-pos-availability-state>Consultando disponibilidad de la bodega utilizada al emitir…</p>
+                <button type="button" data-pos-availability-refresh class="mt-2 min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-semibold disabled:opacity-50">Actualizar disponibilidad</button>
+            </div>
             <label class="relative block">
                 <span class="sr-only">Buscar productos</span>
                 <input
@@ -90,6 +94,7 @@
                     </div>
                     <p class="text-[8px] leading-4 text-[#777]">El Backend calculará impuestos y total definitivo al confirmar la venta.</p>
                 </dl>
+                <p class="mt-3 text-sm text-amber-900" data-pos-stock-warning role="status" hidden></p>
 
                 <fieldset class="mt-3 grid grid-cols-3 gap-2">
                     @foreach (['efectivo' => 'Efectivo', 'tarjeta' => 'Tarjeta', 'transferencia' => 'Transferencia'] as $key => $label)
@@ -114,6 +119,10 @@
                 >
                     Confirmar venta y emitir factura
                 </button>
+                <section class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-pos-invoice-recovery aria-label="Recuperación de emisión" hidden>
+                    <p>El ticket registrado se conserva sin editar sus líneas. Actualiza la disponibilidad; cuando exista saldo suficiente, puedes reintentar únicamente la emisión de esa misma venta.</p>
+                    <button type="button" data-pos-invoice-retry class="mt-3 min-h-11 w-full rounded-lg border border-amber-300 bg-white px-3 font-semibold disabled:opacity-50">Reintentar solo emisión</button>
+                </section>
             </form>
         </aside>
     </section>

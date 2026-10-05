@@ -15,6 +15,7 @@ const modules = import.meta.glob([
     './modules/administration/reconciliations.js',
     './modules/hubs/index.js',
     './modules/inventory/reconciliation.js',
+    './modules/inventory/stock.js',
     './modules/landing/index.js',
     './modules/organization/branches/index.js',
     './modules/organization/branches/form.js',

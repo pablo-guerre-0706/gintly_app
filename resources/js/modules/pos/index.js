@@ -4,6 +4,9 @@ import { setButtonLoading } from '@/core/loading';
 import { add, compare, money, multiply, quantity, SCALE } from '@/core/money';
 import { notify } from '@/core/notifications';
 import { getSessionContext } from '@/core/session-context';
+import { sellingAvailability, cartAvailability } from './availability';
+import { canRetryInvoice, confirmedSale, invoicePayload } from './invoice-recovery';
+import { read } from '@/modules/operations/write-support';
 
 const esc = (value) => escapeHtml(value);
 const fmt = (value) => `C$ ${money(String(value ?? '0')).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -16,6 +19,15 @@ class PointOfSale {
         this.context = null;
         this.cashSession = null;
         this.submitting = false;
+        this.availability = new Map();
+        this.availabilityReady = false;
+        this.availabilityController = null;
+        this.availabilityPending = false;
+        this.lastConsulted = 0;
+        this.pendingSaleId = null;
+        this.saleUncertain = false;
+        this.pendingInvoicePayload = null;
+        this.retryableInvoice = false;
     }
 
     async init() {
@@ -24,6 +36,7 @@ class PointOfSale {
             this.context = await getSessionContext();
             this.assertAccess();
             await Promise.all([this.loadProducts(), this.loadCustomers(), this.loadCashContext()]);
+            await this.loadAvailability();
             this.renderCart();
         } catch (error) {
             this.showError(error);
@@ -44,6 +57,11 @@ class PointOfSale {
 
     bind() {
         this.root.addEventListener('click', (event) => this.handleClick(event));
+        this.root.querySelector('[data-pos-availability-refresh]').addEventListener('click', () => void this.loadAvailability());
+        this.root.querySelector('[data-pos-invoice-retry]').addEventListener('click', () => void this.retryInvoice());
+        window.addEventListener('focus', () => { if (this.context && Date.now() - this.lastConsulted > 1000) void this.loadAvailability(); });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && this.context && Date.now() - this.lastConsulted > 1000) void this.loadAvailability(); });
+        window.addEventListener('pageshow', (event) => { if (event.persisted && this.context) void this.loadAvailability(); });
         this.root.querySelector('#posSearch')?.addEventListener('input', (event) => {
             const query = event.currentTarget.value.trim().toLocaleLowerCase('es');
             this.renderProducts(this.products.filter((product) =>
@@ -53,6 +71,49 @@ class PointOfSale {
             event.preventDefault();
             void this.checkout(event.currentTarget.querySelector('[data-submit]'));
         });
+    }
+
+    async loadAvailability() {
+        if (this.availabilityPending) return false;
+        this.availabilityPending = true;
+        this.availabilityReady = false;
+        this.availabilityController?.abort();
+        this.availabilityController = new AbortController();
+        const button = this.root.querySelector('[data-pos-availability-refresh]');
+        const state = this.root.querySelector('[data-pos-availability-state]');
+        button.disabled = true; state.textContent = 'Consultando disponibilidad…';
+        this.stockWarnings();
+        try {
+            this.availability = await sellingAvailability(this.availabilityController.signal);
+            this.availabilityReady = true;
+            const query = this.root.querySelector('#posSearch').value.trim().toLocaleLowerCase('es');
+            this.renderProducts(this.products.filter((product) => `${product.name} ${product.sku}`.toLocaleLowerCase('es').includes(query)));
+            const warehouse = this.availability.values().next().value?.warehouseId;
+            state.textContent = `${warehouse ? `Bodega de emisión #${warehouse}` : 'Sin saldos consultables en la bodega de emisión'} · Consultado: ${new Intl.DateTimeFormat('es-NI', { timeStyle: 'medium', timeZone: this.context.business.timezone || 'America/Managua' }).format(new Date())}. La disponibilidad no reserva productos; el servidor verifica al emitir.`;
+            return true;
+        } catch (error) {
+            state.textContent = `No se pudo consultar disponibilidad: ${this.errorMessage(error)} Usa Actualizar disponibilidad para reintentar.`;
+            if (error instanceof ApiError && error.status === 401) window.location.assign(document.querySelector('meta[name="login-url"]').content);
+            return false;
+        } finally {
+            this.lastConsulted = Date.now(); this.availabilityPending = false; button.disabled = false; this.stockWarnings();
+        }
+    }
+
+    stockWarnings() {
+        const warnings = cartAvailability(this.cart, this.availability);
+        const output = this.root.querySelector('[data-pos-stock-warning]');
+        output.textContent = warnings.join(' '); output.hidden = warnings.length === 0;
+        const submit = this.root.querySelector('[data-submit]');
+        submit.disabled = this.submitting || !this.availabilityReady || warnings.length > 0 || this.pendingSaleId !== null || this.saleUncertain;
+        const recovery = this.root.querySelector('[data-pos-invoice-recovery]');
+        recovery.hidden = !this.retryableInvoice;
+        this.root.querySelector('[data-pos-invoice-retry]').disabled = this.submitting || !this.availabilityReady || warnings.length > 0;
+        const locked = this.submitting || this.pendingSaleId !== null || this.saleUncertain;
+        this.root.querySelectorAll('[data-product], [data-qty], [data-remove], [data-payment], [name="customer_id"]').forEach((control) => {
+            control.disabled = locked || (control.dataset.payment === 'efectivo' && !this.cashSession);
+        });
+        this.root.querySelector('#posTicketCode').textContent = this.pendingSaleId ? `Venta #${this.pendingSaleId} · Ticket registrado` : 'Nueva venta';
     }
 
     async loadProducts() {
@@ -124,6 +185,9 @@ class PointOfSale {
                 <span class="mt-3 block truncate text-[10px] font-semibold text-[#282828]">${esc(product.name)}</span>
                 <span class="mt-1 block text-[8px] text-[#888]">${esc(product.sku)}</span>
                 <span class="mt-2 block text-[11px] font-bold text-[#222]">${fmt(product.sale_price)}</span>
+                <span class="mt-2 block text-xs leading-5 text-gintly-text-secondary">${esc(product.tracks_inventory === true
+                    ? (this.availabilityReady ? (this.availability.has(product.id) ? `Disponible: ${this.availability.get(product.id).available} ${this.availability.get(product.id).unit ?? ''}` : 'Sin saldo consultable') : 'Disponibilidad no confirmada')
+                    : 'Sin control de existencias')}</span>
             </button>`).join('');
     }
 
@@ -155,9 +219,11 @@ class PointOfSale {
             </div>`));
         this.root.querySelector('#posSubtotal').textContent = fmt(this.subtotal());
         this.root.querySelector('#posItemCount').textContent = `${rows.length} ${rows.length === 1 ? 'artículo' : 'artículos'}`;
+        this.stockWarnings();
     }
 
     handleClick(event) {
+        if (this.submitting || this.pendingSaleId !== null || this.saleUncertain) return;
         const productButton = event.target.closest('[data-product]');
         const quantityButton = event.target.closest('[data-cart-row] [data-qty]');
         const removeButton = event.target.closest('[data-remove]');
@@ -209,7 +275,7 @@ class PointOfSale {
     }
 
     async checkout(button) {
-        if (this.submitting) return;
+        if (this.submitting || this.pendingSaleId !== null || this.saleUncertain) return;
         const customerId = this.root.querySelector('[name="customer_id"]')?.value;
         const method = this.root.querySelector('#paymentMethod')?.value;
         if (!customerId) return this.announce('Selecciona un cliente antes de continuar.');
@@ -218,8 +284,15 @@ class PointOfSale {
 
         this.submitting = true;
         setButtonLoading(button, true, { label: 'Procesando…' });
+        this.root.querySelector('#posForm').setAttribute('aria-busy', 'true');
+        this.stockWarnings();
         let saleId = null;
+        let saleAttempted = false;
         try {
+            if (!await this.loadAvailability()) return;
+            const warnings = cartAvailability(this.cart, this.availability);
+            if (warnings.length) { this.announce(warnings.join(' ')); return; }
+            saleAttempted = true;
             const saleResponse = await this.mutate('/sales', {
                 branch_id: this.context.branch.id,
                 customer_id: Number(customerId),
@@ -227,46 +300,80 @@ class PointOfSale {
             });
             saleId = saleResponse?.data?.id;
             if (!saleId) throw new Error('El servidor no devolvió el identificador de la venta.');
+            this.pendingSaleId = saleId;
 
-            const lines = [];
             for (const { product, qty } of this.cart.values()) {
-                const lineResponse = await this.mutate(`/sales/${saleId}/items`, {
+                await this.mutate(`/sales/${saleId}/items`, {
                     product_id: product.id,
                     quantity: quantity(qty),
                 });
-                lines.push(lineResponse?.data);
             }
             const confirmed = await this.mutate(`/sales/${saleId}/confirm`, {});
-
-            let invoiceAmount = '0.00';
-            const confirmedLines = Array.isArray(confirmed?.data?.items) ? confirmed.data.items : lines;
-            confirmedLines.forEach((line) => {
-                invoiceAmount = add(invoiceAmount, line?.line_total ?? '0.00', SCALE.MONEY);
-                invoiceAmount = add(invoiceAmount, line?.tax_amount ?? '0.00', SCALE.MONEY);
-            });
-            const invoicePayload = {
-                sale_ids: [saleId],
-                payment_type: 'contado',
-                payments: [{ method, amount: money(invoiceAmount), reference: null }],
-            };
-            if (method === 'efectivo') invoicePayload.cash_session_id = this.cashSession.id;
-            const invoice = await this.mutate('/invoices', invoicePayload);
-
-            this.cart.clear();
-            this.renderCart();
-            this.announce(`Factura ${invoice?.data?.folio ?? `#${invoice?.data?.id}`} emitida correctamente.`);
-            notify({ type: 'success', message: 'Venta confirmada y factura emitida.' });
+            this.pendingInvoicePayload = invoicePayload(confirmedSale(confirmed, saleId, this.context.branch.id), method, this.cashSession?.id);
+            await this.finishInvoice(await this.mutate('/invoices', this.pendingInvoicePayload));
         } catch (error) {
-            const suffix = saleId ? ` La venta #${saleId} quedó registrada para revisión; no se reintentó automáticamente.` : '';
+            this.saleUncertain = saleAttempted && saleId === null && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500);
+            this.retryableInvoice = Boolean(this.pendingInvoicePayload && canRetryInvoice(error));
+            if (error instanceof ApiError && error.status === 409) await this.loadAvailability();
+            const suffix = saleId ? ` La venta #${saleId} quedó registrada para revisión; no se reintentó automáticamente.`
+                : (this.saleUncertain ? ' El resultado de creación es incierto. Comprueba el listado de ventas antes de iniciar otra; no se repitió el POST.' : '');
             this.announce(`${this.errorMessage(error)}${suffix}`);
         } finally {
             setButtonLoading(button, false);
             this.submitting = false;
+            this.root.querySelector('#posForm').setAttribute('aria-busy', 'false');
+            this.stockWarnings();
+        }
+    }
+
+    async finishInvoice(response) {
+        const invoice = response?.data;
+        if (!Number.isInteger(invoice?.id) || typeof invoice.folio !== 'string') {
+            throw new TypeError('El servidor no confirmó la factura. Verifica la venta antes de cualquier nuevo intento.');
+        }
+        this.pendingSaleId = null;
+        this.pendingInvoicePayload = null;
+        this.retryableInvoice = false;
+        this.cart.clear();
+        this.renderCart();
+        this.announce(`Factura ${invoice.folio} emitida correctamente.`);
+        notify({ type: 'success', message: 'Venta confirmada y factura emitida.' });
+        await this.loadAvailability();
+    }
+
+    async retryInvoice() {
+        if (this.submitting || !this.retryableInvoice || !this.pendingInvoicePayload || this.pendingSaleId === null) return;
+        const button = this.root.querySelector('[data-pos-invoice-retry]');
+        this.submitting = true;
+        setButtonLoading(button, true, { label: 'Verificando venta…' });
+        this.root.querySelector('#posForm').setAttribute('aria-busy', 'true');
+        this.stockWarnings();
+        try {
+            const sale = confirmedSale(await read(`/sales/${this.pendingSaleId}`), this.pendingSaleId, this.context.branch.id);
+            if (!await this.loadAvailability()) return;
+            const warnings = cartAvailability(this.cart, this.availability);
+            if (warnings.length) { this.announce(warnings.join(' ')); return; }
+            const method = this.pendingInvoicePayload.payments[0].method;
+            const payload = invoicePayload(sale, method, this.pendingInvoicePayload.cash_session_id);
+            await this.finishInvoice(await this.mutate('/invoices', payload));
+        } catch (error) {
+            this.retryableInvoice = canRetryInvoice(error);
+            if (this.retryableInvoice) await this.loadAvailability();
+            this.announce(`${this.errorMessage(error)} La venta #${this.pendingSaleId} se conservó; no se creó otra venta ni se repitieron sus líneas.`);
+        } finally {
+            setButtonLoading(button, false);
+            this.submitting = false;
+            this.root.querySelector('#posForm').setAttribute('aria-busy', 'false');
+            this.stockWarnings();
         }
     }
 
     errorMessage(error) {
         if (!(error instanceof ApiError)) return error?.message || 'No fue posible completar la operación.';
+        if (error.status === 401) {
+            window.location.assign(document.querySelector('meta[name="login-url"]').content);
+            return 'La sesión expiró. Inicia sesión nuevamente.';
+        }
         if (error.status === 403) return 'No tienes autorización para completar esta operación.';
         if ([409, 422].includes(error.status)) return error.message;
         if (error.status === 429) return 'Se alcanzó el límite temporal de solicitudes.';

@@ -1,28 +1,10 @@
-import { api, ApiError, initializeCsrf } from '@/core/api-client';
-import { getSessionContext } from '@/core/session-context';
+import { ApiError } from '@/core/api-client';
 import { quantity } from '@/core/money';
+import { read, write as mutate, errorMessage } from './write-support';
+import { inventoryScope } from '@/modules/inventory/stock-data';
+import { allPages, countSnapshot, productUnit } from '@/modules/inventory/stock-contract';
 
 const QUANTITY_PATTERN = /^\d+(?:\.\d{1,3})?$/;
-
-async function mutate(path, data) {
-    const options = { dispatchErrors: false };
-    try { return await api.post(path, data, options); }
-    catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 419) throw error;
-        await initializeCsrf({ dispatchErrors: false });
-        return api.post(path, data, options);
-    }
-}
-
-function errorMessage(error) {
-    if (!(error instanceof ApiError)) return error instanceof TypeError ? error.message : 'No fue posible completar la operación.';
-    if (error.status === 403) return 'No tienes autorización para registrar este conteo.';
-    if (error.status === 409) return error.message;
-    if (error.status === 429) return 'Se alcanzó el límite temporal de solicitudes.';
-    if (error.status === 0) return 'No fue posible conectar con el servidor.';
-    if (error.status >= 500) return 'El servidor no pudo registrar el conteo.';
-    return error.message;
-}
 
 class PhysicalCountPage {
     constructor(root) {
@@ -31,6 +13,8 @@ class PhysicalCountPage {
         this.searchTimer = null;
         this.productController = null;
         this.submitting = false;
+        this.scope = null;
+        this.loading = false;
     }
 
     async init() {
@@ -43,6 +27,8 @@ class PhysicalCountPage {
             }, 300);
         });
         this.form.addEventListener('submit', (event) => { event.preventDefault(); void this.submit(); });
+        this.form.elements.warehouse_id.addEventListener('change', () => void this.loadProducts(this.root.querySelector('[data-product-search]').value.trim()));
+        this.form.elements.product_id.addEventListener('change', () => this.updateUnit());
         this.form.elements.counted_quantity.addEventListener('blur', (event) => {
             const value = event.target.value.trim();
             if (QUANTITY_PATTERN.test(value)) event.target.value = quantity(value);
@@ -51,6 +37,8 @@ class PhysicalCountPage {
     }
 
     async load() {
+        if (this.loading) return;
+        this.loading = true;
         const loading = this.root.querySelector('[data-physical-count-loading]');
         const fatal = this.root.querySelector('[data-physical-count-fatal]');
         loading.hidden = false;
@@ -58,26 +46,23 @@ class PhysicalCountPage {
         this.form.hidden = true;
         this.root.setAttribute('aria-busy', 'true');
         try {
-            const context = await getSessionContext();
+            this.scope = await inventoryScope();
+            const context = this.scope.context;
             if (context.role !== 'ROL-03' || !context.profiles.includes('bodeguero') || !context.capabilities.includes('inventario.conteo')) {
                 throw new TypeError('El contexto no autoriza el registro de conteos.');
             }
-            const [warehouses, stock] = await Promise.all([
-                api.get('/warehouses', { is_active: true, per_page: 100 }, { dispatchErrors: false }),
-                api.get('/stock', { per_page: 100 }, { dispatchErrors: false }),
-            ]);
-            if (!Array.isArray(warehouses?.data) || !Array.isArray(stock?.data)) {
-                throw new TypeError('El servidor no devolvió catálogos operativos válidos.');
-            }
-            this.renderOptions(this.root.querySelector('[name="warehouse_id"]'), warehouses.data, (item) => item.name, 'No hay bodegas disponibles');
-            this.renderOptions(this.root.querySelector('[name="product_id"]'), this.stockProducts(stock.data), (item) => `${item.sku} · ${item.name}`, 'No hay productos con existencias visibles');
+            this.renderOptions(this.root.querySelector('[name="warehouse_id"]'), this.scope.warehouses, (item) => item.name, 'No tienes bodegas activas asignadas');
+            await this.loadProducts('');
+            this.root.querySelector('[data-physical-count-submit]').disabled = this.scope.warehouses.length === 0;
             this.form.hidden = false;
             loading.hidden = true;
         } catch (error) {
+            if (error instanceof ApiError && error.status === 401) window.location.assign(document.querySelector('meta[name="login-url"]').content);
             loading.hidden = true;
             fatal.hidden = false;
             fatal.querySelector('[data-physical-count-fatal-message]').textContent = errorMessage(error);
         } finally {
+            this.loading = false;
             this.root.setAttribute('aria-busy', 'false');
         }
     }
@@ -89,11 +74,13 @@ class PhysicalCountPage {
         const select = this.root.querySelector('[name="product_id"]');
         select.disabled = true;
         try {
-            const payload = await api.get('/stock', { search: search || undefined, per_page: 100 }, { signal: controller.signal, dispatchErrors: false });
+            const rows = this.scope.warehouses.length ? await allPages(read, '/stock', {
+                search: search || undefined, warehouse_id: Number(this.form.elements.warehouse_id.value) || undefined,
+            }, controller.signal) : [];
             if (controller.signal.aborted) return;
-            if (!Array.isArray(payload?.data)) throw new TypeError('El servidor no devolvió existencias válidas.');
-            this.renderOptions(select, this.stockProducts(payload.data), (item) => `${item.sku} · ${item.name}`, 'No hay productos coincidentes');
+            this.renderOptions(select, this.stockProducts(rows), (item) => `${item.sku} · ${item.name} · ${productUnit(item)}`, 'No hay productos con saldo consultable');
         } catch (error) {
+            if (error instanceof ApiError && error.status === 401) window.location.assign(document.querySelector('meta[name="login-url"]').content);
             if (!controller.signal.aborted) this.renderOptions(select, [], () => '', errorMessage(error));
         } finally { if (this.productController === controller) this.productController = null; }
     }
@@ -110,12 +97,22 @@ class PhysicalCountPage {
             const option = document.createElement('option');
             option.value = String(record.id);
             option.textContent = label(record);
+            if (select.name === 'product_id') option.dataset.unit = productUnit(record);
             return option;
         }));
         select.disabled = records.length === 0;
+        if (select.name === 'product_id') this.updateUnit();
+    }
+
+    updateUnit() {
+        const unit = this.form.elements.product_id.selectedOptions[0]?.dataset.unit;
+        this.root.querySelector('[data-physical-count-unit]').textContent = unit
+            ? `Cantidad expresada en ${unit}. Admite hasta tres decimales.`
+            : 'Selecciona un producto para conocer su unidad de medida.';
     }
 
     clearErrors() {
+        this.form.querySelectorAll('[aria-invalid="true"]').forEach((element) => element.removeAttribute('aria-invalid'));
         this.root.querySelectorAll('[data-field-error]').forEach((element) => { element.textContent = ''; });
     }
 
@@ -126,6 +123,7 @@ class PhysicalCountPage {
             const output = this.root.querySelector(`[data-field-error="${key}"]`);
             const control = this.form.elements.namedItem(key);
             if (output) output.textContent = Array.isArray(messages) ? messages[0] : String(messages);
+            if (control instanceof HTMLElement) control.setAttribute('aria-invalid', 'true');
             if (!first && control instanceof HTMLElement) first = control;
         });
         first?.focus();
@@ -139,7 +137,7 @@ class PhysicalCountPage {
         const warehouseId = Number(data.get('warehouse_id'));
         const productId = Number(data.get('product_id'));
         const fieldErrors = {};
-        if (!Number.isInteger(warehouseId) || warehouseId < 1) fieldErrors.warehouse_id = ['Selecciona una bodega.'];
+        if (!this.scope?.warehouses.some((warehouse) => warehouse.id === warehouseId)) fieldErrors.warehouse_id = ['Selecciona una bodega activa asignada.'];
         if (!Number.isInteger(productId) || productId < 1) fieldErrors.product_id = ['Selecciona un producto.'];
         if (Object.keys(fieldErrors).length) { this.showErrors(fieldErrors); return; }
         if (!QUANTITY_PATTERN.test(counted)) {
@@ -160,12 +158,17 @@ class PhysicalCountPage {
             const response = await mutate('/physical-counts', payload);
             const count = response?.data;
             if (!Number.isInteger(count?.id)) throw new TypeError('El servidor no confirmó el conteo; verifica el listado antes de reintentar.');
+            const snapshot = countSnapshot(count);
+            const unit = productUnit(count.product);
             const result = this.root.querySelector('[data-physical-count-result]');
-            result.textContent = `Conteo #${count?.id} registrado con estado ${count?.status_label ?? count?.status ?? 'registrado'}.`;
+            result.textContent = `Conteo #${snapshot.id} registrado · ${snapshot.label}. Unidad: ${unit}. Cantidad física: ${snapshot.counted}; sistema al contar: ${snapshot.system}; diferencia histórica: ${snapshot.difference}. El registro guardado no puede editarse por el operador.`;
             result.hidden = false;
             result.focus();
             this.form.reset();
+            this.updateUnit();
+            await this.loadProducts('');
         } catch (error) {
+            if (error instanceof ApiError && error.status === 401) window.location.assign(document.querySelector('meta[name="login-url"]').content);
             if (error instanceof ApiError && error.status === 422) this.showErrors(error.errors);
             else {
                 const result = this.root.querySelector('[data-physical-count-result]');

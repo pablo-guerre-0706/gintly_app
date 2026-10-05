@@ -367,6 +367,8 @@ class OwnerDashboard {
         });
 
         this.context = context;
+        const stockLink = this.root.querySelector('[data-owner-stock-link]');
+        if (stockLink) stockLink.hidden = !context.capabilities.includes('inventario.ver');
 
         if (this.context.role !== 'ROL-01' || !this.context.capabilities.includes('panel.ver')) {
             throw new Error('El dashboard directivo requiere ROL-01 y panel.ver.');

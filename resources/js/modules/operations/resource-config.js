@@ -1,4 +1,4 @@
-import { money, quantity } from '@/core/money';
+import { money } from '@/core/money';
 
 const text = (value) => value === null || value === undefined || value === '' ? '—' : String(value);
 const amount = (value) => value === null || value === undefined ? '—' : money(String(value));
@@ -17,21 +17,12 @@ const define = (endpoint, columns, map, { search = false, searchLabel = '', sear
 // Cada columna corresponde a una propiedad explícita del Resource respectivo.
 // Ninguna lista permite elegir una sucursal: el Backend acota el índice a user.branch_id.
 export const OPERATIVE_RESOURCES = Object.freeze({
-    stock: define('/stock', ['Producto', 'Bodega', 'Existencia', 'Reservado', 'Disponible', 'Estado'], (record) => [
-        text(record.product?.name), text(record.warehouse?.name),
-        quantity(String(record.quantity)), quantity(String(record.reserved_quantity)),
-        quantity(String(record.available)), record.below_min === true ? 'Bajo mínimo' : 'Disponible',
-    ], { search: true, searchLabel: 'Buscar existencias', searchPlaceholder: 'Buscar por producto o SKU' }),
     invoices: define('/invoices', ['Folio', 'Cliente', 'Estado', 'Pago', 'Total', 'Emitida'], (record) => [
         text(record.folio), text(record.customer?.name), status(record),
         text(record.payment_status), amount(record.total), date(record.issued_at),
     ]),
     sales: define('/sales', ['Código', 'Cliente', 'Estado', 'Subtotal', 'Apertura'], (record) => [
         text(record.code), text(record.customer?.name), status(record), amount(record.subtotal), date(record.opened_at),
-    ]),
-    warehouses: define('/warehouses', ['Bodega', 'Sucursal', 'Estado', 'Predeterminada'], (record) => [
-        text(record.name), `Sucursal #${text(record.branch_id)}`,
-        record.is_active === true ? 'Activa' : 'Inactiva', record.is_default === true ? 'Sí' : 'No',
     ]),
     transfers: define('/stock-transfers', ['Código', 'Origen', 'Destino', 'Estado', 'Fecha'], (record) => [
         text(record.code), text(record.from_warehouse?.name), text(record.to_warehouse?.name),

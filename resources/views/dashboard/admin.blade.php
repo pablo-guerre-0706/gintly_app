@@ -57,6 +57,7 @@
                     ['sucursales.gestionar', 'fa-code-branch', 'Sucursales', route('panel.branches.index')],
                     ['catalogo.ver', 'fa-box-open', 'Productos y catálogo', route('catalog.products')],
                     ['bodegas.ver', 'fa-warehouse', 'Bodegas', route('panel.admin.warehouses')],
+                    ['inventario.ver', 'fa-layer-group', 'Inventario lógico', route('panel.inventory.stock')],
                     ['caja.gestionar', 'fa-cash-register', 'Cajas registradoras', route('panel.admin.cash-registers')],
                     ['proveedores.ver', 'fa-building', 'Proveedores', route('panel.suppliers.index')],
                     ['compras.ver', 'fa-file-circle-check', 'Órdenes de compra', route('panel.admin.purchase-orders')],

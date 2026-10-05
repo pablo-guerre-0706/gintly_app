@@ -12,6 +12,8 @@
         <p class="text-sm font-semibold text-gintly-brand">Sucursal asignada</p>
         <h1 id="physical-count-title" class="mt-2 text-2xl font-bold tracking-tight text-gintly-text-primary sm:text-3xl">Registrar conteo físico</h1>
         <p class="mt-3 text-sm leading-6 text-gintly-text-secondary">Captura la existencia observada. El Backend determina la cantidad del sistema y la diferencia.</p>
+        <p class="mt-2 text-sm text-gintly-text-secondary">Puedes corregir este formulario antes de guardarlo. Después, el conteo conserva su trazabilidad: aplicar o justificar corresponde a administración.</p>
+        <a href="{{ route('panel.operations.stock') }}" class="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-gintly-brand">Volver a bodega física y consultar conteos</a>
     </header>
 
     <div class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" data-physical-count-loading>Cargando bodegas y productos autorizados…</div>
@@ -35,7 +37,8 @@
         </div>
         <div>
             <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-quantity">Cantidad contada · Obligatorio</label>
-            <input id="physical-count-quantity" name="counted_quantity" type="text" inputmode="decimal" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="0.000" aria-describedby="physical-count-quantity-error" required>
+            <input id="physical-count-quantity" name="counted_quantity" type="text" inputmode="decimal" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="0.000" aria-describedby="physical-count-unit physical-count-quantity-error" required>
+            <p id="physical-count-unit" class="mt-2 text-sm text-gintly-text-secondary" data-physical-count-unit role="status">Selecciona un producto para conocer su unidad de medida.</p>
             <p id="physical-count-quantity-error" class="mt-1 text-sm text-red-700" data-field-error="counted_quantity"></p>
         </div>
         <div>

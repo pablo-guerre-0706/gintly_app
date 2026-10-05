@@ -32,6 +32,7 @@
     data-url-customers-create="{{ route('web.customers.create') }}"
         data-url-inventory-reconciliation="{{ route('inventory.reconciliation') }}"
         data-url-inventory-summary="{{ route('panel.inventory.summary') }}"
+        data-url-inventory-stock="{{ route('panel.inventory.stock') }}"
         data-url-catalog-products="{{ route('catalog.products') }}"
         data-url-purchases-hub="{{ route('panel.purchases') }}"
         data-url-finance-hub="{{ route('panel.finance') }}"

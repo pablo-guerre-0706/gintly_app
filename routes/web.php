@@ -191,12 +191,8 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
     Route::view('/operations/cash/close', 'operations.cash-close')->name('panel.operations.cash.close');
     Route::view('/operations/cash/history', 'operations.cash-history')->name('panel.operations.cash.history');
     Route::view('/operations/receivables', 'operations.receivables')->name('panel.operations.receivables');
-    Route::view('/operations/stock', 'operations.resource-list', [
-        'resourceType' => 'stock',
-        'pageTitle' => 'Existencias de mi sucursal',
-        'pageDescription' => 'Consulta existencias únicamente en las bodegas de tu sucursal asignada.',
-        'breadcrumbRoot' => 'Inventario y bodega',
-    ])->name('panel.operations.stock');
+    Route::view('/inventory/stock', 'inventory.stock', ['physical' => false])->name('panel.inventory.stock');
+    Route::view('/operations/stock', 'inventory.stock', ['physical' => true])->name('panel.operations.stock');
     Route::view('/operations/physical-counts/new', 'operations.physical-count')->name('panel.operations.physical-count');
     Route::view('/operations/dispatches', 'operations.dispatches')->name('panel.operations.dispatches');
     Route::view('/operations/invoices', 'operations.resource-list', [
@@ -209,11 +205,7 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
         'pageDescription' => 'Consulta el estado de ventas de tu sucursal; las operaciones de facturación se realizan en el punto de venta.',
         'breadcrumbRoot' => 'Ventas y facturación',
     ])->name('panel.operations.sales');
-    Route::view('/operations/warehouses', 'operations.resource-list', [
-        'resourceType' => 'warehouses', 'pageTitle' => 'Bodegas de mi sucursal',
-        'pageDescription' => 'Consulta las bodegas asignadas a tu sucursal.',
-        'breadcrumbRoot' => 'Inventario y bodega',
-    ])->name('panel.operations.warehouses');
+    Route::redirect('/operations/warehouses', '/operations/stock')->name('panel.operations.warehouses');
     Route::view('/operations/stock-transfers', 'operations.resource-list', [
         'resourceType' => 'transfers', 'pageTitle' => 'Traspasos de inventario',
         'pageDescription' => 'Consulta traspasos cuyo origen o destino pertenece a tu sucursal.',

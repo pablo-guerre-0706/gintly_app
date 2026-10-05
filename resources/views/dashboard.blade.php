@@ -100,6 +100,7 @@
                 description="Vista consolidada del negocio: exactitud, desviaciones y faltantes del período."
             >
                 <div data-inventory-report></div>
+                <a href="{{ route('panel.inventory.stock') }}" class="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-gintly-brand" data-owner-stock-link hidden>Consultar inventario lógico por bodega</a>
             </x-dashboard.async-section>
 
             <x-dashboard.async-section
