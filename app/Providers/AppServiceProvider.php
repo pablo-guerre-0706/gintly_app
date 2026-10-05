@@ -16,12 +16,14 @@ use App\Models\Business;
 use App\Models\BusinessGoal;
 use App\Models\CashMovement;
 use App\Models\CashRegister;
+use App\Models\CashRegisterAssignment;
 use App\Models\CashSession;
 use App\Models\Category;
 use App\Models\CreditNote;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Dispatch;
+use App\Models\ExchangeRate;
 use App\Models\GoodsReceipt;
 use App\Models\InventoryAdjustment;
 use App\Models\InventoryMovement;
@@ -37,10 +39,12 @@ use App\Models\SalesReturn;
 use App\Models\StockLevel;
 use App\Models\StockTransfer;
 use App\Models\Supplier;
+use App\Models\SupplierLocation;
 use App\Models\TaxRule;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseAssignment;
 use App\Observers\BusinessObserver;
 use App\Policies\AccountPayablePolicy;
 use App\Policies\AccountReceivablePolicy;
@@ -53,12 +57,14 @@ use App\Policies\BusinessPolicy;
 use App\Policies\BusinessGoalPolicy;
 use App\Policies\CashMovementPolicy;
 use App\Policies\CashRegisterPolicy;
+use App\Policies\CashRegisterAssignmentPolicy;
 use App\Policies\CashSessionPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CreditNotePolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\CustomerAddressPolicy;
 use App\Policies\DispatchPolicy;
+use App\Policies\ExchangeRatePolicy;
 use App\Policies\GoodsReceiptPolicy;
 use App\Policies\InventoryAdjustmentPolicy;
 use App\Policies\InventoryMovementPolicy;
@@ -73,10 +79,12 @@ use App\Policies\SalePolicy;
 use App\Policies\SalesReturnPolicy;
 use App\Policies\StockLevelPolicy;
 use App\Policies\StockTransferPolicy;
+use App\Policies\SupplierLocationPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\TaxRulePolicy;
 use App\Policies\UnitOfMeasurePolicy;
 use App\Policies\UserPolicy;
+use App\Policies\WarehouseAssignmentPolicy;
 use App\Policies\WarehousePolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -91,7 +99,27 @@ final class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->registerGeocoder();
+    }
+
+    /**
+     * Adaptador de geocodificación intercambiable por configuración (config/geocoding.php), envuelto en
+     * caché. Driver por defecto 'null' (sin proveedor → no geocodifica). Un negocio en producción apunta a
+     * un proveedor propio; jamás se depende de Nominatim público ni se exponen claves.
+     */
+    private function registerGeocoder(): void
+    {
+        $this->app->singleton(\App\Contracts\Geocoder::class, function (): \App\Contracts\Geocoder {
+            $driver = (string) config('geocoding.driver', 'null');
+
+            $base = match ($driver) {
+                'array'     => new \App\Support\Geocoding\ArrayGeocoder((array) config('geocoding.drivers.array.results', [])),
+                'nominatim' => new \App\Support\Geocoding\NominatimGeocoder((array) config('geocoding.drivers.nominatim', [])),
+                default     => new \App\Support\Geocoding\NullGeocoder(),
+            };
+
+            return new \App\Support\Geocoding\CachingGeocoder($base, (int) config('geocoding.cache_ttl', 86400));
+        });
     }
 
     public function boot(): void
@@ -140,6 +168,7 @@ final class AppServiceProvider extends ServiceProvider
 
         // MOD-03
         Gate::policy(Warehouse::class, WarehousePolicy::class);
+        Gate::policy(WarehouseAssignment::class, WarehouseAssignmentPolicy::class);
         Gate::policy(StockLevel::class, StockLevelPolicy::class);
         Gate::policy(PhysicalCount::class, PhysicalCountPolicy::class);
         Gate::policy(StockTransfer::class, StockTransferPolicy::class);
@@ -148,6 +177,7 @@ final class AppServiceProvider extends ServiceProvider
   
         // MOD-04
         Gate::policy(Supplier::class, SupplierPolicy::class);
+        Gate::policy(SupplierLocation::class, SupplierLocationPolicy::class);
         Gate::policy(PurchaseOrder::class, PurchaseOrderPolicy::class);
         Gate::policy(GoodsReceipt::class, GoodsReceiptPolicy::class);
         Gate::policy(AccountPayable::class, AccountPayablePolicy::class);
@@ -158,8 +188,10 @@ final class AppServiceProvider extends ServiceProvider
 
         // MOD-06
         Gate::policy(CashRegister::class, CashRegisterPolicy::class);
+        Gate::policy(CashRegisterAssignment::class, CashRegisterAssignmentPolicy::class);
         Gate::policy(CashSession::class, CashSessionPolicy::class);
         Gate::policy(CashMovement::class, CashMovementPolicy::class);
+        Gate::policy(ExchangeRate::class, ExchangeRatePolicy::class);
 
         // MOD-07
         Gate::policy(Sale::class, SalePolicy::class);

@@ -50,7 +50,7 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
 
     Route::view('/pos', 'pos.index')->name('pos.index');
 
-    Route::view('/finance/cash-closing', 'finance.cash-closing')->name('finance.cash-closing');
+    Route::redirect('/finance/cash-closing', '/operations/cash/close')->name('finance.cash-closing');
 
     // Nombre 'web.customers.index' para NO colisionar con el recurso API 'customers.index'
     // (apiResource en routes/api.php). La colisión de nombres rompía route:cache. La URL /customers
@@ -145,6 +145,11 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
         ->name('panel.users.access');
     Route::view('/organization/profiles', 'organization.profiles.index')->name('panel.profiles.index');
     Route::view('/organization/branches', 'organization.branches.index')->name('panel.branches.index');
+    Route::view('/organization/branches/create', 'organization.branches.form', ['mode' => 'create'])
+        ->name('panel.branches.create');
+    Route::view('/organization/branches/{branch}/edit', 'organization.branches.form', ['mode' => 'edit'])
+        ->whereNumber('branch')
+        ->name('panel.branches.edit');
 
     // Supervisión administrativa ROL-02. Estas rutas no ejecutan lógica de
     // negocio; cada vista consume exclusivamente contratos /api/v1 existentes.
@@ -154,12 +159,7 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
         'pageDescription' => 'Consulta facturas emitidas sin habilitar creación, cobro ni anulación.',
         'breadcrumbRoot' => 'Ventas y clientes',
     ])->name('panel.admin.invoices');
-    Route::view('/administration/warehouses', 'supervision.resource-list', [
-        'resourceType' => 'warehouses',
-        'pageTitle' => 'Bodegas',
-        'pageDescription' => 'Supervisa las bodegas y su asignación por sucursal.',
-        'breadcrumbRoot' => 'Catálogo e inventario',
-    ])->name('panel.admin.warehouses');
+    Route::view('/administration/warehouses', 'administration.warehouses')->name('panel.admin.warehouses');
     Route::view('/administration/physical-counts', 'supervision.resource-list', [
         'resourceType' => 'physicalCounts',
         'pageTitle' => 'Conteos físicos',
@@ -178,17 +178,18 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
         'pageDescription' => 'Consulta recepciones y discrepancias sin ejecutar recepción física ni resolución reservada.',
         'breadcrumbRoot' => 'Compras y proveedores',
     ])->name('panel.admin.goods-receipts');
-    Route::view('/administration/cash-registers', 'supervision.resource-list', [
-        'resourceType' => 'cashRegisters',
-        'pageTitle' => 'Cajas registradoras',
-        'pageDescription' => 'Supervisa cajas registradas y su estado por sucursal.',
-        'breadcrumbRoot' => 'Caja y finanzas',
-    ])->name('panel.admin.cash-registers');
+    Route::view('/administration/cash-registers', 'administration.cash-registers')->name('panel.admin.cash-registers');
     Route::view('/administration/cash-sessions', 'administration.cash-sessions')->name('panel.admin.cash-sessions');
+    Route::view('/administration/exchange-rates', 'administration.exchange-rates')->name('panel.admin.exchange-rates');
 
     // Experiencia operativa ROL-03. Estas rutas solo entregan vistas; perfiles,
     // capacidades, sucursal y autorización definitiva se resuelven en /api/v1.
     Route::view('/operations/cash', 'operations.cash')->name('panel.operations.cash');
+    Route::view('/operations/cash/open', 'operations.cash-open')->name('panel.operations.cash.open');
+    Route::view('/operations/cash/movements', 'operations.cash-movements')->name('panel.operations.cash.movements');
+    Route::view('/operations/cash/count', 'operations.cash-count')->name('panel.operations.cash.count');
+    Route::view('/operations/cash/close', 'operations.cash-close')->name('panel.operations.cash.close');
+    Route::view('/operations/cash/history', 'operations.cash-history')->name('panel.operations.cash.history');
     Route::view('/operations/receivables', 'operations.receivables')->name('panel.operations.receivables');
     Route::view('/operations/stock', 'operations.resource-list', [
         'resourceType' => 'stock',

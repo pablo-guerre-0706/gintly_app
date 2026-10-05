@@ -21,6 +21,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserOperativeProfile;
 use App\Models\Warehouse;
+use App\Models\WarehouseAssignment;
 use App\Services\Purchasing\GoodsReceiptService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -84,6 +85,9 @@ final class GoodsReceiptBranchIsolationHttpTest extends MysqlTestCase
         // ROL-03 BODEGUERO asignado a S1.
         $operator = $this->makeUser($business, RoleName::Operator, $branch1);
         $this->assignProfile($operator, $business->id, 'bodeguero');
+        // RF-03 asignación Bodega–Bodeguero: habilitado a operar la bodega de S1.
+        $wa = new WarehouseAssignment();
+        $wa->forceFill(['business_id' => $business->id, 'branch_id' => $branch1->id, 'warehouse_id' => $wh1->id, 'user_id' => $operator->id, 'assigned_by' => $admin->id, 'assigned_at' => now()])->save();
 
         $category = new Category(['name' => 'Cat '.$slug]);
         $category->business_id = $business->id;

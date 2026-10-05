@@ -18,6 +18,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserOperativeProfile;
 use App\Models\Warehouse;
+use App\Models\WarehouseAssignment;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
@@ -69,6 +70,9 @@ final class StockTransferCreateHttpTest extends MysqlTestCase
         $owner = $this->makeUser($business, RoleName::Owner);
         $operator = $this->makeUser($business, RoleName::Operator, $branch1);
         $this->assignProfile($operator, $business->id, 'bodeguero');
+        // RF-03 asignación Bodega–Bodeguero: el bodeguero opera las bodegas de SU sucursal (origen y destino).
+        $this->assignWarehouse($operator, $wh1);
+        $this->assignWarehouse($operator, $wh1b);
 
         $category = new Category(['name' => 'Cat '.self::$seq]);
         $category->business_id = $business->id;
@@ -121,6 +125,15 @@ final class StockTransferCreateHttpTest extends MysqlTestCase
         $row->user_id = $u->id;
         $row->business_id = $businessId;
         $row->save();
+    }
+
+    private function assignWarehouse(User $keeper, Warehouse $warehouse): void
+    {
+        $a = new WarehouseAssignment();
+        $a->forceFill([
+            'business_id' => $warehouse->business_id, 'branch_id' => $warehouse->branch_id,
+            'warehouse_id' => $warehouse->id, 'user_id' => $keeper->id, 'assigned_by' => $keeper->id, 'assigned_at' => now(),
+        ])->save();
     }
 
     private function makeStock(object $t, Warehouse $w, string $qty): void

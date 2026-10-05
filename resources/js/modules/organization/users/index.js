@@ -1,12 +1,15 @@
 import { api, ApiError } from '@/core/api-client';
 import { getSessionContext } from '@/core/session-context';
 import { element, formatDate, responseMessage, ROLE_LABELS } from '../shared';
+import { getActiveCashAssignments, usersWithProfiles } from '@/data/cash-assignments';
+import { canManageCashAssignments, isCashier } from '@/modules/administration/cash-assignment-rules';
 
 const state = {
     page: 1,
     search: '',
     request: null,
     context: null,
+    assignments: [],
 };
 
 function renderState(root, message, { error = false, retry = false } = {}) {
@@ -50,6 +53,17 @@ function userRow(root, user) {
     }));
 
     const lastLogin = element('td', { className: 'whitespace-nowrap px-5 py-4 text-xs', text: formatDate(user.last_login_at) });
+    const assigned = element('td', { className: 'min-w-40 px-5 py-4 text-sm' });
+    if (user.role === 'ROL-03' && !Array.isArray(user.profiles)) {
+        assigned.textContent = 'Asignación no disponible';
+    } else if (isCashier(user)) {
+        const assignment = state.assignments.find((row) => row.user_id === user.id);
+        assigned.append(element('p', { text: assignment ? assignment.cash_register?.name ?? `Caja #${assignment.cash_register_id}` : 'Sin caja asignada', className: 'font-semibold' }));
+        if (canManageCashAssignments(state.context)) assigned.append(element('a', {
+            text: assignment ? 'Gestionar caja–cajero' : 'Asignar una caja', className: 'mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gintly-brand underline',
+            attributes: { href: `${root.dataset.cashRegistersUrl}?cashier=${user.id}` },
+        }));
+    } else assigned.textContent = 'No aplica';
     const actions = element('td', { className: 'px-5 py-4 text-right sm:px-6' });
 
     if (state.context.capabilities.includes('usuarios.gestionar')) {
@@ -63,7 +77,7 @@ function userRow(root, user) {
         actions.append(element('span', { className: 'text-xs text-slate-500', text: 'Solo consulta' }));
     }
 
-    row.append(identity, role, branch, status, lastLogin, actions);
+    row.append(identity, role, branch, assigned, status, lastLogin, actions);
     return row;
 }
 
@@ -112,7 +126,11 @@ async function loadUsers(root) {
             signal: controller.signal,
             dispatchErrors: false,
         });
-        renderUsers(root, response);
+        if (canManageCashAssignments(state.context)) {
+            const [assignments, users] = await Promise.all([getActiveCashAssignments({}, controller.signal), usersWithProfiles(response.data, controller.signal)]);
+            state.assignments = assignments; response.data = users;
+        }
+        if (!controller.signal.aborted) renderUsers(root, response);
     } catch (error) {
         if (error instanceof ApiError && error.code === 'request_aborted') return;
         root.querySelector('[data-users-body]').replaceChildren();

@@ -413,6 +413,37 @@ final class AnomalyReconciliationHttpTest extends MysqlTestCase
         $this->assertSame($above->id, (int) $this->anomalyBySource($t, 'cash_sessions')->source_id);
     }
 
+    /**
+     * Doble moneda · La conciliación detecta un descuadre SOLO en USD aunque la diferencia NIO sea cero:
+     * la magnitud para el umbral usa el leg de mayor valor absoluto expresado en NIO (USD × tasa de
+     * referencia). Con NIO cuadrado, un umbral de 50 NIO no debe ocultar un faltante de 10 USD (=130 NIO).
+     */
+    public function test_conciliacion_detecta_descuadre_solo_usd(): void
+    {
+        $t = $this->seedTenant('a');
+        $rule = AnomalyRule::withoutGlobalScopes()->where('business_id', $t->business->id)->where('code', 'descuadre_caja')->firstOrFail();
+        $this->asUser($t->owner)->putJson("/api/v1/anomaly-rules/{$rule->id}", ['threshold_value' => '50.00'])->assertOk();
+
+        // Sesión cerrada: NIO cuadra (100/100 → diff 0); USD descuadra (esperado 10, contado 0 → diff -10),
+        // tasa de referencia 13 ⇒ 130 NIO de magnitud, por encima del umbral de 50.
+        $s = new CashSession();
+        $s->forceFill([
+            'business_id' => $t->business->id, 'cash_register_id' => $t->register->id,
+            'opened_by' => $t->operator->id, 'closed_by' => $t->operator->id, 'status' => 'cerrada',
+            'opening_amount' => '0.00', 'expected_amount' => '100.00', 'counted_amount' => '100.00',
+            'opening_amount_usd' => '0.00', 'expected_amount_usd' => '10.00', 'counted_amount_usd' => '0.00',
+            'session_exchange_rate' => '13.000000',
+            'opened_at' => now()->subHours(2), 'closed_at' => now()->subHour(),
+        ])->saveQuietly();
+        $s->refresh();
+
+        $this->assertSame(0, bccomp((string) $s->difference, '0', 2));       // NIO cuadra
+        $this->assertSame(-1, bccomp((string) $s->difference_usd, '0', 2));  // USD descuadra
+
+        $this->runReconciliation($t, 'caja', $t->admin)->assertCreated()->assertJsonPath('data.anomalies_found', 1);
+        $this->assertSame($s->id, (int) $this->anomalyBySource($t, 'cash_sessions')->source_id);
+    }
+
     // =======================================================================
     // Anomalías: listado, detalle, eventos, aislamiento
     // =======================================================================

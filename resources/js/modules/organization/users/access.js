@@ -3,7 +3,7 @@ import { notify } from '@/core/notifications';
 import { getSessionContext } from '@/core/session-context';
 import {
     clearFieldErrors,
-    fetchPaginatedCollection,
+    fetchActiveBranches,
     grantableRoles,
     mutate,
     responseMessage,
@@ -94,6 +94,11 @@ function toggleRoleOperatorFields(root) {
     root.querySelector('[data-role-operator-fields]').hidden = !isOperator;
     root.querySelector('[data-role-profile-fields]').hidden = !isOperator;
     form.elements.branch_id.required = isOperator;
+    form.elements.branch_id.disabled = !isOperator || state.branches.length === 0 || form.dataset.locked === 'true';
+    const empty = root.querySelector('[data-branch-empty]');
+    empty.hidden = !isOperator || state.branches.length > 0;
+    root.querySelector('[data-branch-create-link]').hidden = empty.hidden || !state.context.capabilities.includes('sucursales.gestionar');
+    root.querySelector('[data-role-submit]').disabled = state.savingRole || form.dataset.locked === 'true' || (isOperator && state.branches.length === 0);
 }
 
 function syncForms(root) {
@@ -112,7 +117,7 @@ function syncForms(root) {
     roleForm.elements.role.replaceChildren(...roleOptions);
     roleForm.elements.role.value = state.user.role;
 
-    roleForm.elements.branch_id.replaceChildren(option('', 'Selecciona una sucursal'));
+    roleForm.elements.branch_id.replaceChildren(option('', state.branches.length ? 'Selecciona una sucursal' : 'No existen sucursales activas'));
     state.branches.forEach((branch) => roleForm.elements.branch_id.append(option(branch.id, branch.name)));
     roleForm.elements.branch_id.value = state.user.branch_id ? String(state.user.branch_id) : '';
 
@@ -120,6 +125,7 @@ function syncForms(root) {
     renderProfileInputs(root.querySelector('[data-profile-options]'), state.user.profiles ?? [], 'assigned-profile');
 
     const roleLocked = isSelf || !canManageRank;
+    roleForm.dataset.locked = String(roleLocked);
     roleForm.querySelectorAll('select, input, button[type="submit"]').forEach((control) => {
         control.disabled = roleLocked;
     });
@@ -157,11 +163,7 @@ async function load(root, refresh = false) {
 
         const [userResponse, branches, profilesResponse] = await Promise.all([
             api.get(endpoint(root.dataset.userEndpointTemplate, userId), {}, { dispatchErrors: false }),
-            fetchPaginatedCollection(
-                root.dataset.branchesEndpoint,
-                { per_page: 100, sort: 'name', direction: 'asc' },
-                { dispatchErrors: false },
-            ),
+            fetchActiveBranches(root.dataset.branchesEndpoint),
             api.get(root.dataset.profilesEndpoint, {}, { dispatchErrors: false }),
         ]);
 
@@ -197,6 +199,11 @@ async function saveRole(root, form) {
     const errorBox = root.querySelector('[data-role-error]');
     errorBox.hidden = true;
 
+    if (form.elements.role.value === 'ROL-03' && state.branches.length === 0) {
+        root.querySelector('[data-branch-empty]').hidden = false;
+        root.querySelector('[data-branch-create-link]').focus();
+        return;
+    }
     if (!form.reportValidity()) return;
 
     const payload = { role: form.elements.role.value };
@@ -223,6 +230,7 @@ async function saveRole(root, form) {
     } finally {
         state.savingRole = false;
         setButtonBusy(button, false);
+        toggleRoleOperatorFields(root);
     }
 }
 

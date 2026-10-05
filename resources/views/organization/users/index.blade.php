@@ -13,6 +13,7 @@
     data-users-endpoint="/users"
     data-create-url="{{ route('panel.users.create') }}"
     data-access-url-template="{{ url('/organization/users/__USER__/access') }}"
+    data-cash-registers-url="{{ route('panel.admin.cash-registers') }}"
     aria-labelledby="users-title"
 >
     <header class="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -55,6 +56,7 @@
                         <th scope="col" class="px-5 py-4 font-bold sm:px-6">Usuario</th>
                         <th scope="col" class="px-5 py-4 font-bold">Rol</th>
                         <th scope="col" class="px-5 py-4 font-bold">Sucursal</th>
+                        <th scope="col" class="px-5 py-4 font-bold">Caja asignada</th>
                         <th scope="col" class="px-5 py-4 font-bold">Estado</th>
                         <th scope="col" class="px-5 py-4 font-bold">Último acceso</th>
                         <th scope="col" class="px-5 py-4 text-right font-bold sm:px-6">Acciones</th>

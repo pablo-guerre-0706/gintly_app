@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\CashMovementType;
 use App\Enums\CashMovementCategory;
+use App\Enums\Currency;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\CashMovement\IndexCashMovementRequest;
@@ -69,7 +70,8 @@ final class CashMovementController extends Controller
             PaymentMethod::from($validated['payment_method']),
             (string) $validated['amount'],
             isset($validated['authorized_by']) ? (int) $validated['authorized_by'] : null,
-            $validated['description'] ?? null
+            $validated['description'] ?? null,
+            isset($validated['currency']) ? Currency::from($validated['currency']) : Currency::Nio,
         );
 
         return CashMovementResource::make($movement->load(['cashSession', 'user', 'authorizedBy']))

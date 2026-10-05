@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Invoice;
 
+use App\Enums\Currency;
 use App\Enums\InvoicePaymentType;
 use App\Enums\PaymentMethod;
 use App\Enums\RoleName;
@@ -66,7 +67,16 @@ final class StoreInvoiceRequest extends BaseTenantRequest
             'payments'   => ['sometimes', 'array'],
             'payments.*.method' => ['required_with:payments', Rule::enum(PaymentMethod::class)],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'decimal:0,2', 'gt:0'],
+            // Doble moneda: importe NATIVO del leg en esta moneda. Ausente ⇒ NIO (histórico).
+            // La tasa snapshot NO se envía: la congela el servidor al emitir (ExchangeRateService).
+            'payments.*.currency' => ['sometimes', 'nullable', Rule::enum(Currency::class)],
             'payments.*.reference' => ['nullable', 'string', 'max:100'],
+
+            // Vuelto (cambio) entregado al cliente en un cobro en efectivo con doble moneda. Opcional.
+            // Importe NATIVO en su moneda; la tasa la congela el servidor. Solo contado + efectivo.
+            'change'          => ['sometimes', 'nullable', 'array'],
+            'change.amount'   => ['required_with:change', 'numeric', 'decimal:0,2', 'gt:0'],
+            'change.currency' => ['sometimes', 'nullable', Rule::enum(Currency::class)],
         ];
     }
 
@@ -98,6 +108,19 @@ final class StoreInvoiceRequest extends BaseTenantRequest
                         'cash_session_id',
                         'Un pago en efectivo exige indicar la sesión de caja activa.'
                     );
+                }
+
+                // El vuelto solo aplica a ventas de contado con al menos un pago en efectivo (el cambio
+                // sale del cajón). La suficiencia (vuelto ≤ efectivo recibido y neto = total) la valida el
+                // service, que conoce las tasas snapshot.
+                $change = $this->input('change');
+                if (is_array($change) && $change !== []) {
+                    if ($paymentType !== InvoicePaymentType::Contado) {
+                        $validator->errors()->add('change', 'El vuelto solo aplica a ventas de contado.');
+                    }
+                    if (! $this->hasCashPayment()) {
+                        $validator->errors()->add('change', 'El vuelto exige un pago en efectivo.');
+                    }
                 }
 
                 // Crédito prohíbe cliente genérico. Se resuelve el cliente desde

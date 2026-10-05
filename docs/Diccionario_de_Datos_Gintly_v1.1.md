@@ -186,6 +186,22 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | default_lock | bigint | **GEN**, unsigned, virtual | UQ | `branch_id` si `is_default`, si no NULL. **Máx. una default por sucursal.** |
 | created_at / updated_at / deleted_at | timestamp | NULL | IDX(deleted_at) | Auditoría y borrado lógico. |
 
+### `warehouse_assignments` · asignación Bodega–Bodeguero (M:N, historial temporal) *(añadido en microcierre asignaciones)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX `idx_wa_warehouse`,`idx_wa_user` | Negocio propietario. |
+| branch_id | bigint | NN, FK RSTR | — | Sucursal (bodega y bodeguero comparten). |
+| warehouse_id | bigint | NN, FK RSTR | IDX `idx_wa_warehouse` | Bodega asignada. |
+| user_id | bigint | NN, FK RSTR | IDX `idx_wa_user` | Bodeguero (ROL-03 con perfil bodeguero). |
+| assigned_by | bigint | NN, FK RSTR | — | Administrador (ROL-01/ROL-02) que asignó. |
+| assigned_at | timestamp | NN | — | Inicio de la vigencia. |
+| ended_at | timestamp | NULL | — | Fin de la vigencia (NULL ⇒ activa). |
+| ended_by | bigint | NULL, FK RSTR | — | Quién finalizó. |
+| active_pair_lock | varchar(48) | **GEN**, virtual | UQ | `CONCAT(warehouse_id,'-',user_id)` si activa. **Par (bodega,usuario) activo único.** |
+| created_at / updated_at | timestamp | NULL | — | Auditoría. |
+
+**Reglas:** M:N (un bodeguero varias bodegas activas, una bodega varios bodegueros activos); misma sucursal; reasignar = finalizar + asignar (historial append-only, nunca se borra). **Compuerta de operación:** un ROL-03 bodeguero solo cuenta/recibe/traspasa/opera bodegas con asignación ACTIVA (WarehouseAssignmentService::assertOperates, en los Services de inventario). **Morph alias:** `warehouse_assignment`.
+
 ### `stock_levels` · saldo mutable · solo `updated_at`
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
 | --- | --- | --- | --- | --- |
@@ -293,6 +309,28 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | approved_at | timestamp | NULL | — | Momento de la aprobación. |
 | is_active | boolean | NN, def. true | — | Proveedor operativo. |
 | created_at / updated_at / deleted_at | timestamp | NULL | IDX(deleted_at) | Auditoría y borrado lógico. |
+
+**Candidato:** un proveedor descubierto externamente (mapa) nace `pendiente` (igual que el interno); los resultados externos NUNCA se aprueban automáticamente. La aprobación sigue siendo exclusiva de ROL-01.
+
+### `supplier_locations` · ubicaciones del mapa *(añadido en microcierre proveedores/mapa)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX `idx_supplier_locations_supplier` | Negocio propietario. |
+| supplier_id | bigint | NN, FK CASC | IDX | Proveedor dueño de la dirección. |
+| address | string(255) | NN | — | Dirección georreferenciable. |
+| latitude | decimal(10,7) | NULL, CHECK [-90,90] | — | Latitud (NULL hasta geocodificar/confirmar). |
+| longitude | decimal(10,7) | NULL, CHECK [-180,180] | — | Longitud. Par completo o nulo (CHECK). |
+| geocode_source | string(20) | NULL | — | Procedencia: `manual` / `geocoded` / `external`. |
+| external_id | string(120) | NULL | — | Identificador del proveedor externo del mapa. |
+| quality | string(40) | NULL | — | Calidad/precisión reportada por el geocoder. |
+| geocoded_at | timestamp | NULL | — | Momento de la geocodificación. |
+| confirmed_at | timestamp | NULL | — | Momento de confirmación (NULL ⇒ no entra al mapa). |
+| confirmed_by | bigint | NULL, FK RSTR | — | Quién confirmó el marcador. |
+| is_primary | boolean | NN, def. false | — | Ubicación principal del proveedor. |
+| primary_lock | bigint | **GEN**, unsigned, virtual | UQ | `supplier_id` si `is_primary`. **Máx. una principal por proveedor.** |
+| created_at / updated_at | timestamp | NULL | — | Auditoría. |
+
+**CHECK:** `chk_sl_lat_range` · `chk_sl_lng_range` · `chk_sl_coords_pair` (`(latitude IS NULL) = (longitude IS NULL)`). **Reglas:** el mapa solo expone ubicaciones CONFIRMADAS (confirmed_at NOT NULL) de proveedores aprobados+activos; cambiar la dirección invalida coordenadas y confirmación. **Morph alias:** `supplier_location`.
 
 ### `purchase_orders` · SD
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
@@ -425,6 +463,18 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | is_active | boolean | NN, def. true | — | Caja operativa. |
 | created_at / updated_at / deleted_at | timestamp | NULL | IDX(deleted_at) | Auditoría y borrado lógico. |
 
+### `exchange_rates` · INS · **inmutable** (RF-06, doble moneda NIO/USD) *(añadido en doble moneda)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX `idx_exchange_rates_lookup` | Negocio propietario. |
+| currency | char(3) | NN, CHECK ≠ 'NIO' | IDX `idx_exchange_rates_lookup` | Moneda extranjera (p. ej. USD). La base NIO NO se almacena (tasa 1 implícita). |
+| rate | decimal(14,6) | NN, CHECK > 0 | — | Tasa: NIO por 1 unidad de `currency`. **bcmath (escala 6).** |
+| effective_from | timestamp | NN | IDX `idx_exchange_rates_lookup` | Vigencia desde. La tasa vigente = fila de mayor `effective_from ≤ now`. |
+| created_by | bigint | NN, FK RSTR | — | Responsable (ROL-01/ROL-02) del registro (no-repudio). |
+| created_at | timestamp | NULL | — | INSERT-only; sin `updated_at`. |
+
+**CHECK:** `chk_exchange_rate_positive` (rate > 0) · `chk_exchange_rate_not_base` (`currency <> 'NIO'`). **Inmutable:** UPDATE/DELETE → `ImmutableRecordException` (403); una corrección se expresa con una vigencia nueva. **Morph alias:** `exchange_rate`.
+
 ### `cash_sessions`
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
 | --- | --- | --- | --- | --- |
@@ -433,11 +483,17 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | opened_by | bigint | NN, FK RSTR | — | Cajero que abrió. |
 | closed_by | bigint | NULL, FK RSTR | — | Usuario que cerró. |
 | status | enum | NN, def. 'abierta' | IDX | `abierta` / `cerrada` / `descuadrada`. |
-| opening_amount | decimal(14,2) | NN, CHECK ≥ 0 | — | Fondo inicial. **bcmath.** |
-| expected_amount | decimal(14,2) | NULL | — | Efectivo teórico; **oculto mientras abierta**. **bcmath.** |
-| counted_amount | decimal(14,2) | NULL | — | Efectivo declarado en el arqueo. **bcmath.** |
-| counted_denominations | json | NULL | — | Desglose de billetes y monedas. Evidencia del arqueo. *(añadido en v1.1)* |
-| difference | decimal(14,2) | **GEN** stored | — | `counted − expected`. No editable por el cajero. **bcmath.** |
+| opening_amount | decimal(14,2) | NN, CHECK ≥ 0 | — | Fondo inicial NIO. **bcmath.** |
+| expected_amount | decimal(14,2) | NULL | — | Efectivo teórico NIO; **oculto mientras abierta**. **bcmath.** |
+| counted_amount | decimal(14,2) | NULL | — | Efectivo NIO declarado en el arqueo. **bcmath.** |
+| counted_denominations | json | NULL | — | Desglose NIO de billetes y monedas. Evidencia del arqueo. *(añadido en v1.1)* |
+| difference | decimal(14,2) | **GEN** stored | — | `counted − expected` (NIO). No editable por el cajero. **bcmath.** |
+| opening_amount_usd | decimal(14,2) | NN, def. 0, CHECK ≥ 0 | — | Fondo inicial USD (doble moneda). **bcmath.** *(añadido en doble moneda)* |
+| expected_amount_usd | decimal(14,2) | NULL | — | Efectivo teórico USD; **oculto mientras abierta**. *(añadido en doble moneda)* |
+| counted_amount_usd | decimal(14,2) | NULL | — | Efectivo USD declarado en el arqueo. *(añadido en doble moneda)* |
+| counted_denominations_usd | json | NULL | — | Desglose USD. Evidencia del arqueo. *(añadido en doble moneda)* |
+| difference_usd | decimal(14,2) | **GEN** stored | — | `counted_amount_usd − expected_amount_usd`. Reconciliación USD independiente. *(añadido en doble moneda)* |
+| session_exchange_rate | decimal(14,6) | NULL | — | Tasa de referencia (snapshot al cierre) para el consolidado NIO informativo. *(añadido en doble moneda)* |
 | opened_at | timestamp | NN | — | Momento de apertura. |
 | closed_at | timestamp | NULL | — | Momento de cierre. |
 | closing_notes | string(500) | NULL | — | Justificación del cierre. |
@@ -445,7 +501,7 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | open_user_lock | bigint | **GEN**, unsigned, virtual | UQ | `opened_by` si abierta. **Una sesión abierta por usuario.** *(añadido en v1.1)* |
 | created_at / updated_at | timestamp | NULL | — | Auditoría. |
 
-**CHECK:** `chk_cash_session_opening` (≥ 0).
+**CHECK:** `chk_cash_session_opening` (≥ 0) · `chk_cash_session_opening_usd` (opening_amount_usd ≥ 0). **Doble moneda:** la reconciliación es POR MONEDA (NIO y USD, importe nativo); la sesión queda `descuadrada` si `difference` O `difference_usd` ≠ 0, aunque el consolidado NIO coincida.
 
 ### `cash_movements` · INS · **inmutable**
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
@@ -454,15 +510,54 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | cash_session_id | bigint | NN, FK RSTR | IDX `idx_movements_session_payment` | Sesión de caja afectada. |
 | user_id | bigint | NN, FK RSTR | — | Responsable del movimiento. |
 | type | enum | NN | IDX | `ingreso` / `egreso`. |
-| category | enum | NN | IDX | `venta` / `egreso_autorizado` / `retiro` / `ajuste` / `fondo_inicial` / `cobro_credito`. |
+| category | enum | NN | IDX | `venta` / `egreso_autorizado` / `retiro` / `ajuste` / `fondo_inicial` / `cobro_credito` / `vuelto`. *(`vuelto` añadido en doble moneda)* |
 | payment_method | enum | NN | IDX `idx_movements_session_payment` | `efectivo` / `transferencia` / `tarjeta`. Solo efectivo cuenta en el arqueo. |
-| amount | decimal(14,2) | NN, CHECK > 0 | — | Monto del movimiento. **bcmath.** |
+| amount | decimal(14,2) | NN, CHECK > 0 | — | Monto NATIVO del movimiento. **bcmath.** |
+| currency | char(3) | NN, def. 'NIO', CHECK ∈ {NIO,USD} | IDX `idx_movements_session_currency` | Moneda del movimiento (doble moneda). *(añadido en doble moneda)* |
+| exchange_rate | decimal(14,6) | NN, def. 1, CHECK > 0 | — | Tasa snapshot congelada (NIO por 1 unidad). NIO exige 1. *(añadido en doble moneda)* |
+| base_amount | decimal(18,2) | **GEN** stored | — | `amount × exchange_rate`: equivalente NIO congelado. *(añadido en doble moneda)* |
 | sale_id | bigint | NULL, FK RSTR | IDX | Venta que lo originó (FK cableada). |
 | authorized_by | bigint | NULL, FK RSTR | — | ROL-02 autorizante. Obligatorio en egreso autorizado. |
 | description | string(255) | NULL | — | Concepto del movimiento. |
 | created_at | timestamp | NULL | IDX | Momento del hecho. `immutable_datetime`. |
 
-**CHECK:** `chk_cash_movement_amount` (> 0) · `chk_cash_movement_egreso_auth` (`category <> 'egreso_autorizado' OR authorized_by IS NOT NULL`).
+**CHECK:** `chk_cash_movement_amount` (> 0) · `chk_cash_movement_egreso_auth` (`category <> 'egreso_autorizado' OR authorized_by IS NOT NULL`) · `chk_cash_movement_rate_positive` (exchange_rate > 0) · `chk_cash_movement_currency` (`currency IN ('NIO','USD')`) · `chk_cash_movement_nio_rate` (`currency <> 'NIO' OR exchange_rate = 1`). El `vuelto` es un egreso real del cajón (cuenta en el esperado de su moneda).
+
+### `cash_counts` · INS · **inmutable** (RF-06-04, arqueo ciego independiente)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX `idx_cash_counts_session` | Negocio propietario. |
+| cash_session_id | bigint | NN, FK RSTR | IDX `idx_cash_counts_session` | Sesión abierta arqueada. |
+| user_id | bigint | NN, FK RSTR | — | Quién realizó el arqueo (no-repudio). |
+| counted_amount | decimal(14,2) | NN, CHECK ≥ 0 | — | Efectivo NIO declarado en el arqueo. **bcmath.** |
+| expected_amount | decimal(14,2) | NN, CHECK ≥ 0 | — | Esperado NIO calculado al momento del arqueo (snapshot). |
+| counted_denominations | json | NN | — | Evidencia inmutable del desglose NIO. |
+| difference | decimal(14,2) | GENERATED STORED | — | `counted_amount − expected_amount` (motor, NIO). |
+| counted_amount_usd | decimal(14,2) | NULL, CHECK ≥ 0 | — | Efectivo USD declarado (doble moneda). *(añadido en doble moneda)* |
+| expected_amount_usd | decimal(14,2) | NULL, CHECK ≥ 0 | — | Esperado USD (snapshot). *(añadido en doble moneda)* |
+| counted_denominations_usd | json | NULL | — | Evidencia inmutable del desglose USD. *(añadido en doble moneda)* |
+| difference_usd | decimal(14,2) | GENERATED STORED | — | `counted_amount_usd − expected_amount_usd` (motor). *(añadido en doble moneda)* |
+| counted_at | timestamp | NN | — | Momento del arqueo. `immutable_datetime`. |
+| created_at | timestamp | NULL | IDX | INSERT-only; sin `updated_at`. |
+
+**CHECK:** `chk_cash_count_amounts` (`counted_amount >= 0 AND expected_amount >= 0`) · `chk_cash_count_amounts_usd` (`counted_amount_usd IS NULL OR (counted_amount_usd >= 0 AND expected_amount_usd >= 0)`). **Inmutable:** UPDATE/DELETE → `ImmutableRecordException` (403). El arqueo NO cambia el estado de la sesión ni genera anomalía (solo el cierre formal). Doble moneda: revela esperado/diferencia por NIO y por USD.
+
+### `cash_register_assignments` · asignación Caja–Cajero (historial temporal) *(añadido en microcierre asignaciones)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX `idx_cra_register`,`idx_cra_user` | Negocio propietario. |
+| branch_id | bigint | NN, FK RSTR | — | Sucursal (caja y cajero comparten). |
+| cash_register_id | bigint | NN, FK RSTR | IDX `idx_cra_register` | Caja asignada. |
+| user_id | bigint | NN, FK RSTR | IDX `idx_cra_user` | Cajero (ROL-03 con perfil cajero). |
+| assigned_by | bigint | NN, FK RSTR | — | Administrador (ROL-01/ROL-02) que asignó. |
+| assigned_at | timestamp | NN | — | Inicio de la vigencia. |
+| ended_at | timestamp | NULL | — | Fin de la vigencia (NULL ⇒ activa). |
+| ended_by | bigint | NULL, FK RSTR | — | Quién finalizó. |
+| active_register_lock | bigint | **GEN**, unsigned, virtual | UQ | `cash_register_id` si activa. **Máx. un cajero activo por caja.** |
+| active_user_lock | bigint | **GEN**, unsigned, virtual | UQ | `user_id` si activa. **Máx. una caja activa por cajero.** |
+| created_at / updated_at | timestamp | NULL | — | Auditoría. |
+
+**Reglas:** una caja ≤ 1 cajero activo; un cajero ≤ 1 caja activa; misma sucursal; ROL-03 con perfil cajero. Reasignar = finalizar + asignar (historial append-only, nunca se borra). No se asigna/reasigna/finaliza, ni se desactiva/elimina la caja, con una sesión abierta vinculada (409). **Apertura:** un ROL-03 solo abre la caja con asignación ACTIVA (CashService::assertCanOpenRegister). Las sesiones conservan su propio opened_by/cash_register (historial independiente). **Morph alias:** `cash_register_assignment`.
 
 ---
 
@@ -552,12 +647,15 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | cash_session_id | bigint | NULL, FK RSTR | — | Sesión de caja del cobro. |
 | user_id | bigint | NN, FK RSTR | — | Responsable del cobro. |
 | payment_method | enum | NN | IDX | `efectivo` / `transferencia` / `tarjeta`. Varias filas = pago mixto. |
-| amount | decimal(14,2) | NN, CHECK > 0 | — | Monto cobrado. **bcmath.** |
+| amount | decimal(14,2) | NN, CHECK > 0 | — | Monto NATIVO del leg. **bcmath.** |
+| currency | char(3) | NN, def. 'NIO', CHECK ∈ {NIO,USD} | — | Moneda del pago (pagos mixtos NIO/USD). *(añadido en doble moneda)* |
+| exchange_rate | decimal(14,6) | NN, def. 1, CHECK > 0 | — | Tasa snapshot congelada al emitir. NIO exige 1. *(añadido en doble moneda)* |
+| base_amount | decimal(18,2) | **GEN** stored | — | `amount × exchange_rate`: equivalente NIO con que financia el total. *(añadido en doble moneda)* |
 | reference | string(100) | NULL | — | Referencia bancaria o de terminal. |
 | paid_at | timestamp | NN | — | Momento del cobro. |
 | created_at | timestamp | NULL | — | Registro del hecho. |
 
-**CHECK:** `chk_invoice_payment_amount` (> 0).
+**CHECK:** `chk_invoice_payment_amount` (> 0) · `chk_invoice_payment_rate_positive` (exchange_rate > 0) · `chk_invoice_payment_currency` (`currency IN ('NIO','USD')`) · `chk_invoice_payment_nio_rate` (`currency <> 'NIO' OR exchange_rate = 1`). El total (NIO) se salda por la SUMA de `base_amount`; el vuelto se asienta como cash_movement `vuelto`.
 
 ### `document_sequences` · contador de folios *(añadida en v1.1)*
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
@@ -609,14 +707,17 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | invoice_payment_id | bigint | NN, FK RSTR | UQ | **Asiento fiscal 1:1 (MOD-08).** Todo abono (inicial o posterior) respalda su `invoice_payment`. `uniq_rp_invoice_payment` impide dos abonos sobre el mismo asiento. |
 | cash_session_id | bigint | NULL, FK RSTR | — | Sesión de caja (obligatoria si efectivo). |
 | user_id | bigint | NN, FK RSTR | — | Responsable del cobro. |
-| amount | decimal(14,2) | NN, CHECK > 0 | — | Monto del abono. **bcmath.** |
+| amount | decimal(14,2) | NN, CHECK > 0 | — | Monto NATIVO del abono. **bcmath.** |
+| currency | char(3) | NN, def. 'NIO', CHECK ∈ {NIO,USD} | — | Moneda del abono (doble moneda). *(añadido en doble moneda)* |
+| exchange_rate | decimal(14,6) | NN, def. 1, CHECK > 0 | — | Tasa snapshot congelada al cobrar. NIO exige 1. *(añadido en doble moneda)* |
+| base_amount | decimal(18,2) | **GEN** stored | — | `amount × exchange_rate`: equivalente NIO que amortiza el saldo. *(añadido en doble moneda)* |
 | payment_method | enum | NN | IDX | `efectivo` / `transferencia` / `tarjeta`. |
 | reference | string(100) | NULL | — | Referencia del pago. |
 | paid_at | timestamp | NN | — | Momento del abono. |
 | created_at | timestamp | NULL | — | Registro del hecho. |
 
-**CHECK:** `chk_rp_amount_positive` (> 0). **UNIQUE:** `uniq_rp_invoice_payment` (invoice_payment_id).
-**Invariante fiscal (MOD-08):** el pago inicial de una factura a crédito se materializa 1:1 desde su `invoice_payment` (ReceivableService::generarDesdeFactura), de modo que `Σ receivable_payments == accounts_receivable.paid_amount == Σ invoice_payments`.
+**CHECK:** `chk_rp_amount_positive` (> 0) · `chk_rp_rate_positive` (exchange_rate > 0) · `chk_rp_currency` (`currency IN ('NIO','USD')`) · `chk_rp_nio_rate` (`currency <> 'NIO' OR exchange_rate = 1`). **UNIQUE:** `uniq_rp_invoice_payment` (invoice_payment_id).
+**Invariante fiscal (MOD-08), en EQUIVALENTE NIO:** el pago inicial de una factura a crédito se materializa 1:1 desde su `invoice_payment` (ReceivableService::generarDesdeFactura), de modo que `Σ receivable_payments.base_amount == accounts_receivable.paid_amount == Σ invoice_payments.base_amount`. (Doble moneda: la cartera se denomina en NIO; el abono USD amortiza por su equivalente NIO. Para abonos NIO, base_amount = amount.)
 
 ---
 
@@ -871,7 +972,7 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 
 ## Anexo A — Tablas de solo inserción (append-only)
 
-`audit_logs` · `inventory_movements` · `cash_movements` · `invoice_payments` · `receivable_payments` · `goods_receipt_items` · `reconciliation_runs` · `anomaly_events`
+`audit_logs` · `inventory_movements` · `cash_movements` · `cash_counts` · `exchange_rates` · `invoice_payments` · `receivable_payments` · `goods_receipt_items` · `reconciliation_runs` · `anomaly_events`
 
 Ninguna admite UPDATE ni DELETE por vía alguna: el intento lanza `ImmutableRecordException` (HTTP 403).
 
@@ -882,9 +983,19 @@ Ninguna admite UPDATE ni DELETE por vía alguna: el intento lanza `ImmutableReco
 | `warehouses` | default_lock | `CASE WHEN is_default THEN branch_id END` | Una bodega predeterminada por sucursal. |
 | `physical_counts` | difference | `counted_quantity − system_quantity` | Diferencia no manipulable. |
 | `customers` | generic_lock | `CASE WHEN is_generic THEN business_id END` | Un solo "Consumidor Final" por negocio. |
-| `cash_sessions` | difference | `counted_amount − expected_amount` | Descuadre no editable por el cajero. |
+| `cash_sessions` | difference | `counted_amount − expected_amount` | Descuadre NIO no editable por el cajero. |
+| `cash_sessions` | difference_usd | `counted_amount_usd − expected_amount_usd` | Descuadre USD (doble moneda), reconciliación independiente. |
 | `cash_sessions` | open_register_lock | `CASE WHEN status='abierta' THEN cash_register_id END` | Una sesión abierta por caja. |
 | `cash_sessions` | open_user_lock | `CASE WHEN status='abierta' THEN opened_by END` | Una sesión abierta por usuario. |
+| `cash_register_assignments` | active_register_lock | `CASE WHEN ended_at IS NULL THEN cash_register_id END` | Un cajero activo por caja. |
+| `cash_register_assignments` | active_user_lock | `CASE WHEN ended_at IS NULL THEN user_id END` | Una caja activa por cajero. |
+| `warehouse_assignments` | active_pair_lock | `CASE WHEN ended_at IS NULL THEN CONCAT(warehouse_id,'-',user_id) END` | Par (bodega,bodeguero) activo único. |
+| `supplier_locations` | primary_lock | `CASE WHEN is_primary=1 THEN supplier_id END` | Una ubicación principal por proveedor. |
+| `cash_movements` | base_amount | `amount × exchange_rate` | Equivalente NIO congelado por operación (doble moneda). |
+| `cash_counts` | difference | `counted_amount − expected_amount` | Descuadre NIO del arqueo, no editable. |
+| `cash_counts` | difference_usd | `counted_amount_usd − expected_amount_usd` | Descuadre USD del arqueo (doble moneda). |
+| `invoice_payments` | base_amount | `amount × exchange_rate` | Equivalente NIO del pago (pagos mixtos). |
+| `receivable_payments` | base_amount | `amount × exchange_rate` | Equivalente NIO del abono de CxC (doble moneda). |
 | `accounts_receivables` | balance | `total_amount − paid_amount` | Saldo real; con CHECK ≥ 0 impide el sobre-abono. |
 | `anomalies` | active_dedupe_key | `regla:origen` si el estado es activo | Máximo una anomalía activa por origen. |
 | `business_goals` | branch_key | `COALESCE(branch_id, 0)` | Permite unicidad con sucursal nula. |

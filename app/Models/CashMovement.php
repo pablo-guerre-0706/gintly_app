@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\CashMovementCategory;
 use App\Enums\CashMovementType;
+use App\Enums\Currency;
 use App\Enums\PaymentMethod;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\Concerns\Immutable;
@@ -31,6 +32,8 @@ final class CashMovement extends Model
         'category',
         'payment_method',
         'amount',
+        'currency',
+        'exchange_rate',
         'sale_id',
         'authorized_by',
         'description',
@@ -65,6 +68,9 @@ final class CashMovement extends Model
             'category'       => CashMovementCategory::class,
             'payment_method' => PaymentMethod::class,
             'amount'         => 'decimal:2',
+            'currency'       => Currency::class,
+            'exchange_rate'  => 'decimal:6',
+            'base_amount'    => 'decimal:2',
             'created_at'     => 'immutable_datetime',
         ];
     }

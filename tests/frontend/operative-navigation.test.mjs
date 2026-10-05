@@ -67,3 +67,49 @@ test('ROL-SYS y rol desconocido carecen de navegación', () => {
     assert.deepEqual(keys({ role: 'ROL-SYS', profiles: [], capabilities: ['facturas.ver'] }), []);
     assert.deepEqual(keys({ role: 'desconocido', profiles: [], capabilities: [] }), []);
 });
+
+test('sucursales: guard de creación y edición solo para dirección autorizada', () => {
+    const pathCreate = 'http://gintly.test/organization/branches/create';
+    const pathEdit = 'http://gintly.test/organization/branches/17/edit';
+    for (const role of ['ROL-01', 'ROL-02']) {
+        const context = { role, profiles: [], capabilities: ['sucursales.gestionar'] };
+        assert.equal(isCurrentPageAuthorized(context, urls, pathCreate), true);
+        assert.equal(isCurrentPageAuthorized(context, urls, pathEdit), true);
+        assert.ok(keys(context).includes('branches'));
+        assert.ok(!keys(context).includes('branchesCreateGuard'));
+        assert.ok(!keys(context).includes('branchesEditGuard'));
+    }
+    const operatorContext = operator(['cajero'], ['sucursales.gestionar']);
+    assert.equal(isCurrentPageAuthorized(operatorContext, urls, pathCreate), false);
+    assert.equal(isCurrentPageAuthorized(operatorContext, urls, pathEdit), false);
+    assert.ok(!keys(operatorContext).includes('branches'));
+});
+
+test('MOD-06 separa apertura, movimientos, arqueo, cierre e historial por capacidad', () => {
+    const urlsCash = { ...urls,
+        operativeCash: 'http://gintly.test/operations/cash',
+        operativeCashOpen: 'http://gintly.test/operations/cash/open',
+        operativeCashMovements: 'http://gintly.test/operations/cash/movements',
+        operativeCashCount: 'http://gintly.test/operations/cash/count',
+        operativeCashClose: 'http://gintly.test/operations/cash/close',
+        operativeCashHistory: 'http://gintly.test/operations/cash/history',
+    };
+    const cashier = operator(['cajero'], ['caja.abrir', 'caja.cerrar', 'caja.movimiento.crear']);
+    const cashierKeys = flattenedNavigation(authorizedNavigation(cashier, urlsCash)).map((entry) => entry.key);
+    for (const key of ['operativeCash', 'operativeCashOpen', 'operativeCashMovements', 'operativeCashCount', 'operativeCashClose', 'operativeCashHistory']) assert.ok(cashierKeys.includes(key), key);
+    const other = operator(['facturador'], ['caja.abrir', 'caja.cerrar', 'caja.movimiento.crear']);
+    for (const path of ['/operations/cash/open', '/operations/cash/movements', '/operations/cash/count', '/operations/cash/close', '/operations/cash/history']) {
+        assert.equal(isCurrentPageAuthorized(other, urlsCash, `http://gintly.test${path}`), false, path);
+        assert.equal(isCurrentPageAuthorized(cashier, urlsCash, `http://gintly.test${path}`), true, path);
+    }
+});
+
+test('tipo de cambio USD solo aparece en dirección con caja.gestionar', () => {
+    const withRate = { ...urls, adminExchangeRates: 'http://gintly.test/administration/exchange-rates' };
+    for (const role of ['ROL-01', 'ROL-02']) {
+        const context = { role, profiles: [], capabilities: ['caja.gestionar'] };
+        assert.ok(flattenedNavigation(authorizedNavigation(context, withRate)).some((item) => item.key === 'adminExchangeRates'));
+        assert.equal(isCurrentPageAuthorized(context, withRate, withRate.adminExchangeRates), true);
+    }
+    assert.equal(isCurrentPageAuthorized(operator(['cajero'], ['caja.gestionar']), withRate, withRate.adminExchangeRates), false);
+});

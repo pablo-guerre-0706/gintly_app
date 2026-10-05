@@ -15,9 +15,14 @@ use Illuminate\Support\Facades\DB;
 // Registro de conteos.
 final class PhysicalCountService
 {
+    public function __construct(private readonly WarehouseAssignmentService $assignments) {}
+
     public function registrar(User $actor, int $warehouseId, int $productId, string $countedQuantity, ?string $notes): PhysicalCount
     {
         return DB::transaction(function () use ($actor, $warehouseId, $productId, $countedQuantity, $notes): PhysicalCount {
+            // RF-03 asignación Bodega–Bodeguero: un ROL-03 solo cuenta una bodega que tenga asignada.
+            $this->assignments->assertOperates($actor, $warehouseId);
+
             // system_quantity = saldo físico actual. Si el par no tiene saldo, es 0.
             $systemQuantity = StockLevel::query()
                 ->where('business_id', $actor->business_id)

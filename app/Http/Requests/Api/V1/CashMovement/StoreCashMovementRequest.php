@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\CashMovement;
 
 use App\Enums\CashMovementCategory;
 use App\Enums\CashMovementType;
+use App\Enums\Currency;
 use App\Enums\PaymentMethod;
 use App\Http\Requests\BaseTenantRequest;
 use App\Models\CashMovement;
@@ -33,6 +34,10 @@ final class StoreCashMovementRequest extends BaseTenantRequest
             'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
 
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
+
+            // Doble moneda: importe NATIVO en esta moneda. Ausente ⇒ NIO (compatibilidad histórica).
+            // La TASA snapshot NO se envía: la congela el servidor al instante (ExchangeRateService).
+            'currency' => ['sometimes', Rule::enum(Currency::class)],
 
             // authorized_by: existe y es del tenant. Que sea ROL-02 lo valida el service
             'authorized_by' => [
@@ -94,6 +99,7 @@ final class StoreCashMovementRequest extends BaseTenantRequest
             'amount.required'          => 'El monto es obligatorio.',
             'amount.decimal'           => 'El monto admite un máximo de dos decimales.',
             'amount.gt'                => 'El monto debe ser mayor que cero.',
+            'currency.enum'            => 'La moneda indicada no es admitida.',
             'authorized_by.required_if' => 'Un egreso autorizado exige registrar quién lo autoriza.',
             'authorized_by.exists'     => 'El autorizante indicado no existe o no pertenece a su negocio.',
             'description.max'          => 'La descripción no puede exceder los 255 caracteres.',
@@ -111,6 +117,7 @@ final class StoreCashMovementRequest extends BaseTenantRequest
             'category'        => 'categoría',
             'payment_method'  => 'medio de pago',
             'amount'          => 'monto',
+            'currency'        => 'moneda',
             'authorized_by'   => 'autorizante',
             'description'     => 'descripción',
         ];

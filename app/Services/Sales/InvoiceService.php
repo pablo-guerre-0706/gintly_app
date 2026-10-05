@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sales;
 
+use App\Enums\Currency;
 use App\Enums\DocumentSequenceType;
 use App\Enums\InvoicePaymentStatus;
 use App\Enums\InvoicePaymentType;
@@ -22,12 +23,14 @@ use App\Models\SaleItem;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Cash\CashService;
+use App\Services\Cash\ExchangeRateService;
 use App\Services\Inventory\InventoryService;
 use App\Services\Receivable\ReceivableService;
 use App\Support\FolioGenerator;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Orquestación transaccional de la facturación: el punto de mayor densidad
@@ -47,6 +50,7 @@ final class InvoiceService
         private readonly CashService $cash,
         private readonly FolioGenerator $folios,
         private readonly ReceivableService $receivables,
+        private readonly ExchangeRateService $exchangeRates,
     ) {
     }
 
@@ -68,7 +72,9 @@ final class InvoiceService
             $paymentType    = InvoicePaymentType::from($data['payment_type']);
             $cashSessionId  = $data['cash_session_id'] ?? null;
             $discountAmount = (string) ($data['discount_amount'] ?? '0.00');
-            $payments       = $data['payments'] ?? [];
+            // Pagos mixtos NIO/USD: cada leg se normaliza con su TASA snapshot congelada al emitir, y su
+            // equivalente en NIO (base_amount) es con el que financia el total. NIO ⇒ tasa 1 (histórico).
+            $payments       = $this->normalizePayments($businessId, $data['payments'] ?? []);
 
             // --- 1. Ventas bajo lock, homogéneas y confirmadas ---
             $sales = Sale::query()
@@ -113,7 +119,14 @@ final class InvoiceService
             }
 
             // --- 4. Contado exige pago completo (H-64, ERR-07). Rollback si no ---
-            $paidAmount = $this->sumPayments($payments);
+            //     Con doble moneda: lo ENTREGADO en efectivo puede exceder el total y generar VUELTO.
+            //     El pago NETO = Σ(equivalente NIO entregado) − vuelto (equivalente NIO) debe igualar el total.
+            $tenderedPaid = $this->sumPayments($payments);
+            $change       = $this->normalizeChange($businessId, $data['change'] ?? null, $payments);
+            $paidAmount   = $change !== null
+                ? bcsub($tenderedPaid, $change['base_amount'], self::MONEY_SCALE)
+                : $tenderedPaid;
+
             if ($paymentType->requiresFullPayment()
                 && bccomp($paidAmount, $totals['total'], self::MONEY_SCALE) !== 0
             ) {
@@ -162,6 +175,18 @@ final class InvoiceService
 
             // --- 8. Pagos + movimiento de caja de efectivo (H-65) ---
             $this->registerPayments($actor, $invoice, $cashSessionId, $payments, $sales->first());
+
+            // --- 8b. Vuelto (cambio): egreso real del cajón en la moneda del cambio, con tasa snapshot. ---
+            if ($change !== null && $cashSessionId !== null) {
+                $this->cash->registrarVuelto(
+                    actor: $actor,
+                    cashSessionId: $cashSessionId,
+                    amount: $change['amount'],
+                    saleId: $sales->first()->id,
+                    currency: $change['currency'],
+                    exchangeRate: $change['rate'],
+                );
+            }
 
             // --- 9. Marcar ventas como facturadas ---
             Sale::query()->whereIn('id', $sales->pluck('id'))
@@ -288,14 +313,90 @@ final class InvoiceService
     }
 
     /**
-     * @param array<int, array{method: string, amount: string, reference: ?string}> $payments
+     * Normaliza los legs de pago a moneda/importe nativo + tasa snapshot + equivalente NIO. La tasa se
+     * resuelve UNA sola vez por leg al emitir (ExchangeRateService): NIO ⇒ '1'; una moneda extranjera sin
+     * tasa vigente lanza ExchangeRateMissingException (422). El mismo snapshot se propaga al invoice_payment
+     * y, si es efectivo, al movimiento de caja, de modo que ambos comparten exactamente la tasa congelada.
+     *
+     * @param  array<int, array{method: string, amount: string, reference?: ?string, currency?: ?string}>  $payments
+     * @return array<int, array{method: PaymentMethod, currency: Currency, amount: string, rate: string, base_amount: string, reference: ?string}>
+     */
+    private function normalizePayments(int $businessId, array $payments): array
+    {
+        $normalized = [];
+
+        foreach ($payments as $payment) {
+            $currency = isset($payment['currency']) ? Currency::from($payment['currency']) : Currency::Nio;
+            $rate     = $this->exchangeRates->rateFor($businessId, $currency);
+            $amount   = (string) $payment['amount'];
+
+            $normalized[] = [
+                'method'      => PaymentMethod::from($payment['method']),
+                'currency'    => $currency,
+                'amount'      => $amount,
+                'rate'        => $rate,
+                'base_amount' => bcmul($amount, $rate, self::MONEY_SCALE), // equivalente NIO (snapshot)
+                'reference'   => $payment['reference'] ?? null,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Normaliza el vuelto (cambio): moneda/importe nativo + tasa snapshot + equivalente NIO. El vuelto no
+     * puede exceder el EFECTIVO entregado (no se da cambio de pagos con tarjeta/transferencia). Devuelve
+     * null si no hay vuelto. La tasa se resuelve al emitir, igual que los pagos.
+     *
+     * @param  array{amount?: string, currency?: ?string}|null  $change
+     * @param  array<int, array{method: PaymentMethod, base_amount: string}>  $tenderedPayments
+     * @return array{currency: Currency, amount: string, rate: string, base_amount: string}|null
+     */
+    private function normalizeChange(int $businessId, ?array $change, array $tenderedPayments): ?array
+    {
+        if (! is_array($change) || ! isset($change['amount'])) {
+            return null;
+        }
+
+        $currency = isset($change['currency']) ? Currency::from($change['currency']) : Currency::Nio;
+        $rate     = $this->exchangeRates->rateFor($businessId, $currency);
+        $amount   = (string) $change['amount'];
+        $base     = bcmul($amount, $rate, self::MONEY_SCALE);
+
+        $cashTenderedBase = '0.00';
+        foreach ($tenderedPayments as $leg) {
+            if ($leg['method'] === PaymentMethod::Efectivo) {
+                $cashTenderedBase = bcadd($cashTenderedBase, (string) $leg['base_amount'], self::MONEY_SCALE);
+            }
+        }
+
+        if (bccomp($base, $cashTenderedBase, self::MONEY_SCALE) > 0) {
+            // D-27 · 422 dentro de la tx revierte TODO: no se da más cambio que el efectivo recibido.
+            throw ValidationException::withMessages([
+                'change' => ['El vuelto no puede exceder el efectivo recibido.'],
+            ]);
+        }
+
+        return [
+            'currency'    => $currency,
+            'amount'      => $amount,
+            'rate'        => $rate,
+            'base_amount' => $base,
+        ];
+    }
+
+    /**
+     * Suma los pagos en su EQUIVALENTE NIO (base_amount). Para una factura NIO pura con pagos NIO (tasa 1),
+     * equivale a sumar los importes nativos: el comportamiento histórico se conserva exactamente.
+     *
+     * @param  array<int, array{base_amount: string}>  $payments
      */
     private function sumPayments(array $payments): string
     {
         $sum = '0.00';
 
         foreach ($payments as $payment) {
-            $sum = bcadd($sum, (string) $payment['amount'], self::MONEY_SCALE);
+            $sum = bcadd($sum, (string) $payment['base_amount'], self::MONEY_SCALE);
         }
 
         return $sum;
@@ -369,33 +470,38 @@ final class InvoiceService
     }
 
     /**
-     * Registra los pagos (invoice_payments) y, por cada pago en efectivo, el
-     * cash_movement 'venta' vía CashService (H-65).
+     * Registra los pagos (invoice_payments) con su moneda, importe nativo y tasa snapshot, y por cada pago
+     * en efectivo el cash_movement 'venta' vía CashService (H-65), propagando la MISMA tasa congelada.
      *
-     * @param array<int, array{method: string, amount: string, reference: ?string}> $payments
+     * @param array<int, array{method: PaymentMethod, currency: Currency, amount: string, rate: string, base_amount: string, reference: ?string}> $payments
      */
     private function registerPayments(User $actor, Invoice $invoice, ?int $cashSessionId, array $payments, Sale $firstSale): void
     {
         foreach ($payments as $payment) {
-            $method = PaymentMethod::from($payment['method']);
+            $method = $payment['method'];
 
             $invoice->payments()->create([
                 'cash_session_id' => $cashSessionId,
                 'user_id'         => $actor->id,
                 'payment_method'  => $method,
-                'amount'          => $payment['amount'],
-                'reference'       => $payment['reference'] ?? null,
+                'amount'          => $payment['amount'],       // importe NATIVO del leg
+                'currency'        => $payment['currency'],
+                'exchange_rate'   => $payment['rate'],         // tasa snapshot congelada al emitir
+                'reference'       => $payment['reference'],
                 'paid_at'         => Carbon::now(),
             ]);
 
             // Solo el efectivo genera movimiento de caja (H-65). El CashService exige
-            // y bloquea la sesión abierta; el cash_movement lleva sale_id (P3).
+            // y bloquea la sesión abierta; el cash_movement lleva sale_id (P3) y la MISMA
+            // tasa snapshot (así el invoice_payment y el cash_movement no divergen).
             if ($method === PaymentMethod::Efectivo && $cashSessionId !== null) {
                 $this->cash->registrarMovimientoVenta(
                     actor: $actor,
                     cashSessionId: $cashSessionId,
                     amount: $payment['amount'],
                     saleId: $firstSale->id,
+                    currency: $payment['currency'],
+                    exchangeRate: $payment['rate'],
                 );
             }
         }

@@ -20,8 +20,8 @@ export function grantableRoles(actorRole) {
         .map(([value]) => ({ value, label: ROLE_LABELS[value] }));
 }
 
-export async function mutate(method, path, data) {
-    const send = () => api[method](path, data, { dispatchErrors: false });
+export async function mutate(method, path, data, options = {}) {
+    const send = () => api[method](path, data, { dispatchErrors: false, ...options });
 
     try {
         return await send();
@@ -55,6 +55,15 @@ export async function fetchPaginatedCollection(path, query = {}, options = {}) {
     } while (page <= lastPage);
 
     return items;
+}
+
+export async function fetchActiveBranches(path) {
+    const branches = await fetchPaginatedCollection(
+        path,
+        { per_page: 100, is_active: true, sort: 'name', direction: 'asc' },
+        { dispatchErrors: false },
+    );
+    return branches.filter((branch) => branch.is_active === true && Number.isInteger(branch.id));
 }
 
 export function responseMessage(error, fallback = 'No fue posible completar la operación.') {

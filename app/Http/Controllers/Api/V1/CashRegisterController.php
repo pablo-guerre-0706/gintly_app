@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\RoleName;
+use App\Exceptions\CashAssignmentConflictException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\CashRegister\IndexCashRegisterRequest;
 use App\Http\Requests\Api\V1\CashRegister\StoreCashRegisterRequest;
@@ -74,7 +75,14 @@ final class CashRegisterController extends Controller
     {
         $this->authorize('update', $cashRegister);
 
-        $cashRegister->update($request->validated());
+        $data = $request->validated();
+
+        // No se puede DESACTIVAR una caja mientras tenga una sesión abierta vinculada (RF-06).
+        if (array_key_exists('is_active', $data) && $data['is_active'] === false && $cashRegister->hasOpenSession()) {
+            throw CashAssignmentConflictException::registerLocked();
+        }
+
+        $cashRegister->update($data);
 
         return CashRegisterResource::make($cashRegister->load('branch'));
     }
@@ -82,6 +90,11 @@ final class CashRegisterController extends Controller
     public function destroy(CashRegister $cashRegister): Response
     {
         $this->authorize('delete', $cashRegister);
+
+        // No se puede ELIMINAR una caja mientras tenga una sesión abierta vinculada (RF-06).
+        if ($cashRegister->hasOpenSession()) {
+            throw CashAssignmentConflictException::registerLocked();
+        }
 
         $cashRegister->delete(); // soft-delete
 

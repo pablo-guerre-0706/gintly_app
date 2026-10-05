@@ -155,7 +155,14 @@ final class ReportService
             ->where('business_id', $b)->where('status', 'cerrada')
             ->where('created_at', '>=', $s)->where('created_at', '<', $e)
             ->when($branchId !== null, fn (Builder $x) => $x->where('branch_id', $branchId))
-            ->selectRaw('COUNT(*) sessions, COALESCE(SUM(ABS(difference)),0) abs_diff, COALESCE(SUM(counted_amount),0) counted')
+            // Doble moneda: el leg USD se consolida a NIO con la tasa de referencia del cierre
+            // (session_exchange_rate). Para sesiones NIO puras (USD/tasa nulos) los términos USD se anulan,
+            // de modo que el reporte histórico no cambia; un descuadre solo-USD NO queda invisible aquí.
+            ->selectRaw(
+                'COUNT(*) sessions, '
+                .'COALESCE(SUM(ABS(difference) + ABS(COALESCE(difference_usd,0)) * COALESCE(session_exchange_rate,0)),0) abs_diff, '
+                .'COALESCE(SUM(counted_amount + COALESCE(counted_amount_usd,0) * COALESCE(session_exchange_rate,0)),0) counted'
+            )
             ->first();
 
         $cur  = $sessions($p['utcStart'], $p['utcEnd']);

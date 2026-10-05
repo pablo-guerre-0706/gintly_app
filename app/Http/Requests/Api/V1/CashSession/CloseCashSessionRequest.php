@@ -44,6 +44,12 @@ final class CloseCashSessionRequest extends BaseTenantRequest
             'counted_denominations.*.value'  => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
             'counted_denominations.*.qty'    => ['required', 'integer', 'min:0'],
 
+            // Leg USD del arqueo ciego. Opcional (ausente ⇒ 0): cierre NIO puro sin cambios.
+            'counted_amount_usd'                 => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'min:0'],
+            'counted_denominations_usd'          => ['sometimes', 'nullable', 'array'],
+            'counted_denominations_usd.*.value'  => ['required_with:counted_denominations_usd', 'numeric', 'decimal:0,2', 'gt:0'],
+            'counted_denominations_usd.*.qty'    => ['required_with:counted_denominations_usd', 'integer', 'min:0'],
+
             'closing_notes' => $closingNotesRules,
         ];
     }
@@ -102,6 +108,31 @@ final class CloseCashSessionRequest extends BaseTenantRequest
                     $validator->errors()->add(
                         'counted_denominations',
                         "El desglose de denominaciones (suma {$sum}) no coincide con el efectivo declarado ({$counted})."
+                    );
+                }
+            },
+            // Igual regla para el desglose USD, solo si se declara un conteo en USD.
+            function (Validator $validator): void {
+                $denominations = $this->input('counted_denominations_usd');
+
+                if (! is_array($denominations) || $denominations === []) {
+                    return; // sin conteo USD: nada que validar.
+                }
+
+                $sum = '0.00';
+                foreach ($denominations as $line) {
+                    if (! isset($line['value'], $line['qty'])) {
+                        continue;
+                    }
+                    $sum = bcadd($sum, bcmul((string) $line['value'], (string) (int) $line['qty'], 2), 2);
+                }
+
+                $counted = (string) ($this->input('counted_amount_usd') ?? '0.00');
+
+                if (bccomp($sum, $counted, 2) !== 0) {
+                    $validator->errors()->add(
+                        'counted_denominations_usd',
+                        "El desglose de denominaciones en USD (suma {$sum}) no coincide con el efectivo USD declarado ({$counted})."
                     );
                 }
             },

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Receivable;
 
 use App\Enums\AccountReceivableStatus;
+use App\Enums\Currency;
 use App\Enums\InvoicePaymentStatus;
 use App\Exceptions\InvoiceVoidedException;
 use App\Exceptions\CreditLimitExceededException;
@@ -16,6 +17,7 @@ use App\Models\InvoicePayment;
 use App\Models\ReceivablePayment;
 use App\Services\Anomaly\AnomalyService;
 use App\Services\Cash\CashService;
+use App\Services\Cash\ExchangeRateService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -26,7 +28,8 @@ final class ReceivableService
 
     public function __construct(
         private readonly CashService $cashService,
-        private readonly AnomalyService $anomalyService
+        private readonly AnomalyService $anomalyService,
+        private readonly ExchangeRateService $exchangeRates,
     ) {
     }
 
@@ -73,7 +76,9 @@ final class ReceivableService
         $payment->accounts_receivable_id = $ar->id;
         $payment->invoice_payment_id     = $invoicePayment->id;
         $payment->cash_session_id        = $invoicePayment->cash_session_id;
-        $payment->amount                 = (string) $invoicePayment->amount;
+        $payment->amount                 = (string) $invoicePayment->amount;     // NATIVO
+        $payment->currency               = $invoicePayment->currency;            // doble moneda: preserva moneda
+        $payment->exchange_rate          = (string) $invoicePayment->exchange_rate; // y la tasa snapshot original
         $payment->payment_method         = $invoicePayment->payment_method;
         $payment->reference              = $invoicePayment->reference;
         $payment->paid_at                = $invoicePayment->paid_at;
@@ -160,13 +165,14 @@ final class ReceivableService
     // =====================================================================
     // Abono atómico de 5 pasos (método transaccional canónico)
     // =====================================================================
-    /** @param array{amount:string|float, payment_method:string, cash_session_id?:int|null, reference?:string|null} $data */
+    /** @param array{amount:string|float, payment_method:string, cash_session_id?:int|null, reference?:string|null, currency?:string|null} $data */
     public function abonar(AccountReceivable $accountReceivable, array $data): ReceivablePayment
     {
-        $amount = (string) $data['amount'];
-        $method = (string) $data['payment_method'];
+        $amount   = (string) $data['amount']; // importe NATIVO en la moneda del abono.
+        $method   = (string) $data['payment_method'];
+        $currency = isset($data['currency']) ? Currency::from((string) $data['currency']) : Currency::Nio;
 
-        return DB::transaction(function () use ($accountReceivable, $data, $amount, $method): ReceivablePayment {
+        return DB::transaction(function () use ($accountReceivable, $data, $amount, $method, $currency): ReceivablePayment {
 
             // Orden de bloqueo canónico Invoice → CxC (idéntico a InvoiceService::anular): elimina el ABBA.
             $invoice = Invoice::query()
@@ -185,35 +191,45 @@ final class ReceivableService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Doble moneda: la CxC está denominada en NIO. La TASA se congela al instante del cobro
+            // (NIO ⇒ '1'; USD sin tasa vigente ⇒ EXCHANGE_RATE_MISSING 422, revierte todo). El abono se
+            // AMORTIZA por su equivalente NIO (base), mientras que el importe NATIVO se preserva en el
+            // asiento fiscal, la cartera y el movimiento de caja.
+            $rate = $this->exchangeRates->rateFor((int) $ar->business_id, $currency);
+            $base = bcmul($amount, $rate, 2);
+
             // No se abona una cuenta ya saldada.
             if ($ar->status->isSettled() || bccomp((string) $ar->balance, '0.00', 2) <= 0) {
                 throw new OverpaymentException(
                     (string) $ar->balance,
-                    $amount,
+                    $base,
                     'La cuenta ya está saldada; no admite más abonos.'
                 );
             }
 
-            // El abono no puede exceder el saldo (validación de servicio; el motor la respalda con el CHECK).
-            if (bccomp($amount, (string) $ar->balance, 2) > 0) {
-                throw new OverpaymentException((string) $ar->balance, $amount);
+            // El abono (equivalente NIO) no puede exceder el saldo (servicio; el motor lo respalda con el CHECK).
+            if (bccomp($base, (string) $ar->balance, 2) > 0) {
+                throw new OverpaymentException((string) $ar->balance, $base);
             }
 
-            // Paso 5 adelantado para FALLAR RÁPIDO si la caja está cerrada (todo es atómico igual).
+            // Paso 5 adelantado para FALLAR RÁPIDO si la caja está cerrada (todo es atómico igual). El
+            // movimiento de caja lleva el importe NATIVO y la MISMA tasa snapshot (cobro_credito).
             $cashSessionId = $method === 'efectivo' ? (int) $data['cash_session_id'] : null;
             if ($method === 'efectivo') {
-                $this->cashService->registrarCobroCredito($cashSessionId, $amount, $data['reference'] ?? null);
+                $this->cashService->registrarCobroCredito($cashSessionId, $amount, $data['reference'] ?? null, $currency, $rate);
             }
 
             // (1a) Asiento FISCAL del cobro en el libro de la factura (RF-07): todo abono
             //      queda reflejado fiscalmente. invoice_payments es la fuente fiscal única;
-            //      invoice.paid_amount se mantiene == Σ invoice_payments (ver syncStatuses).
+            //      invoice.paid_amount se mantiene == Σ invoice_payments.base_amount (ver syncStatuses).
             $invoicePayment = new InvoicePayment();
             $invoicePayment->invoice_id      = $invoice->id;
             $invoicePayment->cash_session_id = $cashSessionId;
             $invoicePayment->user_id         = Auth::id();
             $invoicePayment->payment_method  = $method;
-            $invoicePayment->amount          = $amount;
+            $invoicePayment->amount          = $amount;      // NATIVO
+            $invoicePayment->currency        = $currency;
+            $invoicePayment->exchange_rate   = $rate;        // tasa snapshot
             $invoicePayment->reference       = $data['reference'] ?? null;
             $invoicePayment->paid_at         = now();
             $invoicePayment->save();
@@ -224,20 +240,22 @@ final class ReceivableService
             $payment->accounts_receivable_id = $ar->id;
             $payment->invoice_payment_id     = $invoicePayment->id;
             $payment->cash_session_id        = $cashSessionId;
-            $payment->amount                 = $amount;
+            $payment->amount                 = $amount;      // NATIVO
+            $payment->currency               = $currency;
+            $payment->exchange_rate          = $rate;        // tasa snapshot (base_amount = amount×rate, generada)
             $payment->payment_method         = $method;
             $payment->reference              = $data['reference'] ?? null;
             $payment->paid_at                = now();
             $payment->user_id                = Auth::id();
             $payment->save();
 
-            // (2) Incrementa el pagado; (3) el MOTOR recalcula 'balance' (columna generada).
-            $ar->paid_amount = bcadd((string) $ar->paid_amount, $amount, 2);
+            // (2) Incrementa el pagado por el EQUIVALENTE NIO; (3) el MOTOR recalcula 'balance' (generada).
+            $ar->paid_amount = bcadd((string) $ar->paid_amount, $base, 2);
             $ar->save();
             $ar->refresh(); // Relee el 'balance' recomputado por el motor.
 
-            // (4) Sincroniza estado de cuenta ⇄ estado de pago de la factura (RF-08-04).
-            $this->syncStatuses($ar, $amount);
+            // (4) Sincroniza estado de cuenta ⇄ estado de pago de la factura (RF-08-04) con el equivalente NIO.
+            $this->syncStatuses($ar, $base);
 
             return $payment->fresh(['accountReceivable', 'user']);
         });

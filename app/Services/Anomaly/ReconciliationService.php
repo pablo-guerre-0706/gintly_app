@@ -14,6 +14,7 @@ use App\Models\InvoicePayment;
 use App\Models\PhysicalCount;
 use App\Models\ReconciliationRun;
 use App\Models\Warehouse;
+use App\Services\Cash\CashService;
 use Illuminate\Support\Facades\Auth;
 
 final class ReconciliationService
@@ -76,8 +77,12 @@ final class ReconciliationService
             // Un descuadre real deja la sesión 'descuadrada'; 'cerrada' con diferencia solo por dato
             // heredado. El motor re-detecta ambas (la dedup evita duplicar con el hook inmediato).
             ->whereIn('status', ['cerrada', 'descuadrada'])
-            ->whereNotNull('difference')
-            ->where('difference', '<>', 0)
+            // Doble moneda: un descuadre en CUALQUIER moneda cuenta. La diferencia NIO (difference) o la
+            // USD (difference_usd) distinta de cero basta; así un descuadre solo-USD no se escapa.
+            ->where(function ($q): void {
+                $q->where('difference', '<>', 0)
+                    ->orWhere('difference_usd', '<>', 0);
+            })
             // cash_sessions no tiene branch_id: el ámbito de sucursal se acota por su caja.
             ->when(
                 $branchId !== null,
@@ -90,7 +95,11 @@ final class ReconciliationService
             $registered = $this->anomalies->registrarSilencioso('descuadre_caja', $session, [
                 'expected_value'        => (string) ($session->expected_amount ?? '0.00'),
                 'actual_value'          => (string) ($session->counted_amount ?? '0.00'),
-                'difference'            => (string) $session->difference,
+                // Magnitud para el umbral: leg de mayor valor absoluto en NIO (ver CashService). Así un
+                // descuadre solo-USD no se escapa del umbral por traer la diferencia NIO en cero.
+                'difference'            => CashService::consolidatedDeviation($session),
+                'difference_nio'        => (string) $session->difference,
+                'difference_usd'        => (string) ($session->difference_usd ?? '0.00'),
                 'branch_id'             => $branchId,
                 'reconciliation_run_id' => $runId,
             ]);

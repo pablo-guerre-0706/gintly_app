@@ -10,6 +10,8 @@ use App\Http\Requests\Api\V1\Supplier\StoreSupplierRequest;
 use App\Http\Requests\Api\V1\Supplier\UpdateSupplierRequest;
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
+use App\Services\Purchasing\SupplierLocationService;
+use App\Services\Purchasing\SupplierService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -43,11 +45,25 @@ final class SupplierController extends Controller
         return SupplierResource::collection($suppliers);
     }
 
-    public function store(StoreSupplierRequest $request): JsonResponse
-    {
-        $supplier = Supplier::create($request->validated());
+    public function store(
+        StoreSupplierRequest $request,
+        SupplierService $suppliers,
+        SupplierLocationService $locations,
+    ): JsonResponse {
+        $data = $request->validated();
+        $locationData = $data['location'] ?? null;
+        unset($data['location']);
 
-        return (new SupplierResource($supplier))->response()->setStatusCode(Response::HTTP_CREATED);
+        // Nace 'pendiente' (nunca aprobado automáticamente, aunque venga de un descubrimiento externo).
+        $supplier = $suppliers->crear($request->user(), $data);
+
+        if (is_array($locationData) && ($locationData['address'] ?? null) !== null) {
+            $locations->crear($supplier, $locationData);
+        }
+
+        return (new SupplierResource($supplier->load('locations')))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function show(Supplier $supplier): SupplierResource

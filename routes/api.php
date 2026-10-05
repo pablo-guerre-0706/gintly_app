@@ -17,8 +17,10 @@ use App\Http\Controllers\Api\V1\BusinessGoalController;
 use App\Http\Controllers\Api\V1\CancelPurchaseOrderController;
 use App\Http\Controllers\Api\V1\CancelStockTransferController;
 use App\Http\Controllers\Api\V1\CashMovementController;
+use App\Http\Controllers\Api\V1\CashRegisterAssignmentController;
 use App\Http\Controllers\Api\V1\CashRegisterController;
 use App\Http\Controllers\Api\V1\CashSessionController;
+use App\Http\Controllers\Api\V1\CashSessionCountController;
 use App\Http\Controllers\Api\V1\CashSessionMovementsController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
@@ -32,6 +34,7 @@ use App\Http\Controllers\Api\V1\CustomerCreditCheckController;
 use App\Http\Controllers\Api\V1\CustomerCreditStatusController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DispatchController;
+use App\Http\Controllers\Api\V1\ExchangeRateController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\GoodsReceiptController;
 use App\Http\Controllers\Api\V1\GoodsReceiptItemsController;
@@ -43,6 +46,7 @@ use App\Http\Controllers\Api\V1\InvoicePaymentsController;
 use App\Http\Controllers\Api\V1\IssuePurchaseOrderController;
 use App\Http\Controllers\Api\V1\JustifyPhysicalCountController;
 use App\Http\Controllers\Api\V1\KpiSnapshotController;
+use App\Http\Controllers\Api\V1\MapSupplierController;
 use App\Http\Controllers\Api\V1\OpenCashSessionController;
 use App\Http\Controllers\Api\V1\OperativeProfileController;
 use App\Http\Controllers\Api\V1\PayAccountPayableController;
@@ -65,6 +69,7 @@ use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\StoreInvoiceController;
 use App\Http\Controllers\Api\V1\StoreReceivablePaymentController;
 use App\Http\Controllers\Api\V1\SupplierController;
+use App\Http\Controllers\Api\V1\SupplierLocationController;
 use App\Http\Controllers\Api\V1\SuspendSupplierController;
 use App\Http\Controllers\Api\V1\TaxRuleController;
 use App\Http\Controllers\Api\V1\UnblockAccountPayableController;
@@ -74,6 +79,7 @@ use App\Http\Controllers\Api\V1\UpdateUserEmailController;
 use App\Http\Controllers\Api\V1\UpdateUserPasswordController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\VoidInvoiceController;
+use App\Http\Controllers\Api\V1\WarehouseAssignmentController;
 use App\Http\Controllers\Api\V1\WarehouseController;
 use App\Http\Middleware\EnsureOperableUser;
 use App\Models\InventoryAdjustment;
@@ -134,6 +140,12 @@ Route::prefix('v1')->group(function (): void {
         // MOD-03
         Route::apiResource('warehouses', WarehouseController::class);
 
+        // MOD-03 · Asignaciones Bodega–Bodeguero (ROL-01/ROL-02 administran; ROL-03 consulta las suyas).
+        // M:N con historial append-only; reasignar = finalizar (DELETE) + asignar (POST).
+        Route::get('warehouse-assignments', [WarehouseAssignmentController::class, 'index'])->name('warehouse-assignments.index');
+        Route::post('warehouse-assignments', [WarehouseAssignmentController::class, 'store'])->name('warehouse-assignments.store');
+        Route::delete('warehouse-assignments/{warehouseAssignment}', [WarehouseAssignmentController::class, 'destroy'])->name('warehouse-assignments.destroy');
+
         // Stock: sin store/destroy. show y thresholds con binding compuesto product+warehouse.
         Route::get('stock', [StockLevelController::class, 'index'])->name('stock.index');
         Route::get('stock/{product}/{warehouse}', [StockLevelController::class, 'show'])->name('stock.show');
@@ -167,6 +179,17 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('suppliers', SupplierController::class);
         Route::post('suppliers/{supplier}/approve', ApproveSupplierController::class)->name('suppliers.approve');
         Route::post('suppliers/{supplier}/suspend', SuspendSupplierController::class)->name('suppliers.suspend');
+
+        // MOD-04 · Ubicaciones de proveedor para el mapa. Alta/edición/geocodificación/confirmación ROL-01/02;
+        // consulta con proveedores.ver. {location} acotado a su {supplier} por scopeBindings.
+        Route::get('suppliers/{supplier}/locations', [SupplierLocationController::class, 'index'])->name('suppliers.locations.index');
+        Route::post('suppliers/{supplier}/locations', [SupplierLocationController::class, 'store'])->name('suppliers.locations.store');
+        Route::put('suppliers/{supplier}/locations/{location}', [SupplierLocationController::class, 'update'])->scopeBindings()->name('suppliers.locations.update');
+        Route::post('suppliers/{supplier}/locations/{location}/geocode', [SupplierLocationController::class, 'geocode'])->scopeBindings()->name('suppliers.locations.geocode');
+        Route::post('suppliers/{supplier}/locations/{location}/confirm', [SupplierLocationController::class, 'confirm'])->scopeBindings()->name('suppliers.locations.confirm');
+
+        // MOD-04 · Mapa de proveedores: solo aprobados, activos y con ubicación confirmada (tenant de sesión).
+        Route::get('map/suppliers', [MapSupplierController::class, 'index'])->name('map.suppliers');
 
         // Órdenes: index/store/show/update + emitir/cancelar (sin destroy: cancelar es la terminación real).
         Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show', 'update']);
@@ -206,6 +229,12 @@ Route::prefix('v1')->group(function (): void {
         // MOD-06 - Gestion de Caja
         Route::apiResource('cash-registers', CashRegisterController::class);
 
+        // MOD-06 · Asignaciones Caja–Cajero (ROL-01/ROL-02 administran; ROL-03 consulta la suya).
+        // Reasignar = finalizar (DELETE) + asignar (POST): historial append-only.
+        Route::get('cash-register-assignments', [CashRegisterAssignmentController::class, 'index'])->name('cash-register-assignments.index');
+        Route::post('cash-register-assignments', [CashRegisterAssignmentController::class, 'store'])->name('cash-register-assignments.store');
+        Route::delete('cash-register-assignments/{cashRegisterAssignment}', [CashRegisterAssignmentController::class, 'destroy'])->name('cash-register-assignments.destroy');
+
         Route::get('cash-sessions', [CashSessionController::class, 'index']);
         // 'current' ANTES del binding {cashSession} para que no se interprete como id.
         Route::get('cash-sessions/current', [CashSessionController::class, 'current'])->name('cash-sessions.current');
@@ -213,9 +242,17 @@ Route::prefix('v1')->group(function (): void {
         Route::get('cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
         Route::post('cash-sessions/{cashSession}/close', CloseCashSessionController::class);
         Route::get('cash-sessions/{cashSession}/movements', CashSessionMovementsController::class);
+        // Arqueo ciego INDEPENDIENTE (RF-06-04): registra un conteo sin cerrar la sesión + historial.
+        Route::post('cash-sessions/{cashSession}/counts', [CashSessionCountController::class, 'store'])->name('cash-sessions.counts.store');
+        Route::get('cash-sessions/{cashSession}/counts', [CashSessionCountController::class, 'index'])->name('cash-sessions.counts.index');
 
         Route::get('cash-movements', [CashMovementController::class, 'index']);
         Route::post('cash-movements', [CashMovementController::class, 'store']);
+
+        // MOD-06 · Administración del tipo de cambio NIO/USD (ROL-01/ROL-02).
+        // Historial inmutable versionado por vigencia (append-only): solo consulta y alta.
+        Route::get('exchange-rates', [ExchangeRateController::class, 'index'])->name('exchange-rates.index');
+        Route::post('exchange-rates', [ExchangeRateController::class, 'store'])->name('exchange-rates.store');
 
         // MOD-07 - Ventas, Facturacion e Inmutabilidad
         Route::get('sales', [SaleController::class, 'index']);

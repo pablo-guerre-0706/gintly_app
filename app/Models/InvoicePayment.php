@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Currency;
 use App\Enums\PaymentMethod;
 use App\Models\Concerns\BelongsToBusiness;
 use App\Models\Concerns\Immutable;
@@ -28,6 +29,8 @@ final class InvoicePayment extends Model
         'user_id',
         'payment_method',
         'amount',
+        'currency',
+        'exchange_rate',
         'reference',
         'paid_at',
     ];
@@ -37,6 +40,9 @@ final class InvoicePayment extends Model
         return [
             'payment_method' => PaymentMethod::class,
             'amount'         => 'decimal:2',
+            'currency'       => Currency::class,
+            'exchange_rate'  => 'decimal:6',
+            'base_amount'    => 'decimal:2',
             'paid_at'        => 'datetime',
             'created_at'     => 'immutable_datetime',
         ];

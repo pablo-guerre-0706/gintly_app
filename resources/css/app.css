@@ -39,6 +39,10 @@
 }
 
 /* Estado responsive del único sidebar semántico. */
+.shell-layout {
+    overflow-x: clip;
+}
+
 .shell-sidebar {
     width: min(337px, calc(100vw - 1rem));
     transform: translateX(-105%);
@@ -117,7 +121,7 @@ html[data-mobile-search-open="true"] .shell-navigation-search {
     }
 
     html[data-sidebar-overlay-open="true"] .shell-sidebar {
-        width: 337px;
+        width: 270px;
         box-shadow: 18px 0 48px rgb(8 44 55 / 0.22);
     }
 
@@ -150,11 +154,11 @@ html[data-mobile-search-open="true"] .shell-navigation-search {
 
 @media (min-width: 1280px) {
     .shell-layout {
-        padding-inline-start: 337px;
+        padding-inline-start: 270px;
     }
 
     .shell-sidebar {
-        width: 337px;
+        width: 270px;
         transform: translateX(0);
         box-shadow: none;
     }

@@ -17,12 +17,13 @@
     <form class="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" data-dispatch-form novalidate hidden aria-labelledby="new-dispatch-title">
         <div><h2 id="new-dispatch-title" class="text-lg font-semibold">Registrar despacho</h2><p class="mt-1 text-sm text-gintly-text-secondary">Primero consulta el saldo pendiente de la factura.</p></div>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div class="flex-1"><label class="text-sm font-semibold" for="dispatch-invoice-id">ID de factura</label><input id="dispatch-invoice-id" name="invoice_id" type="number" min="1" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" required><p class="mt-1 text-sm text-red-700" data-dispatch-error="invoice_id"></p></div>
+            <div class="flex-1"><label class="text-sm font-semibold" for="dispatch-invoice-id">Factura emitida · Obligatorio</label><select id="dispatch-invoice-id" name="invoice_id" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm" required><option value="">Cargando facturas de tu sucursal…</option></select><p class="mt-1 text-xs text-gintly-text-secondary">Se muestran páginas de facturas emitidas. La búsqueda por folio en el servidor aún no está disponible.</p><p class="mt-1 text-sm text-red-700" data-dispatch-error="invoice_id"></p><button type="button" data-dispatch-more-invoices class="mt-2 min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold" hidden>Cargar más facturas</button></div>
             <button type="button" class="min-h-11 rounded-xl border border-gintly-brand px-5 font-semibold text-gintly-brand disabled:opacity-60" data-dispatch-load-invoice>Consultar factura</button>
         </div>
         <div class="rounded-xl border border-slate-200" data-dispatch-lines-region hidden>
             <div class="border-b border-slate-200 p-4 text-sm font-semibold" data-delivery-status></div>
             <div class="divide-y divide-slate-200" data-dispatch-lines></div>
+            <button type="button" data-dispatch-all class="m-4 min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold">Entregar todo lo pendiente</button>
             <p class="p-4 text-sm text-red-700" data-dispatch-error="lines"></p>
         </div>
         <div><label class="text-sm font-semibold" for="dispatch-received-by">Recibido por</label><input id="dispatch-received-by" name="received_by" maxlength="160" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" required><p class="mt-1 text-sm text-red-700" data-dispatch-error="received_by"></p></div>

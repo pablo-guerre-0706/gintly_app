@@ -28,8 +28,11 @@ final class OpenCashSessionRequest extends BaseTenantRequest
         return [
             'cash_register_id' => ['required', 'integer', $this->tenantExists('cash_registers')->where('is_active', true)],
 
-            // Fondo inicial obligatorio, >= 0 (RF-06-03). Escala 2.
+            // Fondo inicial obligatorio, >= 0 (RF-06-03). Escala 2. Moneda base NIO.
             'opening_amount' => ['required', 'numeric', 'decimal:0,2', 'min:0'],
+
+            // Fondo inicial en USD, SEPARADO del NIO. Opcional; ausente ⇒ 0 (apertura NIO pura).
+            'opening_amount_usd' => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'min:0'],
         ];
     }
 
@@ -45,6 +48,9 @@ final class OpenCashSessionRequest extends BaseTenantRequest
             'opening_amount.numeric'    => 'El fondo inicial debe ser un valor numérico.',
             'opening_amount.decimal'    => 'El fondo inicial admite un máximo de dos decimales.',
             'opening_amount.min'        => 'El fondo inicial no puede ser negativo.',
+            'opening_amount_usd.numeric' => 'El fondo inicial en USD debe ser un valor numérico.',
+            'opening_amount_usd.decimal' => 'El fondo inicial en USD admite un máximo de dos decimales.',
+            'opening_amount_usd.min'     => 'El fondo inicial en USD no puede ser negativo.',
         ];
     }
 
@@ -54,8 +60,9 @@ final class OpenCashSessionRequest extends BaseTenantRequest
     public function attributes(): array
     {
         return [
-            'cash_register_id' => 'caja',
-            'opening_amount'   => 'fondo inicial',
+            'cash_register_id'   => 'caja',
+            'opening_amount'     => 'fondo inicial',
+            'opening_amount_usd' => 'fondo inicial en USD',
         ];
     }
 }

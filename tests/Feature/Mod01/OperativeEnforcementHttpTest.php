@@ -8,6 +8,7 @@ use App\Enums\RoleName;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\CashRegister;
+use App\Models\CashRegisterAssignment;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
@@ -15,6 +16,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserOperativeProfile;
 use App\Models\Warehouse;
+use App\Models\WarehouseAssignment;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\Hash;
@@ -138,6 +140,20 @@ final class OperativeEnforcementHttpTest extends MysqlTestCase
         ]);
     }
 
+    /** RF-06 · Asignación Caja–Cajero activa (precondición para abrir la caja un ROL-03). */
+    private function assignCajero(User $cashier, CashRegister $register): void
+    {
+        $assignment = new CashRegisterAssignment();
+        $assignment->forceFill([
+            'business_id'      => $register->business_id,
+            'branch_id'        => $register->branch_id,
+            'cash_register_id' => $register->id,
+            'user_id'          => $cashier->id,
+            'assigned_by'      => $cashier->id,
+            'assigned_at'      => now(),
+        ])->save();
+    }
+
     private function openSale(User $op, object $t, ?int $branchId = null): \Illuminate\Testing\TestResponse
     {
         return $this->asUser($op)->postJson('/api/v1/sales', [
@@ -152,13 +168,25 @@ final class OperativeEnforcementHttpTest extends MysqlTestCase
         ]);
     }
 
+    /** RF-03 · Asignación Bodega–Bodeguero activa (precondición para operar la bodega un ROL-03). */
+    private function assignWarehouse(User $keeper, Warehouse $warehouse): void
+    {
+        $a = new WarehouseAssignment();
+        $a->forceFill([
+            'business_id' => $warehouse->business_id, 'branch_id' => $warehouse->branch_id,
+            'warehouse_id' => $warehouse->id, 'user_id' => $keeper->id, 'assigned_by' => $keeper->id, 'assigned_at' => now(),
+        ])->save();
+    }
+
     // ---------------- Perfil CAJERO (caja) ----------------
 
     public function test_cajero_abre_caja_pero_bodeguero_no(): void
     {
         $t = $this->seedTenant('a');
 
-        $this->openCash($this->operator($t, ['cajero']), $t->register)->assertStatus(201);
+        $cajero = $this->operator($t, ['cajero']);
+        $this->assignCajero($cajero, $t->register); // RF-06: abrir exige caja asignada.
+        $this->openCash($cajero, $t->register)->assertStatus(201);
         $this->openCash($this->operator($t, ['bodeguero']), $t->register)->assertStatus(403);
     }
 
@@ -191,7 +219,9 @@ final class OperativeEnforcementHttpTest extends MysqlTestCase
     {
         $t = $this->seedTenant('a');
 
-        $this->countStock($this->operator($t, ['bodeguero']), $t)->assertStatus(201);
+        $bodeguero = $this->operator($t, ['bodeguero']);
+        $this->assignWarehouse($bodeguero, $t->warehouse); // RF-03: operar exige bodega asignada.
+        $this->countStock($bodeguero, $t)->assertStatus(201);
         $this->countStock($this->operator($t, ['facturador']), $t)->assertStatus(403);
     }
 
@@ -213,6 +243,7 @@ final class OperativeEnforcementHttpTest extends MysqlTestCase
     {
         $t = $this->seedTenant('a');
         $op = $this->operator($t, ['cajero', 'facturador']);
+        $this->assignCajero($op, $t->register); // RF-06: abrir exige caja asignada.
 
         $this->openCash($op, $t->register)->assertStatus(201);
         $this->openSale($op, $t)->assertStatus(201);

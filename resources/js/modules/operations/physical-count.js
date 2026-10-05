@@ -29,6 +29,7 @@ class PhysicalCountPage {
         this.root = root;
         this.form = root.querySelector('[data-physical-count-form]');
         this.searchTimer = null;
+        this.productController = null;
         this.submitting = false;
     }
 
@@ -42,6 +43,10 @@ class PhysicalCountPage {
             }, 300);
         });
         this.form.addEventListener('submit', (event) => { event.preventDefault(); void this.submit(); });
+        this.form.elements.counted_quantity.addEventListener('blur', (event) => {
+            const value = event.target.value.trim();
+            if (QUANTITY_PATTERN.test(value)) event.target.value = quantity(value);
+        });
         await this.load();
     }
 
@@ -78,15 +83,19 @@ class PhysicalCountPage {
     }
 
     async loadProducts(search) {
+        this.productController?.abort();
+        const controller = new AbortController();
+        this.productController = controller;
         const select = this.root.querySelector('[name="product_id"]');
         select.disabled = true;
         try {
-            const payload = await api.get('/stock', { search: search || undefined, per_page: 100 }, { dispatchErrors: false });
+            const payload = await api.get('/stock', { search: search || undefined, per_page: 100 }, { signal: controller.signal, dispatchErrors: false });
+            if (controller.signal.aborted) return;
             if (!Array.isArray(payload?.data)) throw new TypeError('El servidor no devolvió existencias válidas.');
             this.renderOptions(select, this.stockProducts(payload.data), (item) => `${item.sku} · ${item.name}`, 'No hay productos coincidentes');
         } catch (error) {
-            this.renderOptions(select, [], () => '', errorMessage(error));
-        }
+            if (!controller.signal.aborted) this.renderOptions(select, [], () => '', errorMessage(error));
+        } finally { if (this.productController === controller) this.productController = null; }
     }
 
     stockProducts(rows) {
@@ -127,13 +136,19 @@ class PhysicalCountPage {
         this.clearErrors();
         const data = new FormData(this.form);
         const counted = String(data.get('counted_quantity') ?? '').trim();
+        const warehouseId = Number(data.get('warehouse_id'));
+        const productId = Number(data.get('product_id'));
+        const fieldErrors = {};
+        if (!Number.isInteger(warehouseId) || warehouseId < 1) fieldErrors.warehouse_id = ['Selecciona una bodega.'];
+        if (!Number.isInteger(productId) || productId < 1) fieldErrors.product_id = ['Selecciona un producto.'];
+        if (Object.keys(fieldErrors).length) { this.showErrors(fieldErrors); return; }
         if (!QUANTITY_PATTERN.test(counted)) {
             this.showErrors({ counted_quantity: ['Usa un número no negativo con máximo tres decimales.'] });
             return;
         }
         const payload = {
-            warehouse_id: Number(data.get('warehouse_id')),
-            product_id: Number(data.get('product_id')),
+            warehouse_id: warehouseId,
+            product_id: productId,
             counted_quantity: quantity(counted),
             notes: String(data.get('notes') ?? '').trim() || null,
         };
@@ -144,6 +159,7 @@ class PhysicalCountPage {
         try {
             const response = await mutate('/physical-counts', payload);
             const count = response?.data;
+            if (!Number.isInteger(count?.id)) throw new TypeError('El servidor no confirmó el conteo; verifica el listado antes de reintentar.');
             const result = this.root.querySelector('[data-physical-count-result]');
             result.textContent = `Conteo #${count?.id} registrado con estado ${count?.status_label ?? count?.status ?? 'registrado'}.`;
             result.hidden = false;

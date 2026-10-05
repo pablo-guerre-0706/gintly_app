@@ -58,6 +58,11 @@ final class Supplier extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
+    public function locations(): HasMany
+    {
+        return $this->hasMany(SupplierLocation::class);
+    }
+
     public function accountsPayable(): HasMany
     {
         return $this->hasMany(AccountPayable::class);

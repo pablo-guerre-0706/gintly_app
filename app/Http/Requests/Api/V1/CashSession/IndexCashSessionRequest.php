@@ -37,6 +37,9 @@ final class IndexCashSessionRequest extends BaseTenantRequest
         return array_merge($this->paginationRules(), $this->dateRangeRules(), [
             'cash_register_id' => ['sometimes', 'integer', $this->tenantExists('cash_registers')],
             'opened_by'        => ['sometimes', 'integer', $this->tenantExists('users', 'id', excludeTrashed: true)],
+            // branch_id se valida solo como entero; su pertenencia al negocio la resuelve el controlador
+            // con 404 (una sucursal de otro negocio NO debe distinguirse de inexistente: sin fuga de datos).
+            'branch_id'        => ['sometimes', 'integer'],
             'status'           => ['sometimes', Rule::enum(CashSessionStatus::class)],
         ]);
     }
@@ -61,6 +64,7 @@ final class IndexCashSessionRequest extends BaseTenantRequest
         return array_merge($this->paginationAttributes(), $this->dateRangeAttributes(), [
             'cash_register_id' => 'caja',
             'opened_by'        => 'cajero',
+            'branch_id'        => 'sucursal',
             'status'           => 'estado',
         ]);
     }

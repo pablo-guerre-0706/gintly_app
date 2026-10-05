@@ -29,7 +29,8 @@ final class OpenCashSessionController extends Controller
         $session = $this->cash->abrir(
             $request->user(),
             (int) $validated['cash_register_id'],
-            (string) $validated['opening_amount']
+            (string) $validated['opening_amount'],
+            isset($validated['opening_amount_usd']) ? (string) $validated['opening_amount_usd'] : '0.00',
         );
 
         return CashSessionResource::make($session->load(['cashRegister', 'openedBy']))

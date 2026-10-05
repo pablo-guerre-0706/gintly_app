@@ -43,6 +43,29 @@ final class CashSessionPolicy
             && $this->operatorGrants($user, 'caja.abrir');
     }
 
+    /**
+     * Arqueo ciego independiente durante la sesión abierta. Mismo alcance que operar la caja:
+     * ROL-03 solo SU sesión y con perfil cajero (reutiliza la capacidad existente caja.movimiento.crear,
+     * sin inventar permisos); ROL-01/ROL-02 arquean cualquier sesión de su negocio. 404 cross-tenant.
+     */
+    public function count(User $user, CashSession $session): Response
+    {
+        if (! $this->sharesBusinessWith($user, $session)) {
+            return Response::denyWithStatus(404);
+        }
+
+        if (! $this->operatorGrants($user, 'caja.movimiento.crear')) {
+            return Response::denyWithStatus(403, 'Requiere el perfil de cajero para arquear la caja.');
+        }
+
+        $isOwner = (int) $session->opened_by === (int) $user->id;
+        $isAuditor = $this->hasAtLeast($user, RoleName::Admin);
+
+        return $isOwner || $isAuditor
+            ? Response::allow()
+            : Response::denyWithStatus(403, 'Solo quien abrió la sesión o un Administrador puede arquearla.');
+    }
+
     public function close(User $user, CashSession $session): Response
     {
         if (! $this->sharesBusinessWith($user, $session)) {
@@ -54,7 +77,7 @@ final class CashSessionPolicy
             return Response::denyWithStatus(403, 'Requiere el perfil de cajero para cerrar caja.');
         }
 
-        $isOwner   = (int) $session->opened_by === (int) $user->id;
+        $isOwner = (int) $session->opened_by === (int) $user->id;
         $isAuditor = $this->hasAtLeast($user, RoleName::Admin);
 
         return $isOwner || $isAuditor

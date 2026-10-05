@@ -3,7 +3,7 @@ import { notify } from '@/core/notifications';
 import { getSessionContext } from '@/core/session-context';
 import {
     clearFieldErrors,
-    fetchPaginatedCollection,
+    fetchActiveBranches,
     grantableRoles,
     mutate,
     responseMessage,
@@ -58,6 +58,10 @@ function toggleOperatorFields(root) {
     branch.hidden = !isOperator;
     profiles.hidden = !isOperator;
     form.elements.branch_id.required = isOperator;
+    form.elements.branch_id.disabled = !isOperator || form.elements.branch_id.options.length < 2;
+    root.querySelector('[data-branch-empty]').hidden = !isOperator || !form.elements.branch_id.disabled;
+    root.querySelector('[data-branch-create-link]').hidden = !isOperator || !form.elements.branch_id.disabled;
+    root.querySelector('[data-create-submit]').disabled = submitting || (isOperator && form.elements.branch_id.disabled);
     Array.from(form.elements.profiles ?? []).forEach((input) => {
         input.disabled = !isOperator;
     });
@@ -87,11 +91,7 @@ async function prepare(root, refresh = false) {
         }
 
         const [branches, profilesResponse] = await Promise.all([
-            fetchPaginatedCollection(
-                root.dataset.branchesEndpoint,
-                { per_page: 100, sort: 'name', direction: 'asc' },
-                { dispatchErrors: false },
-            ),
+            fetchActiveBranches(root.dataset.branchesEndpoint),
             api.get(root.dataset.profilesEndpoint, {}, { dispatchErrors: false }),
         ]);
 
@@ -99,7 +99,7 @@ async function prepare(root, refresh = false) {
         const roles = grantableRoles(context.role);
         form.elements.role.replaceChildren(option('', 'Selecciona un rol'), ...roles.map((role) => option(role.value, `${role.label} (${role.value})`)));
 
-        branches.forEach((branch) => form.elements.branch_id.append(option(branch.id, branch.name)));
+        form.elements.branch_id.replaceChildren(option('', branches.length ? 'Selecciona una sucursal' : 'No existen sucursales activas'), ...branches.map((branch) => option(branch.id, branch.name)));
 
         const profiles = Array.isArray(profilesResponse?.data) ? profilesResponse.data : [];
         renderProfiles(root.querySelector('[data-profile-options]'), profiles);
@@ -121,6 +121,11 @@ async function submit(root, form) {
     const generalError = root.querySelector('[data-create-error]');
     generalError.hidden = true;
 
+    if (form.elements.role.value === 'ROL-03' && form.elements.branch_id.disabled) {
+        root.querySelector('[data-branch-empty]').hidden = false;
+        root.querySelector('[data-branch-create-link]').focus();
+        return;
+    }
     if (!form.reportValidity()) return;
 
     const profiles = profileValues(form);
@@ -167,6 +172,7 @@ async function submit(root, form) {
     } finally {
         submitting = false;
         setButtonBusy(button, false);
+        toggleOperatorFields(root);
     }
 }
 

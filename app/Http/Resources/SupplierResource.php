@@ -29,6 +29,7 @@ final class SupplierResource extends JsonResource
             'approved_by'  => $this->approved_by,
             'approved_at'  => $this->approved_at?->toIso8601String(),
             'is_active'    => $this->is_active,
+            'locations'    => SupplierLocationResource::collection($this->whenLoaded('locations')),
             'created_at'   => $this->created_at?->toIso8601String(),
             'updated_at'   => $this->updated_at?->toIso8601String(),
         ];

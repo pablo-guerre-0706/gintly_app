@@ -38,7 +38,32 @@ final class StoreSupplierRequest extends BaseTenantRequest
 
             'email' => ['nullable', 'string', 'email:rfc', 'max:180'],
             'phone' => ['nullable', 'string', 'max:30'],
+
+            // Candidato descubierto externamente (MOD-04 mapa): ubicación opcional al alta. NO aprueba al
+            // proveedor (nace 'pendiente') ni confirma el marcador; solo siembra una ubicación 'external'.
+            'location'             => ['sometimes', 'array'],
+            'location.address'     => ['required_with:location', 'string', 'max:255'],
+            'location.latitude'    => ['nullable', 'numeric', 'between:-90,90'],
+            'location.longitude'   => ['nullable', 'numeric', 'between:-180,180'],
+            'location.external_id' => ['nullable', 'string', 'max:120'],
         ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [function (\Illuminate\Validation\Validator $validator): void {
+            if (! is_array($this->input('location'))) {
+                return;
+            }
+            $lat = $this->input('location.latitude');
+            $lng = $this->input('location.longitude');
+            if (($lat === null) !== ($lng === null)) {
+                $validator->errors()->add('location.latitude', 'Debe indicar latitud y longitud juntas, o ninguna.');
+            }
+        }];
     }
 
     /**

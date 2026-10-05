@@ -36,7 +36,7 @@ const PROFILE_META = Object.freeze({
 });
 
 const ACTION_KEYS = new Set([
-    'operativeCash', 'cashClosing', 'operativeReceivables', 'operatorCustomers',
+    'operativeCash', 'operativeCashOpen', 'operativeCashMovements', 'operativeCashCount', 'operativeCashClose', 'operativeCashHistory', 'operativeReceivables', 'operatorCustomers',
     'pos', 'operatorCatalogProducts',
     'operativeStock', 'operativePhysicalCount', 'operativeDispatches',
     'operativeInvoices', 'operativeSales', 'operativeWarehouses', 'operativeTransfers',

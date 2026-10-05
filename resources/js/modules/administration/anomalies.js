@@ -32,6 +32,7 @@ class AdminAnomalies {
     constructor(root, context) {
         this.root = root; this.context = context; this.form = root.querySelector('[data-anomaly-filters]'); this.dialog = root.querySelector('[data-anomaly-dialog]');
         this.justifyForm = root.querySelector('[data-anomaly-justify]'); this.page = 1; this.meta = null; this.request = null; this.controller = null; this.current = null; this.opener = null; this.scrollOwner = Symbol('anomaly-detail');
+        this.resolveForm = root.querySelector('[data-anomaly-resolve]');
     }
 
     init() {
@@ -44,6 +45,7 @@ class AdminAnomalies {
         this.dialog.addEventListener('click', (event) => { if (event.target === this.dialog) this.dialog.close(); });
         this.dialog.addEventListener('close', () => { unlockScroll(this.scrollOwner); this.opener?.focus(); this.opener = null; });
         this.justifyForm.addEventListener('submit', (event) => { event.preventDefault(); void this.justify(); });
+        this.resolveForm.addEventListener('submit', (event) => { event.preventDefault(); void this.resolve(); });
         window.addEventListener('pagehide', () => this.controller?.abort(), { once: true });
         void this.load();
     }
@@ -69,7 +71,9 @@ class AdminAnomalies {
         records.forEach((record) => {
             if (!record?.rule || typeof record.rule !== 'object') throw new Error('AnomalyResource no incluyó rule.');
             const row = document.createElement('tr');
-            const values = [record.rule.name ?? record.rule.code_label ?? record.rule.code, record.severity_label, record.status_label, record.difference ?? '—', formatDateTime(record.detected_at)];
+            const deviation = record.source_type === 'cash_sessions' && record.difference !== null
+                ? `${record.difference} NIO (umbral)` : record.difference ?? '—';
+            const values = [record.rule.name ?? record.rule.code_label ?? record.rule.code, record.severity_label, record.status_label, deviation, formatDateTime(record.detected_at)];
             values.forEach((value) => { const cell = document.createElement('td'); cell.className = 'px-5 py-4 text-gintly-text-secondary'; cell.textContent = String(value ?? '—'); row.appendChild(cell); });
             const action = document.createElement('td'); action.className = 'px-5 py-4 text-end'; const button = document.createElement('button');
             button.type = 'button'; button.className = 'min-h-11 rounded-xl border border-gintly-border px-4 text-sm font-semibold text-gintly-brand hover:bg-gintly-control'; button.dataset.anomalyOpen = record.id; button.textContent = 'Ver detalle'; action.appendChild(button); row.appendChild(action); body.appendChild(row);
@@ -79,7 +83,7 @@ class AdminAnomalies {
     }
 
     async open(id) {
-        this.current = null; this.justifyForm.hidden = true; this.root.querySelector('[data-anomaly-detail]').replaceChildren(); this.root.querySelector('[data-anomaly-events]').replaceChildren();
+        this.current = null; this.justifyForm.hidden = true; this.resolveForm.hidden = true; this.root.querySelector('[data-anomaly-detail]').replaceChildren(); this.root.querySelector('[data-anomaly-events]').replaceChildren();
         if (!this.dialog.open) this.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         this.root.querySelector('[data-anomaly-dialog-title]').textContent = `Anomalía #${id}`;
         if (!this.dialog.open) { lockScroll(this.scrollOwner); this.dialog.showModal(); }
@@ -91,18 +95,27 @@ class AdminAnomalies {
     }
 
     renderDetail(record, events) {
+        const cashSession = record.source_type === 'cash_sessions';
         const detail = this.root.querySelector('[data-anomaly-detail]'); detail.replaceChildren(
             detailRow('Regla', record.rule?.name ?? record.rule?.code_label ?? record.rule?.code ?? '—'),
             detailRow('Estado', record.status_label ?? record.status), detailRow('Severidad', record.severity_label ?? record.severity),
             detailRow('Sucursal', record.branch_id === null ? 'Sin sucursal específica' : `Sucursal #${record.branch_id}`),
             detailRow('Origen', record.source_type ? `${record.source_type}${record.source_id ? ` #${record.source_id}` : ''}` : '—'),
-            detailRow('Diferencia', record.difference ?? '—'), detailRow('Detectada', formatDateTime(record.detected_at)),
+            detailRow(cashSession ? 'Esperado NIO' : 'Valor esperado', record.expected_value),
+            detailRow(cashSession ? 'Contado NIO' : 'Valor observado', record.actual_value),
+            detailRow(cashSession ? 'Desviación para umbral (NIO)' : 'Diferencia', record.difference),
+            ...(cashSession ? [detailRow('Lectura', 'La desviación para umbral puede provenir del descuadre USD convertido. Consulta la sesión de caja para ver esperado, contado y diferencia por moneda.')] : []),
+            detailRow('Detectada', formatDateTime(record.detected_at)),
+            detailRow('Última intervención por', record.resolved_by ? `Usuario #${record.resolved_by}` : null),
+            detailRow('Fecha de intervención', record.resolved_at ? formatDateTime(record.resolved_at) : null),
         );
         const list = this.root.querySelector('[data-anomaly-events]'); list.replaceChildren();
         events.forEach((event) => { const row = document.createElement('li'); row.className = 'rounded-xl border border-slate-200 p-3 text-sm'; row.textContent = `${event.from_status ?? 'Inicio'} → ${event.to_status} · ${formatDateTime(event.changed_at)}${event.comment ? ` · ${event.comment}` : ''}`; list.appendChild(row); });
         if (!events.length) { const row = document.createElement('li'); row.className = 'text-sm text-gintly-text-secondary'; row.textContent = 'Sin eventos registrados.'; list.appendChild(row); }
         const canJustify = this.context.role === 'ROL-02' && this.context.capabilities.includes('anomalias.justificar') && JUSTIFIABLE.has(record.status);
         this.justifyForm.hidden = !canJustify; this.justifyForm.reset(); clearFieldErrors(this.justifyForm); this.root.querySelector('[data-anomaly-justify-error]').hidden = true;
+        const canResolve = this.context.role === 'ROL-01' && this.context.capabilities.includes('anomalias.resolver') && record.status !== 'resuelta';
+        this.resolveForm.hidden = !canResolve; this.resolveForm.reset(); clearFieldErrors(this.resolveForm); this.root.querySelector('[data-anomaly-resolve-error]').hidden = true;
     }
 
     async justify() {
@@ -119,6 +132,31 @@ class AdminAnomalies {
             const message = error instanceof ApiError && error.status === 403 && error.code === 'SELF_RESOLUTION_NOT_ALLOWED' ? 'No puedes justificar una anomalía originada por tu propia operación.' : responseMessage(error, 'No fue posible justificar la anomalía.');
             this.root.querySelector('[data-anomaly-justify-error]').textContent = message; this.root.querySelector('[data-anomaly-justify-error]').hidden = false;
         } finally { delete this.justifyForm.dataset.submitting; setButtonBusy(button, false); }
+    }
+
+    async resolve() {
+        if (!this.current || this.resolveForm.dataset.submitting === 'true') return;
+        const form = this.resolveForm;
+        const data = new FormData(form);
+        const errorBox = this.root.querySelector('[data-anomaly-resolve-error]');
+        if (data.get('confirmation') !== 'on') {
+            errorBox.textContent = 'Confirma la resolución auditada antes de continuar.';
+            errorBox.hidden = false;
+            form.elements.confirmation.focus();
+            return;
+        }
+        const button = this.root.querySelector('[data-anomaly-resolve-submit]');
+        clearFieldErrors(form); errorBox.hidden = true; form.dataset.submitting = 'true'; setButtonBusy(button, true, 'Resolviendo…');
+        try {
+            const payload = await mutate('post', `/anomalies/${this.current.id}/resolve`, { comment: data.get('comment')?.toString().trim() || null });
+            if (!payload?.data || payload.data.status !== 'resuelta') throw new Error('El Backend no confirmó la resolución. Verifica el detalle antes de reintentar.');
+            invalidateActiveAnomalies(); document.dispatchEvent(new CustomEvent('gintly:anomalies-invalidated'));
+            notify({ type: 'success', message: 'La anomalía quedó resuelta sin modificar la evidencia original.' });
+            await this.open(this.current.id); await this.load();
+        } catch (error) {
+            if (error instanceof ApiError && error.status === 422) showFieldErrors(form, error.errors);
+            errorBox.textContent = responseMessage(error, 'No fue posible confirmar la resolución.'); errorBox.hidden = false;
+        } finally { delete form.dataset.submitting; setButtonBusy(button, false); }
     }
 
     setBusy(busy) { this.root.setAttribute('aria-busy', String(busy)); this.root.querySelector('[data-anomaly-filter-submit]').disabled = busy; }

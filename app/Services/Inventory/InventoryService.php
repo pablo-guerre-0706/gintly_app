@@ -31,6 +31,8 @@ final class InventoryService
 
     private const COST_SCALE = 4;
 
+    public function __construct(private readonly WarehouseAssignmentService $assignments) {}
+
     /**
      * Aplica un ajuste directo (merma/sobrante/corrección) sobre el saldo y
      * escribe el asiento de kardex, de forma atómica.
@@ -46,6 +48,9 @@ final class InventoryService
         ?int $physicalCountId = null
     ): InventoryAdjustment {
         return DB::transaction(function () use ($actor, $warehouseId, $productId, $type, $quantity, $reason, $physicalCountId): InventoryAdjustment {
+            // RF-03 asignación Bodega–Bodeguero: un ROL-03 solo ajusta una bodega que tenga asignada.
+            $this->assignments->assertOperates($actor, $warehouseId);
+
             $stock = $this->lockStock($actor->business_id, $productId, $warehouseId);
 
             // El signo lo fija el tipo del ajuste (H-26), no el del movimiento.
@@ -57,15 +62,16 @@ final class InventoryService
 
             $this->assertNonNegative($newQuantity, $productId, $warehouseId, $stock);
 
+            // user_id DEBE ir en el INSERT (columna NOT NULL sin default): create() persiste de inmediato,
+            // por lo que asignarlo después provocaba un 1364. Se deriva de la sesión (D-7), nunca del request.
             $adjustment = InventoryAdjustment::query()->create([
                 'warehouse_id'      => $warehouseId,
+                'user_id'           => $actor->id,
                 'physical_count_id' => $physicalCountId,
                 'type'              => $type,
                 'reason'            => $reason,
                 'adjusted_at'       => Carbon::now(),
             ]);
-            $adjustment->user_id = $actor->id; // derivado de sesión (D-7)
-            $adjustment->save();
 
             $this->writeMovement(
                 actor: $actor,
@@ -107,15 +113,16 @@ final class InventoryService
             // Sin diferencia no hay ajuste; el conteo se marca ajustado igual.
             if (bccomp($difference, '0', self::QTY_SCALE) !== 0) {
                 // La corrección lleva el signo de la diferencia (puede subir o bajar).
+                // user_id DEBE ir en el INSERT (columna NOT NULL sin default): create() persiste de
+                // inmediato, por lo que asignarlo después provocaba un 1364. Se deriva de la sesión (D-7).
                 $adjustment = InventoryAdjustment::query()->create([
                     'warehouse_id'      => $count->warehouse_id,
+                    'user_id'           => $actor->id,
                     'physical_count_id' => $count->id,
                     'type'              => InventoryAdjustmentType::Correccion,
                     'reason'            => 'Ajuste por conteo físico #'.$count->id,
                     'adjusted_at'       => Carbon::now(),
                 ]);
-                $adjustment->user_id = $actor->id;
-                $adjustment->save();
 
                 $this->writeMovement(
                     actor: $actor,

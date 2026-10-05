@@ -1,6 +1,61 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\AccountPayable;
+use App\Models\AccountReceivable;
+use App\Models\Anomaly;
+use App\Models\AnomalyEvent;
+use App\Models\AnomalyRule;
+use App\Models\AuditLog;
+use App\Models\Branch;
+use App\Models\Brand;
+use App\Models\Business;
+use App\Models\BusinessGoal;
+use App\Models\CashCount;
+use App\Models\CashMovement;
+use App\Models\CashRegister;
+use App\Models\CashRegisterAssignment;
+use App\Models\CashSession;
+use App\Models\Category;
+use App\Models\CreditNote;
+use App\Models\CreditNoteResolution;
+use App\Models\Customer;
+use App\Models\CustomerAddress;
+use App\Models\Dispatch;
+use App\Models\DispatchItem;
+use App\Models\DocumentSequence;
+use App\Models\ExchangeRate;
+use App\Models\GoodsReceipt;
+use App\Models\GoodsReceiptItem;
+use App\Models\InventoryAdjustment;
+use App\Models\InventoryMovement;
+use App\Models\Invoice;
+use App\Models\InvoicePayment;
+use App\Models\KpiSnapshot;
+use App\Models\PhysicalCount;
+use App\Models\Product;
+use App\Models\ProductRecipe;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
+use App\Models\ReceivablePayment;
+use App\Models\ReconciliationRun;
+use App\Models\RegisterWizard;
+use App\Models\ReportDefinition;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\SalesReturn;
+use App\Models\SalesReturnItem;
+use App\Models\StockLevel;
+use App\Models\StockTransfer;
+use App\Models\StockTransferItem;
+use App\Models\Supplier;
+use App\Models\SupplierLocation;
+use App\Models\TaxRule;
+use App\Models\UnitOfMeasure;
+use App\Models\User;
+use App\Models\UserOperativeProfile;
+use App\Models\Warehouse;
+use App\Models\WarehouseAssignment;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,79 +79,84 @@ declare(strict_types=1);
 $morphMap = [
 
     // MOD-01 — Seguridad, Identidad y Auditoría
-    'business'              => \App\Models\Business::class,
-    'user'                  => \App\Models\User::class,
-    'branch'                => \App\Models\Branch::class,
-    'audit_log'             => \App\Models\AuditLog::class,
+    'business' => Business::class,
+    'user' => User::class,
+    'branch' => Branch::class,
+    'audit_log' => AuditLog::class,
 
     // MOD-02 — Catálogo y Datos Maestros
-    'category'              => \App\Models\Category::class,
-    'brand'                 => \App\Models\Brand::class,
-    'unit_of_measure'       => \App\Models\UnitOfMeasure::class,
-    'product'               => \App\Models\Product::class,
-    'product_recipe'        => \App\Models\ProductRecipe::class,
+    'category' => Category::class,
+    'brand' => Brand::class,
+    'unit_of_measure' => UnitOfMeasure::class,
+    'product' => Product::class,
+    'product_recipe' => ProductRecipe::class,
 
     // MOD-03 — Inventario Lógico y Bodega Física
-    'warehouse'             => \App\Models\Warehouse::class,
-    'stock_level'           => \App\Models\StockLevel::class,
-    'physical_count'        => \App\Models\PhysicalCount::class,
-    'stock_transfer'        => \App\Models\StockTransfer::class,
-    'stock_transfer_item'   => \App\Models\StockTransferItem::class,
-    'inventory_adjustment'  => \App\Models\InventoryAdjustment::class,
-    'inventory_movement'    => \App\Models\InventoryMovement::class,
+    'warehouse' => Warehouse::class,
+    'warehouse_assignment' => WarehouseAssignment::class,
+    'stock_level' => StockLevel::class,
+    'physical_count' => PhysicalCount::class,
+    'stock_transfer' => StockTransfer::class,
+    'stock_transfer_item' => StockTransferItem::class,
+    'inventory_adjustment' => InventoryAdjustment::class,
+    'inventory_movement' => InventoryMovement::class,
 
     // MOD-04 — Compras, Proveedores y Recepción
-    'supplier'              => \App\Models\Supplier::class,
-    'purchase_order'        => \App\Models\PurchaseOrder::class,
-    'purchase_order_item'   => \App\Models\PurchaseOrderItem::class,
-    'goods_receipt'         => \App\Models\GoodsReceipt::class,
-    'goods_receipt_item'    => \App\Models\GoodsReceiptItem::class,
-    'account_payable'       => \App\Models\AccountPayable::class,
+    'supplier' => Supplier::class,
+    'supplier_location' => SupplierLocation::class,
+    'purchase_order' => PurchaseOrder::class,
+    'purchase_order_item' => PurchaseOrderItem::class,
+    'goods_receipt' => GoodsReceipt::class,
+    'goods_receipt_item' => GoodsReceiptItem::class,
+    'account_payable' => AccountPayable::class,
 
     // MOD-05 — Clientes, Perfilamiento y Fidelidad
-    'customer'              => \App\Models\Customer::class,
-    'customer_address'      => \App\Models\CustomerAddress::class,
+    'customer' => Customer::class,
+    'customer_address' => CustomerAddress::class,
 
     // MOD-06 — Gestión de Caja
-    'cash_register'         => \App\Models\CashRegister::class,
-    'cash_session'          => \App\Models\CashSession::class,
-    'cash_movement'         => \App\Models\CashMovement::class,
+    'cash_register' => CashRegister::class,
+    'cash_register_assignment' => CashRegisterAssignment::class,
+    'cash_session' => CashSession::class,
+    'cash_movement' => CashMovement::class,
+    'cash_count' => CashCount::class,
+    'exchange_rate' => ExchangeRate::class,
 
     // MOD-07 — Ventas, Facturación e Inmutabilidad
-    'sale'                  => \App\Models\Sale::class,
-    'sale_item'             => \App\Models\SaleItem::class,
-    'invoice'               => \App\Models\Invoice::class,
-    'invoice_payment'       => \App\Models\InvoicePayment::class,
-    'document_sequence'     => \App\Models\DocumentSequence::class,
-    'tax_rule'              => \App\Models\TaxRule::class,
+    'sale' => Sale::class,
+    'sale_item' => SaleItem::class,
+    'invoice' => Invoice::class,
+    'invoice_payment' => InvoicePayment::class,
+    'document_sequence' => DocumentSequence::class,
+    'tax_rule' => TaxRule::class,
 
     // MOD-08 — Ventas al Crédito y CxC
-    'account_receivable'    => \App\Models\AccountReceivable::class,
-    'receivable_payment'    => \App\Models\ReceivablePayment::class,
+    'account_receivable' => AccountReceivable::class,
+    'receivable_payment' => ReceivablePayment::class,
 
     // MOD-09 — Entregas y Retiros
-    'dispatch'              => \App\Models\Dispatch::class,
-    'dispatch_item'         => \App\Models\DispatchItem::class,
+    'dispatch' => Dispatch::class,
+    'dispatch_item' => DispatchItem::class,
 
     // MOD-10 — Devoluciones, Reingreso y Mermas
-    'sales_return'          => \App\Models\SalesReturn::class,
-    'sales_return_item'     => \App\Models\SalesReturnItem::class,
-    'credit_note'           => \App\Models\CreditNote::class,
-    'credit_note_resolution' => \App\Models\CreditNoteResolution::class,
+    'sales_return' => SalesReturn::class,
+    'sales_return_item' => SalesReturnItem::class,
+    'credit_note' => CreditNote::class,
+    'credit_note_resolution' => CreditNoteResolution::class,
 
     // MOD-11 — Conciliación, Alertas y Anomalías
-    'anomaly_rule'          => \App\Models\AnomalyRule::class,
-    'reconciliation_run'    => \App\Models\ReconciliationRun::class,
-    'anomaly'               => \App\Models\Anomaly::class,
-    'anomaly_event'         => \App\Models\AnomalyEvent::class,
+    'anomaly_rule' => AnomalyRule::class,
+    'reconciliation_run' => ReconciliationRun::class,
+    'anomaly' => Anomaly::class,
+    'anomaly_event' => AnomalyEvent::class,
 
     // MOD-12 — Reportería, KPIs e Inteligencia de Negocios
-    'business_goal'         => \App\Models\BusinessGoal::class,
-    'kpi_snapshot'          => \App\Models\KpiSnapshot::class,
-    'report_definition'     => \App\Models\ReportDefinition::class,
+    'business_goal' => BusinessGoal::class,
+    'kpi_snapshot' => KpiSnapshot::class,
+    'report_definition' => ReportDefinition::class,
 
     // MOD-01 (Fase 3) — Perfiles operativos de ROL-03
-    'user_operative_profile' => \App\Models\UserOperativeProfile::class,
+    'user_operative_profile' => UserOperativeProfile::class,
 
     // Onboarding / Registro (pre-tenant)
     // RegisterWizard es un modelo VIVO (RegisterWizardController + RegisterWizardRequest
@@ -106,30 +166,29 @@ $morphMap = [
     // para que ninguna columna polimórfica persista el FQCN. Alias snake_case singular de
     // la tabla `register_wizards`. Al derivarse auditable_types de array_keys(morph_map),
     // queda disponible en la lista blanca de auditoría (sin forzar auditoría automática).
-    'register_wizard'       => \App\Models\RegisterWizard::class,
+    'register_wizard' => RegisterWizard::class,
 ];
 
 return [
 
-    //Aislamiento multi-negocio
+    // Aislamiento multi-negocio
     'tenant' => [
-        'guards'    => ['web'],   // El usuario vive en el guard web (Sanctum es solo transporte)
+        'guards' => ['web'],   // El usuario vive en el guard web (Sanctum es solo transporte)
         'api_guard' => 'web',     // lo leen VerifiesCurrentPassword (current_password:web) y SetPermissionsTeamId
     ],
 
     // Seguridad y Autenticacion
     'auth' => [
-        'max_attempts'  => 5,     // Umbral parametrizable del rate-limit
+        'max_attempts' => 5,     // Umbral parametrizable del rate-limit
         'decay_seconds' => 60,
     ],
 
-    //Bitácora de auditoría
+    // Bitácora de auditoría
     'audit' => [
 
         // Mapa consumido por Relation::enforceMorphMap() en AppServiceProvider.
         'morph_map' => $morphMap,
 
-        
         // Lista blanca del filtro `auditable_type` de IndexAuditLogRequest.
         'auditable_types' => array_keys($morphMap),
 

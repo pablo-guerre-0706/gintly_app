@@ -31,15 +31,43 @@ class DispatchPage {
         this.form = root.querySelector('[data-dispatch-form]');
         this.delivery = null;
         this.pending = false;
+        this.invoicePage = 0;
+        this.invoiceLastPage = 1;
+        this.invoiceLoading = false;
     }
 
     async init() {
         const context = await getSessionContext();
         this.form.hidden = !context.capabilities.includes('entregas.crear');
         this.root.querySelector('[data-dispatch-load-invoice]').addEventListener('click', () => this.loadInvoice());
+        this.root.querySelector('[data-dispatch-more-invoices]').addEventListener('click', () => this.loadInvoiceOptions());
+        this.root.querySelector('[data-dispatch-all]').addEventListener('click', () => {
+            this.form.querySelectorAll('[data-dispatch-line-check]').forEach((check) => { check.checked = true; check.dispatchEvent(new Event('change')); });
+        });
         this.root.querySelector('[data-dispatch-refresh]').addEventListener('click', () => this.loadList());
         this.form.addEventListener('submit', (event) => { event.preventDefault(); void this.submit(); });
-        await this.loadList();
+        await Promise.all([this.loadList(), this.loadInvoiceOptions()]);
+    }
+
+    async loadInvoiceOptions() {
+        if (this.invoiceLoading || this.invoicePage >= this.invoiceLastPage) return;
+        this.invoiceLoading = true;
+        const select = this.form.elements.invoice_id;
+        const more = this.root.querySelector('[data-dispatch-more-invoices]');
+        more.disabled = true;
+        try {
+            const response = await api.get('/invoices', { status: 'emitida', page: this.invoicePage + 1, per_page: 25 }, { dispatchErrors: false });
+            if (!Array.isArray(response?.data) || !Number.isInteger(response?.meta?.last_page)) throw new TypeError('El servidor no devolvió facturas paginadas.');
+            if (this.invoicePage === 0) select.replaceChildren(new Option('Selecciona una factura emitida', ''));
+            for (const invoice of response.data) {
+                if (invoice.status !== 'emitida' || !Number.isInteger(invoice.id)) continue;
+                select.add(new Option(`${invoice.folio} · ${invoice.customer?.name ?? `Cliente #${invoice.customer_id}`}`, String(invoice.id)));
+            }
+            this.invoicePage = response.meta.current_page;
+            this.invoiceLastPage = response.meta.last_page;
+            more.hidden = this.invoicePage >= this.invoiceLastPage;
+        } catch (error) { this.showErrors({ invoice_id: [message(error)] }); }
+        finally { this.invoiceLoading = false; more.disabled = false; }
     }
 
     clearErrors() { this.form.querySelectorAll('[data-dispatch-error]').forEach((element) => { element.textContent = ''; }); }
@@ -72,11 +100,11 @@ class DispatchPage {
         finally { this.root.setAttribute('aria-busy', 'false'); }
     }
 
-    async loadInvoice() {
-        if (this.pending) return;
+    async loadInvoice(allowWhileSubmitting = false) {
+        if (this.pending && !allowWhileSubmitting) return;
         this.clearErrors(); const id = Number(this.form.elements.invoice_id.value);
-        if (!Number.isInteger(id) || id < 1) return this.showErrors({ invoice_id: ['Indica un ID de factura válido.'] });
-        const button = this.root.querySelector('[data-dispatch-load-invoice]'); this.pending = true; button.disabled = true;
+        if (!Number.isInteger(id) || id < 1) return this.showErrors({ invoice_id: ['Selecciona una factura de la lista.'] });
+        const button = this.root.querySelector('[data-dispatch-load-invoice]'); const wasPending = this.pending; this.pending = true; button.disabled = true;
         try {
             const response = await api.get(`/invoices/${id}/delivery-status`, {}, { dispatchErrors: false });
             const delivery = response?.data;
@@ -85,7 +113,7 @@ class DispatchPage {
         } catch (error) {
             this.delivery = null; this.root.querySelector('[data-dispatch-lines-region]').hidden = true;
             this.showErrors({ invoice_id: [message(error)] });
-        } finally { this.pending = false; button.disabled = false; }
+        } finally { this.pending = wasPending; button.disabled = false; }
     }
 
     renderLines() {
@@ -95,7 +123,7 @@ class DispatchPage {
         container.replaceChildren(...deliverable.map((line) => {
             const row = document.createElement('label'); const check = document.createElement('input'); const text = document.createElement('span'); const input = document.createElement('input');
             row.className = 'grid gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_140px] sm:items-center'; check.type = 'checkbox'; check.className = 'size-5'; check.dataset.dispatchLineCheck = String(line.sale_item_id);
-            text.textContent = `${line.description ?? `Producto #${line.product_id}`} · pendiente ${line.pending_quantity}`;
+            text.textContent = `${line.description ?? `Producto #${line.product_id}`} · facturado ${line.invoiced_quantity} · entregado ${line.dispatched_quantity} · pendiente ${line.pending_quantity}`;
             input.type = 'text'; input.inputMode = 'decimal'; input.value = String(line.pending_quantity); input.className = 'min-h-11 rounded-xl border border-slate-300 px-3 text-sm'; input.dataset.dispatchLineQuantity = String(line.sale_item_id); input.dataset.max = String(line.pending_quantity); input.disabled = true; input.setAttribute('aria-label', `Cantidad a despachar de ${line.description ?? `producto ${line.product_id}`}`);
             check.addEventListener('change', () => { input.disabled = !check.checked; this.syncSubmit(); }); input.addEventListener('input', () => this.syncSubmit());
             row.append(check, text, input); return row;
@@ -122,11 +150,14 @@ class DispatchPage {
         try { lines = this.lines(); } catch (error) { this.showErrors({ lines: [error.message] }); return; }
         const receivedBy = this.form.elements.received_by.value.trim();
         if (receivedBy.length < 2) return this.showErrors({ received_by: ['Indica quién recibe la mercancía.'] });
+        if (!window.confirm(`¿Registrar la entrega de ${lines.length} línea${lines.length === 1 ? '' : 's'}? Esta operación no puede reintentarse automáticamente.`)) return;
         const button = this.root.querySelector('[data-dispatch-submit]'); this.pending = true; button.disabled = true; this.form.setAttribute('aria-busy', 'true');
         try {
             const response = await mutate('/dispatches', { invoice_id: this.delivery.invoice_id, received_by: receivedBy, notes: this.form.elements.notes.value.trim() || null, lines });
             this.root.querySelector('[data-dispatch-live]').textContent = `Despacho ${response?.data?.code ?? ''} registrado correctamente.`;
-            this.form.reset(); this.delivery = null; this.root.querySelector('[data-dispatch-lines-region]').hidden = true; await this.loadList();
+            this.form.elements.received_by.value = '';
+            this.form.elements.notes.value = '';
+            await Promise.all([this.loadList(), this.loadInvoice(true)]);
         } catch (error) {
             if (error instanceof ApiError && error.status === 422) this.showErrors(error.errors);
             else this.root.querySelector('[data-dispatch-live]').textContent = message(error);

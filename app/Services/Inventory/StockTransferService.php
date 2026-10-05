@@ -21,6 +21,7 @@ final class StockTransferService
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly SequenceGenerator $sequences,
+        private readonly WarehouseAssignmentService $assignments,
     ) {}
 
     /**
@@ -37,6 +38,8 @@ final class StockTransferService
                 ->whereKey($fromWarehouseId)
                 ->firstOrFail();
             $this->assertOperatorOriginBranch($actor, $fromWarehouse);
+            // RF-03 asignación Bodega–Bodeguero: un ROL-03 solo ORIGINA desde una bodega que tenga asignada.
+            $this->assignments->assertOperates($actor, $fromWarehouseId);
 
             // Folio interno atómico: TR-000001. Nunca lo envía el cliente (D-6).
             $code = $this->sequences->next($actor->business_id, 'stock_transfer', 'TR-');
@@ -86,6 +89,10 @@ final class StockTransferService
             if (! $transfer->status->canTransition()) {
                 throw InvalidCountStateException::transferNotPending($transfer->id);
             }
+
+            // RF-03 asignación Bodega–Bodeguero: un ROL-03 que CONFIRMA opera el DESTINO (recibe la
+            // mercancía), por lo que debe tener asignada la bodega destino. El origen ya se validó al crear.
+            $this->assignments->assertOperates($actor, $transfer->to_warehouse_id);
 
             // Líneas persistidas al crear, bloqueadas para serializar la confirmación.
             $items = StockTransferItem::query()

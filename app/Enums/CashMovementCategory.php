@@ -15,6 +15,7 @@ enum CashMovementCategory: string
     case Ajuste           = 'ajuste';
     case FondoInicial     = 'fondo_inicial';
     case CobroCredito     = 'cobro_credito';
+    case Vuelto           = 'vuelto';
 
     public function label(): string
     {
@@ -25,6 +26,7 @@ enum CashMovementCategory: string
             self::Ajuste           => 'Ajuste',
             self::FondoInicial     => 'Fondo inicial',
             self::CobroCredito     => 'Cobro de crédito',
+            self::Vuelto           => 'Vuelto',
         };
     }
 
@@ -33,7 +35,7 @@ enum CashMovementCategory: string
     {
         return match ($this) {
             self::Venta, self::CobroCredito, self::FondoInicial => CashMovementType::Ingreso,
-            self::EgresoAutorizado, self::Retiro               => CashMovementType::Egreso,
+            self::EgresoAutorizado, self::Retiro, self::Vuelto  => CashMovementType::Egreso,
             self::Ajuste                                        => null,
         };
     }

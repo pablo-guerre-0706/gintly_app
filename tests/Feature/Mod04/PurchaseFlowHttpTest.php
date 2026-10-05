@@ -141,6 +141,10 @@ final class PurchaseFlowHttpTest extends MysqlTestCase
         $warehouse->business_id = $business->id;
         $warehouse->save();
 
+        // RF-03 asignación Bodega–Bodeguero: el bodeguero queda habilitado a operar/recibir en esta bodega.
+        $wa = new \App\Models\WarehouseAssignment();
+        $wa->forceFill(['business_id' => $business->id, 'branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'user_id' => $operator->id, 'assigned_by' => $admin->id, 'assigned_at' => now()])->save();
+
         return (object) compact('business', 'owner', 'admin', 'operator', 'category', 'unit', 'product', 'branch', 'warehouse');
     }
 

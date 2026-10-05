@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Receivables;
 
+use App\Enums\Currency;
 use App\Enums\PaymentMethod;
 use App\Http\Requests\BaseTenantRequest;
 use Illuminate\Validation\Rule;
@@ -28,6 +29,9 @@ final class StoreReceivablePaymentRequest extends BaseTenantRequest
         return [
             // '>0' estricto (ERR-08 rechaza amount <= 0). decimal:0,2 acota la escala monetaria.
             'amount'          => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
+            // Doble moneda: importe NATIVO del abono en esta moneda. Ausente ⇒ NIO (compatibilidad
+            // histórica). La TASA snapshot la congela el servidor (ExchangeRateService); no se envía.
+            'currency'        => ['sometimes', 'nullable', Rule::enum(Currency::class)],
             'payment_method'  => ['required', 'string', Rule::in(PaymentMethod::values())],
             'cash_session_id' => [
                 'nullable',
@@ -49,6 +53,7 @@ final class StoreReceivablePaymentRequest extends BaseTenantRequest
     {
         return [
             'amount.gt'                   => 'El monto del abono debe ser mayor que cero.',
+            'currency.enum'               => 'La moneda indicada no es admitida.',
             'cash_session_id.required_if' => 'Un abono en efectivo exige una sesión de caja activa.',
         ];
     }
@@ -57,6 +62,7 @@ final class StoreReceivablePaymentRequest extends BaseTenantRequest
     {
         return [
             'amount'          => 'monto',
+            'currency'        => 'moneda',
             'payment_method'  => 'medio de pago',
             'cash_session_id' => 'sesión de caja',
             'reference'       => 'referencia',

@@ -9,6 +9,7 @@ use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\CashSession\IndexCashSessionRequest;
 use App\Http\Resources\CashSessionResource;
+use App\Models\Branch;
 use App\Models\CashSession;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,14 @@ final class CashSessionController extends Controller
         // Admin: opened_by opcional del request. ROL-03: forzado a sí mismo.
         $openedByScope = $isAdmin ? $request->validated('opened_by') : $user->id;
 
+        // Filtro por sucursal (cash_sessions no tiene branch_id: se resuelve por la caja). Una sucursal
+        // de OTRO negocio responde 404 (findOrFail acotado al tenant), sin filtrar datos. ROL-03 conserva
+        // su alcance (opened_by=self): un branch ajeno del mismo negocio solo puede estrechar a vacío.
+        $branchId = $request->validated('branch_id');
+        if ($branchId !== null) {
+            Branch::query()->where('business_id', $user->business_id)->whereKey($branchId)->firstOrFail();
+        }
+
         $sessions = CashSession::query()
             ->with(['cashRegister', 'openedBy', 'closedBy'])
             ->when(
@@ -40,6 +49,10 @@ final class CashSessionController extends Controller
             ->when(
                 $request->validated('cash_register_id'),
                 fn ($q, $registerId) => $q->where('cash_register_id', $registerId),
+            )
+            ->when(
+                $branchId,
+                fn ($q, $branch) => $q->whereHas('cashRegister', fn ($r) => $r->where('branch_id', $branch)),
             )
             ->when(
                 $openedByScope,

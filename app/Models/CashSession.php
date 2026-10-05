@@ -20,20 +20,28 @@ final class CashSession extends Model
     protected $fillable = [
         'cash_register_id',
         'opening_amount',
+        'opening_amount_usd',
         'opened_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'status'                => CashSessionStatus::class,
-            'opening_amount'        => 'decimal:2',
-            'expected_amount'       => 'decimal:2',
-            'counted_amount'        => 'decimal:2',
-            'difference'            => 'decimal:2',
+            'status' => CashSessionStatus::class,
+            'opening_amount' => 'decimal:2',
+            'expected_amount' => 'decimal:2',
+            'counted_amount' => 'decimal:2',
+            'difference' => 'decimal:2',
             'counted_denominations' => 'array',
-            'opened_at'             => 'datetime',
-            'closed_at'             => 'datetime',
+            // Doble moneda: leg USD reconciliado de forma independiente del NIO.
+            'opening_amount_usd' => 'decimal:2',
+            'expected_amount_usd' => 'decimal:2',
+            'counted_amount_usd' => 'decimal:2',
+            'difference_usd' => 'decimal:2',
+            'counted_denominations_usd' => 'array',
+            'session_exchange_rate' => 'decimal:6',
+            'opened_at' => 'datetime',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -55,6 +63,12 @@ final class CashSession extends Model
     public function movements(): HasMany
     {
         return $this->hasMany(CashMovement::class);
+    }
+
+    /** Historial de arqueos ciegos independientes realizados durante la sesión (append-only). */
+    public function counts(): HasMany
+    {
+        return $this->hasMany(CashCount::class);
     }
 
     public function scopeOpen(Builder $query): Builder

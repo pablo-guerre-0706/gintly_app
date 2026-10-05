@@ -36,7 +36,7 @@
         <div class="overflow-x-auto">
             <table class="w-full min-w-[820px] text-left text-sm">
                 <caption class="sr-only">Anomalías del negocio</caption>
-                <thead class="border-b border-gintly-border bg-slate-50"><tr><th class="px-5 py-4">Regla</th><th class="px-5 py-4">Severidad</th><th class="px-5 py-4">Estado</th><th class="px-5 py-4">Diferencia</th><th class="px-5 py-4">Detectada</th><th class="px-5 py-4"><span class="sr-only">Acciones</span></th></tr></thead>
+                <thead class="border-b border-gintly-border bg-slate-50"><tr><th class="px-5 py-4">Regla</th><th class="px-5 py-4">Severidad</th><th class="px-5 py-4">Estado</th><th class="px-5 py-4">Diferencia / umbral</th><th class="px-5 py-4">Detectada</th><th class="px-5 py-4"><span class="sr-only">Acciones</span></th></tr></thead>
                 <tbody class="divide-y divide-slate-200" data-anomaly-body></tbody>
             </table>
         </div>
@@ -58,6 +58,17 @@
                 <label class="mt-4 flex items-start gap-3 text-sm"><input class="mt-1 size-5" type="checkbox" name="confirmation" required><span>Confirmo que el motivo quedará registrado en la bitácora de esta anomalía.</span></label>
                 <p class="mt-3 text-sm text-red-700" data-anomaly-justify-error role="alert" hidden></p>
                 <button class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-gintly-brand px-5 text-sm font-semibold text-white disabled:opacity-60" type="submit" data-anomaly-justify-submit>Confirmar justificación</button>
+            </form>
+            <form class="mt-6 rounded-2xl border border-gintly-border bg-slate-50 p-5" data-anomaly-resolve hidden>
+                <h3 class="font-semibold">Resolver anomalía</h3>
+                <p class="mt-1 text-sm text-gintly-text-secondary">La resolución es una decisión exclusiva del propietario. No modifica aperturas, movimientos ni cierres originales.</p>
+                <label class="mt-4 grid gap-2 text-sm font-semibold">Comentario · Opcional
+                    <textarea class="min-h-28 rounded-xl border border-gintly-border bg-white p-3" name="comment" maxlength="500" aria-describedby="anomaly-comment-error"></textarea>
+                </label>
+                <p id="anomaly-comment-error" class="mt-1 text-sm text-red-700" data-error-for="comment" hidden></p>
+                <label class="mt-4 flex items-start gap-3 text-sm"><input class="mt-1 size-5" type="checkbox" name="confirmation" required><span>Confirmo la resolución auditada sin alterar la evidencia contable.</span></label>
+                <p class="mt-3 text-sm text-red-700" data-anomaly-resolve-error role="alert" hidden></p>
+                <button class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-gintly-brand px-5 text-sm font-semibold text-white disabled:opacity-60" type="submit" data-anomaly-resolve-submit>Confirmar resolución</button>
             </form>
         </div>
     </dialog>

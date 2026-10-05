@@ -489,6 +489,18 @@
 
 "resources": { 
 
+"warehouse_assignments": [ 
+
+{ "method": "GET", "path": "/warehouse-assignments", "roles": ["ROL-03", "ROL-02", "ROL-01"], "query": { "warehouse_id": "int|opt", "user_id": "int|opt (solo ROL-01/02)", "active": "bool|opt", "sort": "enum[assigned_at,ended_at,created_at]|opt", "page": "int|opt", "per_page": "int|opt|max:100|default:25" }, "note": "RF-03 asignación Bodega–Bodeguero (M:N, historial temporal). ROL-01/ROL-02 ven todas con filtros; ROL-03 SOLO las suyas (user_id forzado). Activa = ended_at NULL.", "response_200": "Paginated<WarehouseAssignmentResource { id, warehouse_id, user_id, branch_id, assigned_by, assigned_at, ended_at, ended_by, active }>" }, 
+
+{ "method": "POST", "path": "/warehouse-assignments", "roles": ["ROL-01", "ROL-02"], "request": { "warehouse_id": "int|required|same_tenant", "user_id": "int|required|same_tenant" }, "note": "Asigna un bodeguero a una bodega. M:N (un bodeguero varias bodegas activas, una bodega varios bodegueros activos). Invariantes (Service): misma sucursal, usuario ROL-03 con perfil bodeguero, par (bodega,usuario) activo único (candado de motor). business_id/assigned_by/fechas del servidor.", "response_201": "WarehouseAssignmentResource", "errors": [ { "http": 403, "when": "Rol inferior a ROL-02." }, { "http": 422, "field": "user_id", "when": "El usuario no es ROL-03 con perfil bodeguero, o bodega y bodeguero no comparten sucursal." }, { "code": "WAREHOUSE_ALREADY_ASSIGNED", "http": 409, "key": "error", "when": "El par (bodega, bodeguero) ya tiene una asignación activa." } ] }, 
+
+{ "method": "DELETE", "path": "/warehouse-assignments/{id}", "roles": ["ROL-01", "ROL-02"], "note": "Finaliza (ended_at/ended_by). Historial append-only. Idempotente si ya finalizada.", "response_200": "WarehouseAssignmentResource { active:false }", "errors": [ { "http": 404, "when": "La asignación pertenece a otro negocio (BusinessScope)." } ] } 
+
+], 
+
+"_warehouse_operation_enforcement": "RF-03 · Un ROL-03 bodeguero solo OPERA (conteo físico, recepción de compra, traspaso —origen al crear, destino al completar—) bodegas con asignación ACTIVA; la compuerta vive en los Services de inventario (WarehouseAssignmentService::assertOperates), no solo en el FormRequest. Sin asignación → 403. Los ajustes de inventario son potestad administrativa (ROL-02+): el perfil bodeguero no habilita 'ajustes'. ROL-01/ROL-02 no se acotan por asignación.", 
+
 "warehouses": [ 
 
 { "method": "GET", "path": "/warehouses", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: bodegas.ver — índice y detalle acotados a su sucursal)"], 
@@ -705,23 +717,43 @@
 
 { "method": "GET", "path": "/suppliers", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: proveedores.ver)"], "query": { "search": "string|opt (nombre o tax_id)", "status": "enum[pendiente,aprobado,suspendido]|opt", "is_active": "bool|opt" }, "note": "v2.1: filtros ya validados por IndexSupplierRequest y ahora aplicados (antes solo se aplicaba search). Aditivos y opcionales; sin impacto para clientes que no los envíen.", "response_200": "Paginated<SupplierResource>" }, 
 
-{ "method": "POST", "path": "/suppliers", "roles": ["ROL-02"], 
+{ "method": "POST", "path": "/suppliers", "roles": ["ROL-01", "ROL-02"], 
 
-"request": { "name": "string(160)|required", "tax_id": "string(30)|nullable|unique_per_business", "email": "string|nullable", "phone": "string|nullable" }, 
+"request": { "name": "string(160)|required", "tax_id": "string(30)|nullable|unique_per_business", "email": "string|nullable", "phone": "string|nullable", "location": "{ address: string(255)|required_with:location, latitude?: numeric[-90,90], longitude?: numeric[-180,180], external_id?: string(120) }|opt — CANDIDATO del mapa: siembra una ubicación 'external' (lat/lng juntas o ninguna)" }, 
 
-"note": "Nace status='pendiente'. approved_by/at no se aceptan aquí.", "response_201": "SupplierResource" }, 
+"note": "Nace status='pendiente' (ROL-01/ROL-02; un CANDIDATO descubierto externamente también nace pendiente, NUNCA aprobado). approved_by/at no se aceptan aquí. Si se envía `location`, se crea una supplier_location de procedencia 'external' SIN confirmar (no entra al mapa hasta confirmarla).", "response_201": "SupplierResource { ..., locations[] }" }, 
 
 { "method": "PUT", "path": "/suppliers/{id}", "roles": ["ROL-02"], "response_200": "SupplierResource" }, 
 
 { "method": "POST", "path": "/suppliers/{id}/approve", "roles": ["ROL-01"], 
 
-"note": "status='aprobado', puebla approved_by (auth)+approved_at. Guard del modelo exige approved_by.", 
+"note": "status='aprobado', puebla approved_by (auth)+approved_at. DESPUÉS de aprobar solicita la geocodificación de las ubicaciones pendientes de forma INDEPENDIENTE: si no hay proveedor configurado (driver 'null') o falla, la ubicación queda pendiente y el proveedor SIGUE aprobado (nunca se revierte). Geocodificar NO confirma el marcador.", 
 
-"response_200": "SupplierResource", "errors": [ { "http": 403, "when": "Rol != ROL-01." } ] }, 
+"response_200": "SupplierResource { ..., locations[] }", "errors": [ { "http": 403, "when": "Rol != ROL-01." } ] }, 
 
-{ "method": "POST", "path": "/suppliers/{id}/suspend", "roles": ["ROL-01"], "note": "Limpia metadatos de aprobación.", "response_200": "SupplierResource" }, 
+{ "method": "POST", "path": "/suppliers/{id}/suspend", "roles": ["ROL-01"], "note": "Limpia metadatos de aprobación. Un proveedor suspendido desaparece del mapa (status != aprobado).", "response_200": "SupplierResource" }, 
 
-{ "method": "DELETE", "path": "/suppliers/{id}", "roles": ["ROL-02"], "response_204": "Soft-delete" } 
+{ "method": "DELETE", "path": "/suppliers/{id}", "roles": ["ROL-02"], "response_204": "Soft-delete. También lo saca del mapa." } 
+
+], 
+
+"supplier_locations": [ 
+
+{ "method": "GET", "path": "/suppliers/{supplier}/locations", "roles": ["ROL-02", "ROL-01", "ROL-03 (proveedores.ver)"], "note": "Ubicaciones del proveedor (principal primero). `confirmed` indica si entra al mapa.", "response_200": "Collection<SupplierLocationResource { id, supplier_id, address, latitude, longitude, geocode_source, external_id, quality, is_primary, confirmed, geocoded_at, confirmed_at, confirmed_by }>" }, 
+
+{ "method": "POST", "path": "/suppliers/{supplier}/locations", "roles": ["ROL-01", "ROL-02"], "request": { "address": "string(255)|required", "latitude": "numeric[-90,90]|nullable (junto con longitude)", "longitude": "numeric[-180,180]|nullable", "external_id": "string(120)|nullable", "is_primary": "bool|opt" }, "note": "Crea una ubicación. Con coordenadas al alta ⇒ procedencia 'external', sin confirmar. Una sola principal por proveedor (candado de motor → 422).", "response_201": "SupplierLocationResource", "errors": [ { "http": 422, "field": "latitude", "when": "Coordenada fuera de rango o lat/lng no enviadas juntas." }, { "http": 422, "field": "is_primary", "when": "El proveedor ya tiene una ubicación principal." }, { "http": 403, "when": "Rol inferior a ROL-02." }, { "http": 404, "when": "El proveedor es de otro negocio." } ] }, 
+
+{ "method": "PUT", "path": "/suppliers/{supplier}/locations/{location}", "roles": ["ROL-01", "ROL-02"], "request": { "address": "string(255)|opt", "is_primary": "bool|opt" }, "note": "Cambiar la dirección INVALIDA la confirmación anterior: limpia coordenadas, geocode_source, geocoded_at, confirmed_at/by (sale del mapa hasta regeocodificar/confirmar). No fija coordenadas aquí.", "response_200": "SupplierLocationResource" }, 
+
+{ "method": "POST", "path": "/suppliers/{supplier}/locations/{location}/geocode", "roles": ["ROL-01", "ROL-02"], "note": "Solicita geocodificación vía el adaptador configurado (con caché). Si no hay proveedor o falla, la ubicación queda pendiente (no error de bloqueo). NO confirma el marcador. Devuelve la ubicación con procedencia 'geocoded' si resolvió.", "response_200": "SupplierLocationResource" }, 
+
+{ "method": "POST", "path": "/suppliers/{supplier}/locations/{location}/confirm", "roles": ["ROL-01", "ROL-02"], "request": { "latitude": "numeric[-90,90]|nullable", "longitude": "numeric[-180,180]|nullable" }, "note": "Confirma/corrige el marcador. Con lat/lng: fija coordenadas (procedencia 'manual'); sin ellas: confirma las ya geocodificadas. Exige coordenadas (422 si no hay). Marca confirmed_at/by → entra al mapa.", "response_200": "SupplierLocationResource", "errors": [ { "http": 422, "field": "latitude", "when": "Sin coordenadas disponibles, fuera de rango, o lat/lng no enviadas juntas." } ] } 
+
+], 
+
+"map": [ 
+
+{ "method": "GET", "path": "/map/suppliers", "roles": ["ROL-02", "ROL-01", "ROL-03 (proveedores.ver)"], "note": "Proveedores del MAPA: SOLO aprobados, activos y con al menos una ubicación CONFIRMADA, aislados por el business_id de la sesión. Un proveedor suspendido, inactivo o eliminado no aparece. No expone claves de geocodificación.", "response_200": "Collection<MapSupplierResource { id, name, status, locations[]: { id, address, latitude, longitude, is_primary, quality, confirmed_at } }>" } 
 
 ], 
 
@@ -951,7 +983,15 @@
 
 # **MOD-06 - Gestion de Caja (Ingresos, Egresos y Arqueo)** 
 
-{ "module": "MOD-06", "base_url": "/api/v1", "version": "2.1-canonical", "auth": { "scheme": "Cookie/sesión (Sanctum SPA)", "guard": "web", "tenant_source": "session.user.business_id (BusinessScope global)", "note": "NO es Bearer. Toda la API usa sesión SPA de Sanctum; el tenant se resuelve del usuario autenticado, jamás del request." }, "conventions": { "money": "Montos string decimal escala 2 (bcmath).", "blind_count": "H-49/D-21. expected_amount y difference NO se exponen mientras status='abierta' (arqueo ciego real, RF-06-04); se ocultan en CashSessionResource y solo se revelan tras el cierre. El esperado se calcula en el servidor tras recibir el conteo (responsabilidad del Resource, no del Service).", "cash_writes": "Todo movimiento/cierre pasa por CashService (transaccional + lockForUpdate). cash_movements es append-only (Immutable): cualquier UPDATE/DELETE → IMMUTABLE_RECORD (403). No existen endpoints de edición/borrado de movimientos.", "expected_is_cash_only": "H-52. expected = opening_amount + Σ(ingresos efectivo) − Σ(egresos efectivo). Solo payment_method='efectivo'; transferencia/tarjeta entran al libro pero NO a la gaveta. fondo_inicial se excluye del sumatorio (ya está en opening_amount).", "discrepancy_persists": "H-50/D-20. Un cierre descuadrado COMMITEA la sesión 'descuadrada' + conteo + desglose + anomalía y lanza 422 DESPUÉS del commit. El 422 transporta la sesión con la diferencia visible. Sin rollback.", "type_category_coherence": "H-51/D-22. type⇄category se valida en StoreCashMovementRequest vía forcedType() del enum CashMovementCategory (venta/cobro_credito/fondo_inicial⇒ingreso; retiro/egreso_autorizado⇒egreso; ajuste libre). Incoherencia → 422. Backstop no-HTTP en CashMovement::creating.", "authorizer_is_admin": "H-53/D-23. category='egreso_autorizado' exige authorized_by; el FormRequest valida que exista y sea del tenant (required_if), y CashService valida que tenga rango ROL-02 (lectura del rol). No-admin → CashAuthorizationException (422). El CHECK chk_cash_movement_egreso_auth solo garantiza que no sea nulo.", "denominations_sum_exact": "H-56. counted_denominations es obligatorio (min:1) y Σ(value×qty) debe igualar EXACTAMENTE counted_amount; si no, 422 (CloseCashSessionRequest::after). Se persiste como evidencia JSON del arqueo.", "dual_open_locks": "H-54. Doble apertura bloqueada por el MOTOR con columnas generadas VIRTUALES + UNIQUE: open_register_lock (una sesión abierta por caja) y open_user_lock (una sesión abierta por usuario). CashService traduce el 1062 a 409 distinguiendo el candado: CASH_REGISTER_BUSY (caja ocupada) o CASH_USER_BUSY (usuario ocupado).", "generated_difference": "cash_sessions.difference es columna generada STORED (counted_amount − expected_amount); el motor la calcula al guardar. El estado (cerrada/descuadrada) se decide con bcmath sobre esa diferencia.", "anomaly_live": "D-24 RECONCILIADO v2.1: el descuadre YA despacha la anomalía 'descuadre_caja' vía AnomalyService::registrarSilencioso (MOD-11 implementado, inyectado en CashService). Se registra tras el commit, es idempotente (uniq_active_anomaly) y nunca rompe el cierre. Ya NO es un hook inerte.", "index_contract": "Los listados (cash-registers/cash-sessions/cash-movements) usan Index*Request: validan filtros (enums, fechas, ids del tenant), acotan `sort` a un allowlist y `per_page` (default 25, máx 100), y devuelven envelope paginado {data, links, meta}.", "role_scope": "Alcance por rol (propiedad). ROL-01/ROL-02: visibilidad y operación administrativa sobre las sesiones del negocio. ROL-03: SOLO sobre las sesiones que él mismo abrió (opened_by=self). Aplica a: listado de sesiones (el filtro opened_by NO amplía el alcance de ROL-03), show y /movements (CashSessionPolicy::view → 403 sobre sesión ajena), registro de movimiento y cierre (403 sobre sesión ajena; el arqueo ciego se conserva para todos los roles).", "branch_scope": "Aislamiento de sucursal en cajas operativas. ROL-03 solo lista y abre cajas ACTIVAS de su propio branch_id; abrir una caja de otra sucursal —o sin sucursal asignada— se rechaza con 403 (AuthorizationException, sin persistir sesión). ROL-01/ROL-02 administran las cajas del negocio conforme a sus Policies.", "error_envelope": "Las excepciones de caja se auto-renderizan (self-render) con la clave JSON `error` (NoActiveCashSession, CashSessionConflict, UnreconciledCashClosing, ImmutableRecord). El identificador es el string documentado como `code` en cada error de abajo. CashAuthorizationException se mapea en bootstrap (solo `message`, 422).", "credit_note": "credit_limit se registra en MOD-05; los cobros/ventas a crédito que generan movimientos de caja se orquestan en MOD-07/08." }, "resources": { 
+{ "module": "MOD-06", "base_url": "/api/v1", "version": "2.1-canonical", "auth": { "scheme": "Cookie/sesión (Sanctum SPA)", "guard": "web", "tenant_source": "session.user.business_id (BusinessScope global)", "note": "NO es Bearer. Toda la API usa sesión SPA de Sanctum; el tenant se resuelve del usuario autenticado, jamás del request." }, "conventions": { "money": "Montos string decimal escala 2 (bcmath).", "blind_count": "H-49/D-21. expected_amount y difference NO se exponen mientras status='abierta' (arqueo ciego real, RF-06-04); se ocultan en CashSessionResource y solo se revelan tras el cierre. El esperado se calcula en el servidor tras recibir el conteo (responsabilidad del Resource, no del Service).", "cash_writes": "Todo movimiento/cierre pasa por CashService (transaccional + lockForUpdate). cash_movements es append-only (Immutable): cualquier UPDATE/DELETE → IMMUTABLE_RECORD (403). No existen endpoints de edición/borrado de movimientos.", "expected_is_cash_only": "H-52. expected = opening_amount + Σ(ingresos efectivo) − Σ(egresos efectivo). Solo payment_method='efectivo'; transferencia/tarjeta entran al libro pero NO a la gaveta. fondo_inicial se excluye del sumatorio (ya está en opening_amount).", "dual_currency": "RF-06 doble moneda NIO/USD. Moneda base = NIO (tasa 1, implícita, no almacenada). Cada operación en efectivo conserva: moneda, importe nativo (amount), tasa snapshot congelada al instante (exchange_rate = NIO por 1 unidad de la moneda) y equivalente NIO (base_amount, columna generada STORED = amount×exchange_rate). La TASA la congela el servidor (ExchangeRateService); NUNCA se envía en el request. Una operación en USD sin tasa vigente → 422 EXCHANGE_RATE_MISSING. Invariante de motor: NIO exige exchange_rate=1. Reconciliación POR MONEDA: esperado/contado/diferencia se calculan separadamente para NIO y USD (columnas espejo *_usd + difference_usd generada); una diferencia en NIO O en USD marca la sesión 'descuadrada' y despacha 'descuadre_caja', AUNQUE el consolidado NIO coincida. El consolidado NIO (consolidated_nio en CashSessionResource) es INFORMATIVO: usa session_exchange_rate (tasa de referencia snapshot al cierre) y nunca sustituye ni oculta la reconciliación por moneda. Compatibilidad histórica: toda operación/sesión previa es NIO tasa 1 (base_amount=amount); los payloads sin `currency` siguen comportándose idénticamente.", "discrepancy_persists": "H-50/D-20. Un cierre descuadrado COMMITEA la sesión 'descuadrada' + conteo + desglose + anomalía y lanza 422 DESPUÉS del commit. El 422 transporta la sesión con la diferencia visible. Sin rollback.", "type_category_coherence": "H-51/D-22. type⇄category se valida en StoreCashMovementRequest vía forcedType() del enum CashMovementCategory (venta/cobro_credito/fondo_inicial⇒ingreso; retiro/egreso_autorizado⇒egreso; ajuste libre). Incoherencia → 422. Backstop no-HTTP en CashMovement::creating.", "authorizer_is_admin": "H-53/D-23. category='egreso_autorizado' exige authorized_by; el FormRequest valida que exista y sea del tenant (required_if), y CashService valida que tenga rango ROL-02 (lectura del rol). No-admin → CashAuthorizationException (422). El CHECK chk_cash_movement_egreso_auth solo garantiza que no sea nulo.", "denominations_sum_exact": "H-56. counted_denominations es obligatorio (min:1) y Σ(value×qty) debe igualar EXACTAMENTE counted_amount; si no, 422 (CloseCashSessionRequest::after). Se persiste como evidencia JSON del arqueo.", "dual_open_locks": "H-54. Doble apertura bloqueada por el MOTOR con columnas generadas VIRTUALES + UNIQUE: open_register_lock (una sesión abierta por caja) y open_user_lock (una sesión abierta por usuario). CashService traduce el 1062 a 409 distinguiendo el candado: CASH_REGISTER_BUSY (caja ocupada) o CASH_USER_BUSY (usuario ocupado).", "generated_difference": "cash_sessions.difference es columna generada STORED (counted_amount − expected_amount); el motor la calcula al guardar. El estado (cerrada/descuadrada) se decide con bcmath sobre esa diferencia.", "anomaly_live": "D-24 RECONCILIADO v2.1: el descuadre YA despacha la anomalía 'descuadre_caja' vía AnomalyService::registrarSilencioso (MOD-11 implementado, inyectado en CashService). Se registra tras el commit, es idempotente (uniq_active_anomaly) y nunca rompe el cierre. Ya NO es un hook inerte.", "index_contract": "Los listados (cash-registers/cash-sessions/cash-movements) usan Index*Request: validan filtros (enums, fechas, ids del tenant), acotan `sort` a un allowlist y `per_page` (default 25, máx 100), y devuelven envelope paginado {data, links, meta}.", "role_scope": "Alcance por rol (propiedad). ROL-01/ROL-02: visibilidad y operación administrativa sobre las sesiones del negocio. ROL-03: SOLO sobre las sesiones que él mismo abrió (opened_by=self). Aplica a: listado de sesiones (el filtro opened_by NO amplía el alcance de ROL-03), show y /movements (CashSessionPolicy::view → 403 sobre sesión ajena), registro de movimiento y cierre (403 sobre sesión ajena; el arqueo ciego se conserva para todos los roles).", "branch_scope": "Aislamiento de sucursal en cajas operativas. ROL-03 solo lista y abre cajas ACTIVAS de su propio branch_id; abrir una caja de otra sucursal —o sin sucursal asignada— se rechaza con 403 (AuthorizationException, sin persistir sesión). ROL-01/ROL-02 administran las cajas del negocio conforme a sus Policies.", "error_envelope": "Las excepciones de caja se auto-renderizan (self-render) con la clave JSON `error` (NoActiveCashSession, CashSessionConflict, UnreconciledCashClosing, ImmutableRecord). El identificador es el string documentado como `code` en cada error de abajo. CashAuthorizationException se mapea en bootstrap (solo `message`, 422).", "credit_note": "credit_limit se registra en MOD-05; los cobros/ventas a crédito que generan movimientos de caja se orquestan en MOD-07/08." }, "resources": { 
+
+"exchange_rates": [ 
+
+{ "method": "GET", "path": "/exchange-rates", "roles": ["ROL-01", "ROL-02"], "query": { "currency": "enum[NIO,USD]|opt (filtra por moneda)" }, "note": "RF-06 doble moneda. Historial de vigencias del tipo de cambio (más reciente primero), ordenado por moneda y effective_from desc. Historial INMUTABLE versionado por vigencia (append-only): no hay update ni delete; una corrección se expresa registrando una vigencia nueva. La moneda base (NIO) NO se almacena (tasa 1 implícita). Autoriza ExchangeRatePolicy::viewAny (ROL-02+). Aislamiento por negocio (BusinessScope).", "response_200": "Collection<ExchangeRateResource>", "errors": [ { "http": 403, "key": "message", "when": "Rol inferior a ROL-02 consulta el tipo de cambio." } ] }, 
+
+{ "method": "POST", "path": "/exchange-rates", "roles": ["ROL-01", "ROL-02"], "request": { "currency": "enum[USD]|required (NUNCA la base NIO)", "rate": "decimal(14,6)|>0|required (NIO por 1 unidad de la moneda)", "effective_from": "datetime|required (vigencia desde)" }, "note": "Registra una nueva vigencia (ROL-01/ROL-02). INSERTA una fila; las anteriores se preservan intactas (inmutabilidad histórica). created_by = auth (no-repudio). La moneda base (NIO) se rechaza (su tasa es 1). Autoriza ExchangeRatePolicy::create.", "response_201": "ExchangeRateResource { id, currency, rate, effective_from, created_by, created_by_name, created_at }", "errors": [ { "http": 403, "key": "message", "when": "Rol inferior a ROL-02 intenta registrar una tasa." }, { "http": 422, "field": "currency", "when": "currency = NIO (moneda base: no admite tipo de cambio) o moneda no admitida." }, { "http": 422, "field": "rate", "when": "rate <= 0 o con más de 6 decimales." } ] } 
+
+], 
 
 "cash_registers": [ 
 
@@ -973,7 +1013,17 @@
 
 { "method": "PUT", "path": "/cash-registers/{id}", "roles": ["ROL-02"], "response_200": "CashRegisterResource" }, 
 
-{ "method": "DELETE", "path": "/cash-registers/{id}", "roles": ["ROL-02"], "response_204": "Softdelete" } 
+{ "method": "DELETE", "path": "/cash-registers/{id}", "roles": ["ROL-02"], "response_204": "Softdelete", "errors": [ { "code": "CASH_REGISTER_OPEN_SESSION", "http": 409, "key": "error", "when": "La caja tiene una sesión abierta vinculada: no puede eliminarse hasta cerrarla." } ], "note_update": "PUT con is_active=false sobre una caja con sesión abierta → 409 CASH_REGISTER_OPEN_SESSION (no se puede desactivar)." } 
+
+], 
+
+"cash_register_assignments": [ 
+
+{ "method": "GET", "path": "/cash-register-assignments", "roles": ["ROL-03", "ROL-02", "ROL-01"], "query": { "cash_register_id": "int|opt", "user_id": "int|opt (solo ROL-01/02)", "active": "bool|opt", "sort": "enum[assigned_at,ended_at,created_at]|opt", "page": "int|opt", "per_page": "int|opt|max:100|default:25" }, "note": "RF-06 asignación Caja–Cajero (historial temporal). ROL-01/ROL-02 ven todas las del negocio con filtros; ROL-03 SOLO las suyas (user_id forzado a sí mismo; el filtro no amplía su alcance). Una asignación activa = ended_at NULL.", "response_200": "Paginated<CashRegisterAssignmentResource { id, cash_register_id, user_id, branch_id, assigned_by, assigned_at, ended_at, ended_by, active }>" }, 
+
+{ "method": "POST", "path": "/cash-register-assignments", "roles": ["ROL-01", "ROL-02"], "request": { "cash_register_id": "int|required|same_tenant", "user_id": "int|required|same_tenant" }, "note": "Asigna un cajero a una caja. Invariantes (Service): misma sucursal, usuario ROL-03 con perfil cajero, caja ≤ 1 cajero activo, cajero ≤ 1 caja activa (candados de motor). ESTRICTO: si la caja o el cajero ya tienen asignación activa → 409 (reasignar = finalizar antes). No se asigna con una sesión abierta vinculada. business_id/assigned_by/fechas del servidor.", "response_201": "CashRegisterAssignmentResource", "errors": [ { "http": 403, "when": "Rol inferior a ROL-02." }, { "http": 422, "field": "user_id", "when": "El usuario no es ROL-03 con perfil cajero, o la caja y el cajero no comparten sucursal." }, { "code": "CASH_REGISTER_ALREADY_ASSIGNED", "http": 409, "key": "error", "when": "La caja ya tiene un cajero activo." }, { "code": "CASHIER_ALREADY_ASSIGNED", "http": 409, "key": "error", "when": "El cajero ya tiene una caja activa." }, { "code": "CASH_ASSIGNMENT_OPEN_SESSION", "http": 409, "key": "error", "when": "Hay una sesión de caja abierta vinculada." } ] }, 
+
+{ "method": "DELETE", "path": "/cash-register-assignments/{id}", "roles": ["ROL-01", "ROL-02"], "note": "Finaliza (cierra la vigencia: ended_at/ended_by). Historial append-only (no se borra). Idempotente si ya estaba finalizada.", "response_200": "CashRegisterAssignmentResource { active:false }", "errors": [ { "http": 404, "when": "La asignación pertenece a otro negocio (BusinessScope)." }, { "code": "CASH_ASSIGNMENT_OPEN_SESSION", "http": 409, "key": "error", "when": "La caja tiene una sesión abierta: no se finaliza hasta cerrarla." } ] } 
 
 ], 
 
@@ -981,15 +1031,15 @@
 
 { "method": "GET", "path": "/cash-sessions", "roles": ["ROL-03", "ROL-02", "ROL-01"], 
 
-"query": { "cash_register_id": "int|opt", "opened_by": "int|opt", "status": "enum[abierta,cerrada,descuadrada]|opt", "from": "date|opt", "to": "date|opt", "sort": "enum[opened_at,closed_at,status,created_at]|opt", "direction": "enum[asc,desc]|opt", "page": "int|opt", "per_page": "int|opt|max:100|default:25" }, 
+"query": { "cash_register_id": "int|opt", "opened_by": "int|opt", "branch_id": "int|opt", "status": "enum[abierta,cerrada,descuadrada]|opt", "from": "date|opt", "to": "date|opt", "sort": "enum[opened_at,closed_at,status,created_at]|opt", "direction": "enum[asc,desc]|opt", "page": "int|opt", "per_page": "int|opt|max:100|default:25" }, 
 
-"note": "Alcance por rol (ver conventions.role_scope). ROL-01/ROL-02: todas las sesiones del negocio, con filtro opened_by opcional. ROL-03: EXCLUSIVAMENTE sus propias sesiones (opened_by forzado a sí mismo); el parámetro opened_by NO amplía su alcance. Filtros cash_register_id/from/to/sort/paginación validados por IndexCashSessionRequest.", 
+"note": "Alcance por rol (ver conventions.role_scope). ROL-01/ROL-02: todas las sesiones del negocio, con filtro opened_by opcional. ROL-03: EXCLUSIVAMENTE sus propias sesiones (opened_by forzado a sí mismo); el parámetro opened_by NO amplía su alcance. Filtros cash_register_id/from/to/sort/paginación validados por IndexCashSessionRequest. FILTRO branch_id (cash_sessions no tiene branch_id: se resuelve por la caja): ROL-01/ROL-02 filtran por cualquier sucursal del negocio; ROL-03 conserva su alcance (un branch ajeno del mismo negocio solo estrecha a vacío, nunca revela sesiones de otros). Una sucursal de OTRO negocio → 404 (sin filtrar datos).", 
 
 "response_200": "Paginated<CashSessionResource>" }, 
 
 { "method": "POST", "path": "/cash-sessions", "roles": ["ROL-03", "ROL-02", "ROL-01"], 
 
-"request": { "cash_register_id": "int|required|same_tenant|is_active", "opening_amount": "decimal(14,2)|>=0|required" }, 
+"request": { "cash_register_id": "int|required|same_tenant|is_active", "opening_amount": "decimal(14,2)|>=0|required (fondo NIO)", "opening_amount_usd": "decimal(14,2)|>=0|opt|default:0 (fondo USD, doble moneda)" }, 
 
 "note": "RF-06-03. Única ruta de apertura (no existe /cash-sessions/open). opened_by = auth. Nace 'abierta'. Autoriza CashSessionPolicy::create (ROL-03+). Aislamiento de sucursal (ver conventions.branch_scope): ROL-03 solo abre cajas ACTIVAS de su propio branch_id. Candados de motor: una sesión abierta por caja Y una por usuario.", 
 
@@ -1015,23 +1065,37 @@
 
 "resource_fields": { 
 
-"opening_amount": "string", "counted_amount": "string|null", 
+"opening_amount": "string (NIO)", "counted_amount": "string|null (NIO)", 
 
-"expected_amount": "string|null (oculto mientras 'abierta')", 
+"expected_amount": "string|null (NIO; oculto mientras 'abierta')", 
 
-"difference": "string|null (oculto mientras 'abierta'; columna generada tras cierre)", 
+"difference": "string|null (NIO; oculto mientras 'abierta'; columna generada tras cierre)", 
 
-"counted_denominations": "array|null", "status": "string" 
+"counted_denominations": "array|null (NIO)", "status": "string", 
+
+"opening_amount_usd": "string (USD; doble moneda)", "counted_amount_usd": "string|null (USD)", "counted_denominations_usd": "array|null (USD)", 
+
+"expected_amount_usd": "string|null (USD; oculto mientras 'abierta')", "difference_usd": "string|null (USD; oculto mientras 'abierta'; columna generada)", 
+
+"session_exchange_rate": "string|null (tasa de referencia snapshot al cierre, para el consolidado)", 
+
+"consolidated_nio": "{ reference_rate, expected_amount, counted_amount, difference }|null — INFORMATIVO (solo tras cierre y con tasa de referencia); expresa el leg USD en NIO. NUNCA sustituye la reconciliación por moneda ni oculta un descuadre individual." 
 
 } }, 
 
 { "method": "POST", "path": "/cash-sessions/{id}/close", "roles": ["ROL-03", "ROL-02", "ROL-01"], 
 
-"request": { "counted_amount": "decimal(14,2)|>=0|required", 
+"request": { "counted_amount": "decimal(14,2)|>=0|required (NIO)", 
 
 "counted_denominations": [ { "value": "decimal(14,2)|required", "qty": "int|>=0|required" } ], 
 
+"counted_amount_usd": "decimal(14,2)|>=0|opt|default:0 (USD; doble moneda)", 
+
+"counted_denominations_usd": "[ { value, qty } ]|opt — si se envía, Σ(value×qty) debe igualar counted_amount_usd", 
+
 "closing_notes": "string|max:500 — opcional en cierre ordinario; OBLIGATORIO (min:3, contenido significativo) en cierre administrativo por contingencia" }, 
+
+"dual_currency_close": "RF-06 doble moneda. El esperado/contado/diferencia se reconcilian POR MONEDA (NIO y USD) en importe nativo. La sesión queda 'descuadrada' si difference (NIO) O difference_usd es ≠ 0, aunque la otra moneda cuadre y aunque el consolidado NIO coincida. La anomalía 'descuadre_caja' se despacha por cualquier descuadre de moneda; su contexto lleva difference_nio, difference_usd y las monedas afectadas, y la magnitud para el umbral es el leg de mayor valor absoluto en NIO. session_exchange_rate se congela al cierre si hay dimensión USD (tasa de referencia del consolidado).", 
 
 "close_modes": { "ordinario": "auth.id === cash_session.opened_by: lo cierra quien lo abrió; closing_notes OPCIONAL.", "contingencia_administrativa": "auth.id !== opened_by: solo un ROL-01/ROL-02 del mismo negocio (CashSessionPolicy::close); un ROL-03 ajeno NUNCA (403). closing_notes OBLIGATORIO (string, min:3, max:500). No omite ninguna regla: exige counted_denominations, suma exacta, lockForUpdate, arqueo ciego, cálculo del esperado y persistencia de anomalía si hay descuadre. Validado en CloseCashSessionRequest y con backstop en CashService (422 sobre closing_notes también en vías no-HTTP)." }, 
 
@@ -1051,7 +1115,29 @@
 
 ] }, 
 
-{ "method": "GET", "path": "/cash-sessions/{id}/movements", "roles": ["ROL-02", "ROL-03"], "query": { "payment_method": "enum[efectivo,transferencia,tarjeta]|opt", "page": "int|opt", "per_page": "int|opt|default:25" }, "note": "Propiedad (CashSessionPolicy::view): ROL-03 solo los movimientos de su propia sesión (sesión ajena → 403); ROL-01/ROL-02 cualquiera del negocio.", "response_200": "Paginated<CashMovementResource>", "errors": [ { "http": 403, "key": "message", "when": "ROL-03 consulta los movimientos de una sesión que no abrió." } ] } 
+{ "method": "GET", "path": "/cash-sessions/{id}/movements", "roles": ["ROL-02", "ROL-03"], "query": { "payment_method": "enum[efectivo,transferencia,tarjeta]|opt", "page": "int|opt", "per_page": "int|opt|default:25" }, "note": "Propiedad (CashSessionPolicy::view): ROL-03 solo los movimientos de su propia sesión (sesión ajena → 403); ROL-01/ROL-02 cualquiera del negocio.", "response_200": "Paginated<CashMovementResource>", "errors": [ { "http": 403, "key": "message", "when": "ROL-03 consulta los movimientos de una sesión que no abrió." } ] }, 
+
+{ "method": "POST", "path": "/cash-sessions/{id}/counts", "roles": ["ROL-03 (perfil cajero)", "ROL-02", "ROL-01"], 
+
+"request": { "counted_amount": "decimal(14,2)|>=0|required (NIO)", "counted_denominations": [ { "value": "decimal(14,2)|>0|required", "qty": "int|>=0|required" } ], "counted_amount_usd": "decimal(14,2)|>=0|opt|default:0 (USD; doble moneda)", "counted_denominations_usd": "[ { value, qty } ]|opt — si se envía, Σ(value×qty) debe igualar counted_amount_usd" }, 
+
+"note": "RF-06-04 · ARQUEO CIEGO INDEPENDIENTE durante la sesión ABIERTA, SIN cerrarla. Doble moneda: el conteo revela esperado/diferencia POR MONEDA (NIO y USD; columnas espejo *_usd + difference_usd generada). El esperado NO se envía ni se conoce al registrar (arqueo ciego): el servidor lo calcula en ese instante (mismo criterio que el cierre: fondo + Σ ingresos efectivo − Σ egresos efectivo) y la respuesta lo REVELA junto con la diferencia (columna generada counted−expected). Historial APPEND-ONLY: se admiten múltiples arqueos; cada uno congela evidencia inmutable (denominaciones, user_id, counted_at). NO cambia el estado de la sesión y NO genera anomalía (DECISIÓN DE DOMINIO: solo el CIERRE formal marca 'descuadrada' y despacha 'descuadre_caja'; los arqueos intermedios son evidencia, no reconciliación). Autoriza CashSessionPolicy::count: ROL-03 solo SU sesión y con perfil cajero (reutiliza la capacidad caja.movimiento.crear, sin permisos nuevos); ROL-01/ROL-02 cualquier sesión del negocio. business_id/user_id de la sesión; lockForUpdate sobre la sesión; aritmética bcmath.", 
+
+"response_201": "CashCountResource { id, cash_session_id, user_id, counted_amount, expected_amount (REVELADO), difference (REVELADO), counted_denominations, counted_amount_usd, expected_amount_usd (REVELADO), difference_usd (REVELADO), counted_denominations_usd, counted_at }", 
+
+"errors": [ 
+
+{ "http": 403, "key": "message", "when": "ROL-03 arquea una sesión que no abrió, o sin perfil cajero (CashSessionPolicy::count)." }, 
+
+{ "code": "NO_ACTIVE_CASH_SESSION", "http": 409, "key": "error", "when": "La sesión no está abierta: no se registra arqueo." }, 
+
+{ "http": 422, "when": "counted_denominations vacío o su suma value×qty no iguala counted_amount (errores en `errors.counted_denominations`)." }, 
+
+{ "http": 404, "when": "La sesión pertenece a otro negocio (BusinessScope)." } 
+
+] }, 
+
+{ "method": "GET", "path": "/cash-sessions/{id}/counts", "roles": ["ROL-02", "ROL-03 (perfil cajero)"], "note": "Historial de arqueos de la sesión (más reciente primero). Mismo alcance que ver la sesión (CashSessionPolicy::view): ROL-03 solo la propia; ROL-01/ROL-02 cualquiera del negocio. Cada arqueo es evidencia completada: REVELA expected_amount y difference.", "response_200": "Collection<CashCountResource>", "errors": [ { "http": 403, "key": "message", "when": "ROL-03 consulta los arqueos de una sesión que no abrió." } ] } 
 
 ], 
 
@@ -1059,19 +1145,21 @@
 
 { "method": "GET", "path": "/cash-movements", "roles": ["ROL-02", "ROL-01"], 
 
-"query": { "cash_session_id": "int|opt", "type": "enum[ingreso,egreso]|opt", "category": "enum[venta,egreso_autorizado,retiro,ajuste,fondo_inicial,cobro_credito]|opt", "payment_method": "enum[efectivo,transferencia,tarjeta]|opt" }, 
+"query": { "cash_session_id": "int|opt", "type": "enum[ingreso,egreso]|opt", "category": "enum[venta,egreso_autorizado,retiro,ajuste,fondo_inicial,cobro_credito,vuelto]|opt", "payment_method": "enum[efectivo,transferencia,tarjeta]|opt" }, 
 
-"response_200": "Paginated<CashMovementResource>", 
+"response_200": "Paginated<CashMovementResource { ..., currency, exchange_rate, base_amount }>", 
 
-"note": "Append-only. Cualquier UPDATE/DELETE → ImmutableRecordException (403)." }, 
+"note": "Append-only. Cualquier UPDATE/DELETE → ImmutableRecordException (403). Doble moneda: cada movimiento expone currency (NIO|USD), exchange_rate (tasa snapshot) y base_amount (equivalente NIO generado)." }, 
 
 { "method": "POST", "path": "/cash-movements", "roles": ["ROL-03"], 
 
 "request": { "cash_session_id": "int|required|same_tenant", "type": "enum[ingreso,egreso]| required", 
 
-"category": "enum[venta,egreso_autorizado,retiro,ajuste,fondo_inicial,cobro_credito]|required", 
+"category": "enum[venta,egreso_autorizado,retiro,ajuste,fondo_inicial,cobro_credito,vuelto]|required", 
 
-"payment_method": "enum[efectivo,transferencia,tarjeta]|required", "amount": "decimal(14,2)| >0|required", 
+"payment_method": "enum[efectivo,transferencia,tarjeta]|required", "amount": "decimal(14,2)| >0|required (importe NATIVO)", 
+
+"currency": "enum[NIO,USD]|opt|default:NIO (doble moneda; la tasa snapshot la congela el servidor, NO se envía)", 
 
 "authorized_by": "int|nullable|same_tenant", "description": "string(255)|nullable" }, 
 
@@ -1088,6 +1176,8 @@
 { "http": 422, "when": "type incoherente con category (forcedType), monto <= 0, o egreso_autorizado sin authorized_by (required_if), o authorized_by de otro negocio/eliminado (tenantExists). Errores de validación estándar." }, 
 
 { "http": 422, "when": "authorized_by existe y es del tenant pero está INACTIVO o NO tiene rango ROL-02 (CashAuthorizationException; solo `message`). No se persiste (rollback)." }, 
+
+{ "code": "EXCHANGE_RATE_MISSING", "http": 422, "key": "code", "when": "currency=USD sin tipo de cambio vigente para el negocio al instante de la operación (ExchangeRateMissingException). No se persiste (rollback)." }, 
 
 { "code": "IMMUTABLE_RECORD", "http": 403, "key": "error", "when": "Intento de editar/borrar un movimiento (append-only, trait Immutable). No hay endpoints para ello." } 
 
@@ -1214,17 +1304,23 @@
 
 "discount_amount": "decimal(14,2)|>=0|opt|default:0", 
 
-"payments": [ { "method": "enum[efectivo,transferencia,tarjeta]|required", "amount": "decimal(14,2)|>0", "reference": "string(100)|nullable" } ] 
+"payments": [ { "method": "enum[efectivo,transferencia,tarjeta]|required", "amount": "decimal(14,2)|>0 (importe NATIVO del leg)", "currency": "enum[NIO,USD]|opt|default:NIO (doble moneda; la tasa snapshot la congela el servidor)", "reference": "string(100)|nullable" } ], 
+
+"change": "{ amount: decimal(14,2)|>0, currency: enum[NIO,USD]|opt|default:NIO }|opt — VUELTO (cambio). Solo contado con ≥1 pago en efectivo. El servidor congela su tasa snapshot y lo asienta como egreso de caja 'vuelto'." 
 
 }, 
 
-"note": "Emite la factura: folio secuencial, reserva de stock, invoice_payments y cash_movement 'venta' (efectivo). El IVA es la SUMA de los impuestos congelados por línea (NO se recalcula con business.tax_rate); subtotal, IVA y total los deriva el servidor. Contado exige Σ pagos = total derivado (cualquier total enviado se ignora). Crédito exige cliente NO genérico (la CxC se genera atómicamente, MOD-08). Todo dentro de una única transacción.", 
+"note": "Emite la factura: folio secuencial, reserva de stock, invoice_payments y cash_movement 'venta' (efectivo). El IVA es la SUMA de los impuestos congelados por línea (NO se recalcula con business.tax_rate); subtotal, IVA y total los deriva el servidor. DOBLE MONEDA (RF-06): la factura se denomina en NIO; cada leg conserva moneda/importe nativo/tasa snapshot (congelada al emitir, nunca enviada)/equivalente NIO (base_amount). El total se salda por la SUMA de equivalentes NIO. VUELTO: lo ENTREGADO en efectivo puede exceder el total; el pago NETO = Σ(equivalente NIO entregado) − vuelto (equivalente NIO) debe igualar el total. El vuelto no puede exceder el efectivo recibido (→422) y se asienta como egreso de caja 'vuelto' (misma tasa snapshot, efecto real por moneda). paid_amount = neto aplicado (= total en contado). El efectivo de cualquier moneda genera su cash_movement 'venta' con la MISMA tasa snapshot que su invoice_payment. Crédito exige cliente NO genérico (la CxC se genera atómicamente, MOD-08). Todo dentro de una única transacción.", 
 
-"response_201": "InvoiceResource { folio, subtotal, tax_amount, discount_amount, total, paid_amount, payment_status, sales[], payments[] }", 
+"response_201": "InvoiceResource { folio, subtotal, tax_amount, discount_amount, total, paid_amount, payment_status, sales[], payments[] { ..., currency, exchange_rate, base_amount } }", 
 
 "errors": [ 
 
-{ "code": "INCOMPLETE_PAYMENT", "http": 422, "key": "code", "when": "Contado cuyo pago no cubre el 100% del total derivado. NADA se persiste." }, 
+{ "code": "INCOMPLETE_PAYMENT", "http": 422, "key": "code", "when": "Contado cuyo pago NETO (Σ equivalente NIO entregado − vuelto) no cubre el 100% del total derivado. NADA se persiste." }, 
+
+{ "code": "EXCHANGE_RATE_MISSING", "http": 422, "key": "code", "when": "Un leg (o el vuelto) en USD sin tipo de cambio vigente al emitir. Revierte toda la facturación." }, 
+
+{ "http": 422, "field": "change", "when": "El vuelto excede el efectivo recibido, o se envía sin contado/sin pago en efectivo. Revierte toda la facturación." }, 
 
 { "code": "INSUFFICIENT_STOCK", "http": 409, "when": "No hay stock para reservar (simple o insumo de compuesto). Revierte toda la facturación." }, 
 
@@ -1311,7 +1407,7 @@
 
 "one_ar_per_invoice": "unique(invoice_id) 'uniq_ar_invoice': una factura a crédito → exactamente una CxC. Se genera atómicamente al facturar (ReceivableService::generarDesdeFactura dentro de InvoiceService::facturar).", 
 
-"atomic_payment": "El abono es transaccional de 5 pasos IN-TX: (1) valida/lockea → (2a) asiento fiscal invoice_payment + (2b) abono trazable receivable_payment enlazado 1:1 → (3) paid_amount++ → (4) balance recomputado por el motor → (5) sync CxC+factura + cash_movement 'cobro_credito' (solo efectivo). Cualquier fallo revierte todo.", 
+"atomic_payment": "El abono es transaccional de 5 pasos IN-TX: (1) valida/lockea + congela tasa snapshot de la moneda (NIO→1; USD→vigente o EXCHANGE_RATE_MISSING 422) → (2a) asiento fiscal invoice_payment + (2b) abono trazable receivable_payment enlazado 1:1, ambos con moneda/importe nativo/tasa → (3) paid_amount += equivalente NIO (base_amount) → (4) balance recomputado por el motor → (5) sync CxC+factura + cash_movement 'cobro_credito' en la moneda del abono (solo efectivo). Cualquier fallo revierte todo.", 
 
 "lock_order": "Orden de bloqueo CANÓNICO ÚNICO para evitar ABBA: Invoice → AccountReceivable (idéntico en abonar(), revertirPorAnulacion() vía anular(), y reducirPorNotaCredito() de MOD-10). Al facturar a crédito el cliente se bloquea (lockForUpdate) para SERIALIZAR el cupo: dos facturas concurrentes del mismo cliente no pueden ambas leer la misma exposición y ser aprobadas; la 2ª espera el commit de la 1ª y recalcula sobre la CxC ya creada.", 
 
@@ -1345,17 +1441,21 @@
 
 { "method": "POST", "path": "/accounts-receivable/{id}/payments", "roles": ["ROL-03", "ROL-02"], 
 
-"request": { "amount": "decimal(14,2)|>0|required", "payment_method": "enum[efectivo,transferencia,tarjeta]|required", 
+"request": { "amount": "decimal(14,2)|>0|required (importe NATIVO del abono)", "payment_method": "enum[efectivo,transferencia,tarjeta]|required", 
+
+"currency": "enum[NIO,USD]|opt|default:NIO (doble moneda; la tasa snapshot la congela el servidor, NO se envía)", 
 
 "cash_session_id": "int|nullable|same_tenant (obligatorio si efectivo)", "reference": "string(100)| nullable" }, 
 
-"note": "Abono atómico de 5 pasos (RF-08-03). amount no puede exceder balance. Genera SIEMPRE un invoice_payment (fiscal) + un receivable_payment enlazado; solo efectivo añade cash_movement 'cobro_credito'. cash_session_id se valida con excludeTrashed:false (cash_sessions no es soft-deletable). Sincroniza factura (paid_amount + payment_status).", 
+"note": "Abono atómico de 5 pasos (RF-08-03). DOBLE MONEDA (RF-06): la CxC se denomina en NIO; el abono conserva moneda/importe nativo/tasa snapshot (congelada al cobrar)/equivalente NIO (base_amount). AMORTIZA el saldo por su EQUIVALENTE NIO (no puede exceder balance en NIO). Genera SIEMPRE un invoice_payment (fiscal) + un receivable_payment enlazado, ambos con la MISMA moneda y tasa; solo efectivo añade cash_movement 'cobro_credito' en esa moneda (mismo snapshot). cash_session_id se valida con excludeTrashed:false (cash_sessions no es soft-deletable). Sincroniza factura (paid_amount += equivalente NIO + payment_status). Invariante de cartera en NIO: Σ receivable_payments.base_amount == accounts_receivable.paid_amount == Σ invoice_payments.base_amount. Compatibilidad: abono sin `currency` ⇒ NIO tasa 1 (base_amount = amount).", 
 
-"response_201": "ReceivablePaymentResource { id, accounts_receivable_id, amount, payment_method, reference, cash_session_id, invoice_payment_id, paid_at, user, account_receivable: { balance, status } }  // account_receivable se incluye whenLoaded (el service lo carga); NO se emite invoice_payment_status.", 
+"response_201": "ReceivablePaymentResource { id, accounts_receivable_id, amount, currency, exchange_rate, base_amount, payment_method, reference, cash_session_id, invoice_payment_id, paid_at, user, account_receivable: { balance, status } }  // account_receivable se incluye whenLoaded (el service lo carga); NO se emite invoice_payment_status.", 
 
 "errors": [ 
 
-{ "code": "OVERPAYMENT", "http": 422, "when": "amount > balance, o cuenta ya saldada (validación de servicio + chk_ar_balance_non_negative de motor). Incluye balance y amount." }, 
+{ "code": "OVERPAYMENT", "http": 422, "when": "equivalente NIO (amount×tasa) > balance, o cuenta ya saldada (validación de servicio + chk_ar_balance_non_negative de motor). Incluye balance y el equivalente NIO." }, 
+
+{ "code": "EXCHANGE_RATE_MISSING", "http": 422, "key": "code", "when": "currency=USD sin tipo de cambio vigente al instante del cobro (ExchangeRateMissingException). Reversión atómica total." }, 
 
 { "code": "INVOICE_VOIDED", "http": 409, "when": "Abono sobre una factura anulada (se verifica bajo lock antes de cualquier escritura)." }, 
 

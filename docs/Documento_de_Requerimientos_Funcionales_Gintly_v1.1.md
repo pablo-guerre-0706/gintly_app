@@ -291,6 +291,12 @@ Separa el inventario de la bodega, los concilia y controla la concurrencia sobre
 | **Precondición** | *Se registra una entrada de mercancía a una bodega.* |
 | **Criterios de aceptación** | Toda entrada de mercancía —recepción de compra, reingreso por devolución o reversión de retiro— recalcula el costo promedio de la existencia como el cociente entre el valor total acumulado y la cantidad total resultante. **Existe un único punto en todo el sistema autorizado a realizar este cálculo**, y ningún módulo lo reimplementa ni lo altera. El costo se conserva con mayor precisión decimal que los importes de venta, para no arrastrar error de redondeo en inventarios de alta rotación. La existencia y el costo promedio solo pueden ser escritos por el componente responsable de inventario; ninguna interfaz permite editarlos directamente. |
 
+| **RF-03-07** | **Asignación Bodega–Bodeguero (muchos-a-muchos, historial temporal)** *(añadido durante la implementación)* | **ROL-01 / ROL-02 / ROL-03** | **Must** |
+| --- | --- | --- | --- |
+| **Descripción** | Habilitar administrativamente qué bodeguero opera qué bodega, con historial temporal append-only. Un bodeguero puede tener varias bodegas activas y una bodega varios bodegueros activos. |
+| **Precondición** | *Existe una bodega activa y un usuario ROL-03 con perfil bodeguero en la misma sucursal.* |
+| **Criterios de aceptación** | La asignación la administran ROL-01/ROL-02; usuario y bodega deben pertenecer al mismo negocio y a la misma sucursal; el usuario debe ser ROL-03 con perfil `bodeguero`. El par (bodega, bodeguero) activo es único (candado de motor). Reasignar finaliza la vigencia anterior y crea otra: el historial nunca se modifica (salvo el cierre único de vigencia) ni se borra. Un ROL-03 bodeguero **solo opera** (conteo físico, recepción de compra, traspaso —origen al crear, destino al completar— y demás mutaciones de inventario de su competencia) bodegas que tenga **activamente asignadas**; la restricción vive en los Services de inventario, no solo en el FormRequest. Los ajustes de inventario son potestad administrativa (ROL-02+): el perfil bodeguero no los habilita. ROL-01/ROL-02 no se acotan por asignación. Las asignaciones finalizadas permanecen como historial. |
+
 ---
 
 ### MOD-04 — Compras, Proveedores y Recepción
@@ -330,6 +336,11 @@ Gestiona el ciclo de abastecimiento con validación de proveedores aprobados, cr
 
 > **Nota de diseño (v1.1).** El sistema **no impide a nivel de motor** que la cantidad recibida supere a la ordenada. Es deliberado: prohibirlo estructuralmente eliminaría la capacidad de **registrar** el exceso para que ROL-01 lo resuelva, que es precisamente el control que el negocio requiere. El exceso se detecta y bloquea como discrepancia, no se hace invisible.
 
+| **RF-04-05** | **Proveedores candidatos y ubicaciones para el mapa** *(añadido durante la implementación)* | **ROL-01 / ROL-02** | **Should** |
+| --- | --- | --- | --- |
+| **Descripción** | Registrar proveedores candidatos (incluidos los descubiertos externamente) sin aprobarlos, geolocalizar sus direcciones mediante un adaptador intercambiable y exponer en un mapa solo los proveedores operativos y confirmados. |
+| **Precondición** | *Sesión autenticada; la aprobación y la suspensión siguen siendo exclusivas de ROL-01.* |
+| **Criterios de aceptación** | (1) ROL-01/ROL-02 crean proveedores que nacen `pendiente`; un resultado externo del mapa **jamás** se convierte en proveedor aprobado automáticamente. (2) Un proveedor tiene una o varias ubicaciones (`supplier_locations`) con dirección, coordenadas, procedencia de geocodificación, identificador externo, calidad, fechas de geocodificación/confirmación, confirmador y marca de principal; las coordenadas se validan por rango y hay una sola ubicación principal por proveedor. (3) La geocodificación usa un adaptador de Backend **intercambiable, configurable y con caché**; tras la aprobación se solicita de forma **independiente** y, si no hay proveedor configurado o falla, la ubicación queda pendiente **sin revertir** la aprobación. No se depende de Nominatim público para producción ni se exponen claves. (4) El marcador puede confirmarse o corregirse manualmente. (5) Al cambiar la dirección se **invalida** la confirmación (y las coordenadas) previas. (6) El mapa expone **solo** proveedores aprobados, activos y con ubicación **confirmada**, aislados por `business_id` de sesión; un proveedor suspendido o eliminado desaparece del mapa. |
 
 ---
 
@@ -399,6 +410,8 @@ Controla el ciclo de vida del efectivo por estación de trabajo: apertura con fo
 
 > **Atributo añadido durante la implementación.** La v1.0 exigía el desglose de denominaciones como condición para cerrar, pero el modelo no preveía dónde almacenarlo: solo se guardaba el total contado. Un arqueo con descuadre disputado y sin el detalle del conteo es indefendible en auditoría. Se incorpora el atributo `counted_denominations` en la sesión de caja como evidencia estructurada del conteo.
 
+> **Arqueo ciego INDEPENDIENTE (añadido durante la implementación).** Además del arqueo del cierre, el cajero puede realizar arqueos durante la sesión **abierta sin cerrarla** (`POST /api/v1/cash-sessions/{id}/counts`), con **historial append-only** de múltiples conteos. Cada arqueo congela evidencia inmutable (denominaciones, usuario, fecha) en la tabla `cash_counts`; el saldo esperado y la diferencia permanecen **ocultos antes** de registrar (arqueo ciego) y se **revelan después** en la respuesta y en el historial (`GET …/counts`). **Decisión de dominio:** un arqueo independiente es evidencia y **no** cambia el estado de la sesión ni genera anomalía; únicamente el **cierre formal** (RF-06-05) marca `descuadrada` y dispara la alerta `descuadre_caja`, de modo que la anomalía queda ligada a la reconciliación autoritativa y los conteos intermedios no producen ruido. Alcance de autorización idéntico a operar la caja: ROL-03 solo sobre su propia sesión y con perfil cajero; ROL-01/ROL-02 sobre cualquier sesión del negocio.
+
 | **RF-06-05** | **Cierre y cálculo de discrepancia** *(Revisado en v1.1)* | **ROL-SYS** | **Must** |
 | --- | --- | --- | --- |
 | **Descripción** | Al guardar el arqueo ciego, calcular automáticamente la diferencia entre el efectivo declarado y el saldo esperado. Cualquier diferencia bloquea el cierre limpio y dispara el módulo de alertas. |
@@ -406,6 +419,24 @@ Controla el ciclo de vida del efectivo por estación de trabajo: apertura con fo
 | **Criterios de aceptación** | El saldo esperado se calcula como: **fondo inicial + ingresos en efectivo − egresos en efectivo**, considerando **exclusivamente los movimientos cuyo medio de pago es efectivo**. Las transferencias y los pagos con tarjeta se registran pero **no afectan el efectivo esperado**, porque no ingresan a la gaveta física. **La diferencia es una cifra derivada por el motor de datos y no es editable por el cajero ni por ningún otro actor.** Diferencia igual a cero ⇒ sesión cerrada. Diferencia distinta de cero ⇒ **sesión marcada como descuadrada**, cierre limpio bloqueado y anomalía generada hacia MOD-11 para validación administrativa. |
 
 **ERR-06B:** Cierre con discrepancia. Se dispara cuando el arqueo arroja una diferencia distinta de cero. El sistema marca la sesión como descuadrada, bloquea el cierre limpio y dispara la anomalía correspondiente. **Comportamiento implementado:** la sesión descuadrada, su conteo, su desglose y su anomalía **sí quedan persistidos** —son la evidencia que el administrador necesita para validar—; el código de error señaliza al cajero que el cierre no fue limpio, sin revertir el registro. La respuesta incluye el importe de la diferencia. **HTTP 422**. Excepción: `UnreconciledCashClosingException`.
+
+| **RF-06-06** | **Doble moneda NIO/USD (efectivo multimoneda)** *(añadido durante la implementación)* | **ROL-03 / ROL-01 / ROL-02** | **Must** |
+| --- | --- | --- | --- |
+| **Descripción** | Soportar efectivo en córdobas (NIO, moneda base) y dólares (USD) con contabilidad real por moneda. Toda operación en efectivo conserva su moneda, importe original, tasa de cambio con **snapshot por operación** y equivalente en NIO. |
+| **Precondición** | Para operar una moneda extranjera debe existir un tipo de cambio vigente administrado (ROL-01/ROL-02); de lo contrario la operación se rechaza (**EXCHANGE_RATE_MISSING**, HTTP 422). |
+| **Criterios de aceptación** | (1) La tasa la congela el servidor al instante de la operación; nunca se envía desde el cliente. NIO usa tasa 1. (2) Los saldos y el arqueo se reconcilian **por separado por moneda** (esperado/contado/diferencia para NIO y para USD en importe nativo). (3) Una diferencia en **NIO o en USD** marca la sesión **descuadrada** y genera anomalía, **aunque el consolidado NIO coincida**; el consolidado NIO es **informativo** y nunca oculta un descuadre individual. (4) Las ventas/cobros en efectivo admiten **pagos mixtos** NIO/USD contra una factura en NIO, saldando el total por la suma de equivalentes NIO. (5) El **vuelto** (cambio) registra moneda entregada y moneda del vuelto con efecto real en la gaveta por moneda (egreso `vuelto`), sin exceder el efectivo recibido. (6) El administrador gestiona el tipo de cambio con **vigencia**, responsable e **inmutabilidad histórica** (una corrección es una vigencia nueva). (7) Migraciones **aditivas**: la evidencia histórica se preserva como NIO tasa 1, sin reinterpretación. |
+
+**ERR-06C:** Operación en moneda extranjera sin tasa vigente. Un movimiento, pago o vuelto en USD sin un tipo de cambio administrado vigente al instante se rechaza de forma controlada, sin inventar ni asumir tasa. **HTTP 422**, `code: EXCHANGE_RATE_MISSING`. Excepción: `ExchangeRateMissingException`.
+
+| **RF-06-07** | **Asignación Caja–Cajero (historial temporal)** *(añadido durante la implementación)* | **ROL-01 / ROL-02 / ROL-03** | **Must** |
+| --- | --- | --- | --- |
+| **Descripción** | Habilitar administrativamente qué cajero opera qué caja, con historial temporal append-only, como precondición para abrir la caja. |
+| **Precondición** | *Existe una caja activa y un usuario ROL-03 con perfil cajero en la misma sucursal.* |
+| **Criterios de aceptación** | La asignación la administran ROL-01/ROL-02; caja y cajero deben pertenecer al mismo negocio y a la misma sucursal; el usuario debe ser ROL-03 con perfil `cajero`. Una caja tiene a lo sumo **un cajero activo** y un cajero **una caja activa** (candados de motor). Un ROL-03 **solo puede listar y abrir la caja activa que tenga asignada**; sin asignación vigente, la apertura se rechaza (403) en el servicio, no solo en HTTP. No se puede asignar, reasignar, finalizar la asignación, ni desactivar o eliminar la caja **mientras exista una sesión abierta vinculada** (409). Reasignar finaliza la vigencia anterior y crea otra; el historial nunca se modifica (salvo el cierre único de vigencia) ni se borra, y las sesiones históricas conservan su cajero y caja originales. ROL-01/ROL-02 crean, consultan, cambian y finalizan asignaciones. |
+
+**ERR-06D:** Conflicto de asignación de caja. Asignar una caja ocupada (`CASH_REGISTER_ALREADY_ASSIGNED`), un cajero ya asignado (`CASHIER_ALREADY_ASSIGNED`) o operar sobre una sesión abierta vinculada (`CASH_ASSIGNMENT_OPEN_SESSION`) devuelve **HTTP 409**. Desactivar/eliminar una caja con sesión abierta → **409** `CASH_REGISTER_OPEN_SESSION`. Excepción: `CashAssignmentConflictException`.
+
+**RF-06-08 (ampliación del historial de sesiones):** el historial de sesiones de caja admite el filtro `branch_id`. ROL-01/ROL-02 filtran por cualquier sucursal de su negocio; ROL-03 conserva su alcance (solo sus propias sesiones). Una sucursal de otro negocio responde **404**, sin filtrar datos.
 
 ---
 
@@ -752,10 +783,10 @@ Esta matriz es el puente entre la especificación funcional y la implementación
 | --- | --- | --- | --- |
 | **MOD-01** | RF-01-01 … RF-01-06 | Aislamiento por negocio (comportamiento transversal); aprovisionamiento automático del negocio | — |
 | **MOD-02** | RF-02-01 … RF-02-06 | Guardas de modelo: anti-ciclo de categorías, anti-ciclo de recetas, inmutabilidad de SKU, forzado de servicio sin inventario | — |
-| **MOD-03** | RF-03-01 … RF-03-06 | **Servicio de Inventario**: único autorizado a escribir existencias; reservar, liberar, retirar, ingresar, traspasar, ajustar por conteo | — |
-| **MOD-04** | RF-04-01 … RF-04-04 | **Servicio de Compras**: 3-Way Match, congelamiento de CxP, resolución de discrepancia; consume el Servicio de Inventario | — |
+| **MOD-03** | RF-03-01 … RF-03-07 | **Servicio de Inventario**: único autorizado a escribir existencias; reservar, liberar, retirar, ingresar, traspasar, ajustar por conteo; **asignación Bodega–Bodeguero (M:N, operar solo bodega asignada)** | — |
+| **MOD-04** | RF-04-01 … RF-04-05 | **Servicio de Compras**: 3-Way Match, congelamiento de CxP, resolución de discrepancia; consume el Servicio de Inventario; **proveedores candidatos + ubicaciones del mapa + geocodificación desacoplada (adaptador intercambiable con caché)** | — |
 | **MOD-05** | RF-05-01 … RF-05-03 | Guardas de modelo: protección del cliente genérico, bloqueo por cartera viva | — |
-| **MOD-06** | RF-06-01 … RF-06-05 | **Servicio de Caja**: apertura con doble candado, arqueo ciego, esperado solo efectivo, cierre con descuadre | — |
+| **MOD-06** | RF-06-01 … RF-06-08 | **Servicio de Caja**: apertura con doble candado, arqueo ciego, esperado solo efectivo, cierre con descuadre, **doble moneda NIO/USD (snapshot por operación, reconciliación por moneda, tipo de cambio versionado)**, **asignación Caja–Cajero (abrir solo caja asignada) e historial de sesiones filtrable por sucursal** | — |
 | **MOD-07** | RF-07-01 … RF-07-05 | **Servicio de Ventas** (composición y congelamiento) y **Servicio de Facturación** (folio, impuesto, reserva, cobro dual, anulación) | — |
 | **MOD-08** | RF-08-01 … RF-08-07 | **Servicio de Cuentas por Cobrar**: límite de crédito, abono atómico, sincronización, reversión, reducción por nota de crédito | Marcado de cuentas vencidas (diario) |
 | **MOD-09** | RF-09-01 … RF-09-04 | **Servicio de Entregas**: descuento físico real, control de saldo pendiente, reversión con reingreso y re-reserva | — |

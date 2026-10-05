@@ -16,6 +16,7 @@
     data-user-profiles-endpoint-template="/users/__USER__/profiles"
     data-branches-endpoint="/branches"
     data-profiles-endpoint="/operative-profiles"
+    data-branch-create-url="{{ route('panel.branches.create') }}"
     aria-labelledby="user-access-title"
 >
     <header class="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -71,6 +72,7 @@
                         <option value="">Selecciona una sucursal</option>
                     </select>
                     <p id="access-branch-error" class="mt-2 text-sm text-red-700" data-error-for="branch_id" role="alert" hidden></p>
+                    <p class="mt-2 text-sm text-amber-900" data-branch-empty role="status" hidden>No existen sucursales activas. <a href="{{ route('panel.branches.create') }}" class="font-bold underline underline-offset-2" data-branch-create-link hidden>Crear sucursal</a></p>
                 </div>
 
                 <fieldset class="rounded-2xl border border-slate-200 p-5" data-role-profile-fields hidden>

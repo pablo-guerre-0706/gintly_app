@@ -7,75 +7,31 @@
 @section('page-script', 'operations/cash')
 
 @section('content')
-<section class="space-y-6" data-operator-cash aria-labelledby="operator-cash-title" aria-busy="true">
-    <header>
-        <p class="text-sm font-semibold text-gintly-brand">Operación personal</p>
-        <h1 id="operator-cash-title" class="mt-2 text-2xl font-bold tracking-tight text-gintly-text-primary sm:text-3xl">Mi caja</h1>
-        <p class="mt-3 max-w-3xl text-sm leading-6 text-gintly-text-secondary">Abre y opera únicamente tu propia sesión en la sucursal asignada.</p>
+<section data-cash-summary class="space-y-6" aria-labelledby="cash-summary-title" aria-busy="true">
+    <header class="rounded-3xl bg-gintly-sidebar p-6 text-white sm:p-8">
+        <p class="text-sm font-semibold text-gintly-active">Operación personal</p>
+        <h1 id="cash-summary-title" class="mt-2 text-3xl font-bold">Mi caja</h1>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-200">Un lugar para consultar tu sesión y continuar cada operación en su propia pantalla.</p>
     </header>
-
-    <div class="rounded-2xl border border-slate-200 bg-white p-6" data-cash-page-state role="status">Consultando tu sesión activa…</div>
-
-    <form class="max-w-2xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" data-cash-open-form novalidate hidden>
-        <div>
-            <h2 class="text-lg font-semibold text-gintly-text-primary">Abrir sesión de caja</h2>
-            <p class="mt-1 text-sm text-gintly-text-secondary">Selecciona una caja activa de tu sucursal e indica el fondo inicial.</p>
-        </div>
-        <div>
-            <label class="text-sm font-semibold" for="cash-register-id">Caja</label>
-            <select id="cash-register-id" name="cash_register_id" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" required></select>
-            <p class="mt-1 text-sm text-red-700" data-cash-error="cash_register_id"></p>
-        </div>
-        <div>
-            <label class="text-sm font-semibold" for="cash-opening-amount">Fondo inicial</label>
-            <input id="cash-opening-amount" name="opening_amount" type="text" inputmode="decimal" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="0.00" required>
-            <p class="mt-1 text-sm text-red-700" data-cash-error="opening_amount"></p>
-        </div>
-        <button type="submit" class="min-h-11 rounded-xl bg-gintly-brand px-5 font-semibold text-white disabled:opacity-60" data-cash-open-submit>Abrir caja</button>
-    </form>
-
-    <div class="space-y-6" data-cash-active hidden>
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Sesión activa">
-            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs text-gintly-text-secondary">Sesión</p><p class="mt-2 font-semibold" data-cash-session-id></p></article>
-            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs text-gintly-text-secondary">Caja</p><p class="mt-2 font-semibold" data-cash-register-name></p></article>
-            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs text-gintly-text-secondary">Fondo inicial</p><p class="mt-2 font-semibold" data-cash-opening></p></article>
-            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs text-gintly-text-secondary">Apertura</p><p class="mt-2 font-semibold" data-cash-opened-at></p></article>
+    <p data-cash-notice tabindex="-1" role="alert" class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm" hidden></p>
+    <div data-cash-loading role="status" class="rounded-2xl border border-slate-200 bg-white p-6">Consultando tu sesión activa…</div>
+    <div data-cash-ready hidden class="space-y-6">
+        <p data-cash-assignment-empty hidden role="status" class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">No tienes una caja asignada. El propietario o administrador debe asignarte una caja de tu sucursal antes de abrirla.</p>
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de sesión">
+            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm text-gintly-text-secondary">Estado</p><p data-cash-status class="mt-2 text-lg font-bold"></p></article>
+            <article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm text-gintly-text-secondary">Caja y sucursal</p><p data-cash-register class="mt-2 break-words text-lg font-bold"></p></article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm text-gintly-text-secondary">Fondo NIO / USD</p><p data-cash-opening class="mt-2 text-lg font-bold"></p></article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm text-gintly-text-secondary">Apertura</p><p data-cash-opened class="mt-2 text-lg font-bold"></p></article>
         </section>
-
-        <div class="grid gap-6 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
-            <form class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6" data-cash-movement-form novalidate hidden>
-                <div><h2 class="font-semibold">Registrar movimiento manual</h2><p class="mt-1 text-sm text-gintly-text-secondary">Los cobros y ventas se registran desde sus flujos correspondientes.</p></div>
-                <div>
-                    <label class="text-sm font-semibold" for="cash-movement-category">Categoría</label>
-                    <select id="cash-movement-category" name="category" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm">
-                        <option value="retiro">Retiro</option>
-                        <option value="ajuste">Ajuste</option>
-                    </select>
-                </div>
-                <div data-cash-movement-type-row hidden>
-                    <label class="text-sm font-semibold" for="cash-movement-type">Dirección del ajuste</label>
-                    <select id="cash-movement-type" name="type" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm"><option value="ingreso">Ingreso</option><option value="egreso">Egreso</option></select>
-                </div>
-                <div>
-                    <label class="text-sm font-semibold" for="cash-movement-amount">Monto</label>
-                    <input id="cash-movement-amount" name="amount" type="text" inputmode="decimal" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="0.00" required>
-                    <p class="mt-1 text-sm text-red-700" data-cash-error="amount"></p>
-                </div>
-                <div><label class="text-sm font-semibold" for="cash-movement-description">Descripción</label><input id="cash-movement-description" name="description" maxlength="255" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm"></div>
-                <button type="submit" class="min-h-11 rounded-xl bg-gintly-brand px-5 font-semibold text-white disabled:opacity-60" data-cash-movement-submit>Registrar movimiento</button>
-            </form>
-
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-labelledby="cash-movements-title">
-                <header class="flex items-center justify-between gap-4 border-b border-slate-200 p-5"><div><h2 id="cash-movements-title" class="font-semibold">Movimientos de mi sesión</h2><p class="mt-1 text-sm text-gintly-text-secondary" data-cash-movements-summary></p></div><button type="button" class="grid size-11 place-items-center rounded-xl border border-slate-300" data-cash-refresh aria-label="Actualizar movimientos"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button></header>
-                <div class="p-5 text-sm text-gintly-text-secondary" data-cash-movements-state>Cargando movimientos…</div>
-                <ul class="divide-y divide-slate-200" data-cash-movements hidden></ul>
-            </section>
-        </div>
-
-        <div class="flex justify-end">
-            <a class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gintly-brand px-5 font-semibold text-gintly-brand hover:bg-gintly-control" href="{{ route('finance.cash-closing') }}" data-cash-close-link hidden>Ir al arqueo y cierre</a>
-        </div>
+        <p data-cash-blind-note class="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950" hidden>Arqueo ciego activo: el esperado y la diferencia no se revelan antes de registrar un conteo o cerrar.</p>
+        <nav aria-label="Operaciones de caja" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <a data-cash-open-link href="{{ route('panel.operations.cash.open') }}" class="min-h-24 rounded-2xl border border-gintly-border bg-white p-5 font-semibold shadow-sm hover:border-gintly-brand">Abrir caja <span class="mt-2 block text-sm font-normal text-gintly-text-secondary">Disponible sin sesión activa</span></a>
+            <a data-cash-movements-link href="{{ route('panel.operations.cash.movements') }}" class="min-h-24 rounded-2xl border border-gintly-border bg-white p-5 font-semibold shadow-sm hover:border-gintly-brand">Movimientos <span class="mt-2 block text-sm font-normal text-gintly-text-secondary">Registra y consulta tu sesión</span></a>
+            <a data-cash-count-link href="{{ route('panel.operations.cash.count') }}" class="min-h-24 rounded-2xl border border-gintly-border bg-white p-5 font-semibold shadow-sm hover:border-gintly-brand">Arqueo independiente <span class="mt-2 block text-sm font-normal text-gintly-text-secondary">Cuenta sin cerrar</span></a>
+            <a data-cash-close-link href="{{ route('panel.operations.cash.close') }}" class="min-h-24 rounded-2xl border border-gintly-border bg-white p-5 font-semibold shadow-sm hover:border-gintly-brand">Cerrar caja <span class="mt-2 block text-sm font-normal text-gintly-text-secondary">Conteo ciego y definitivo</span></a>
+        </nav>
+        <a href="{{ route('panel.operations.cash.history') }}" class="inline-flex min-h-11 items-center rounded-xl border border-gintly-border bg-white px-5 text-sm font-semibold text-gintly-sidebar">Consultar mis aperturas y cierres</a>
     </div>
-    <p class="sr-only" data-cash-live aria-live="polite"></p>
+    <button data-cash-retry type="button" hidden class="min-h-11 rounded-xl border border-gintly-border bg-white px-5 font-semibold">Reintentar consulta</button>
 </section>
 @endsection

@@ -33,7 +33,9 @@ final class CloseCashSessionController extends Controller
             $cashSession,
             (string) $validated['counted_amount'],
             (array) $validated['counted_denominations'],
-            isset($validated['closing_notes']) ? (string) $validated['closing_notes'] : null
+            isset($validated['closing_notes']) ? (string) $validated['closing_notes'] : null,
+            isset($validated['counted_amount_usd']) ? (string) $validated['counted_amount_usd'] : '0.00',
+            (array) ($validated['counted_denominations_usd'] ?? []),
         );
 
         return CashSessionResource::make(

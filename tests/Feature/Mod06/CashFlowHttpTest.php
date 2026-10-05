@@ -8,6 +8,7 @@ use App\Enums\RoleName;
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\CashRegister;
+use App\Models\CashRegisterAssignment;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
@@ -88,6 +89,10 @@ final class CashFlowHttpTest extends MysqlTestCase
         $register  = $this->makeRegister($business, $branch,  'Caja '.$slug.'-1');
         $register2 = $this->makeRegister($business, $branch2, 'Caja '.$slug.'-2');
 
+        // RF-06 asignación Caja–Cajero: cada cajero queda asignado a la caja de su sucursal para poder abrirla.
+        $this->assignCajero($operator, $register);
+        $this->assignCajero($operator2, $register2);
+
         return (object) compact(
             'business', 'owner', 'admin', 'operator', 'operator2',
             'branch', 'branch2', 'register', 'register2',
@@ -138,6 +143,22 @@ final class CashFlowHttpTest extends MysqlTestCase
         ])->save();
 
         return $register;
+    }
+
+    /** RF-06 · Asignación Caja–Cajero activa (precondición para que el cajero pueda abrir la caja). */
+    private function assignCajero(User $cashier, CashRegister $register): CashRegisterAssignment
+    {
+        $assignment = new CashRegisterAssignment();
+        $assignment->forceFill([
+            'business_id'      => $register->business_id,
+            'branch_id'        => $register->branch_id,
+            'cash_register_id' => $register->id,
+            'user_id'          => $cashier->id,
+            'assigned_by'      => $cashier->id,
+            'assigned_at'      => now(),
+        ])->save();
+
+        return $assignment;
     }
 
     /** Abre una sesión por API y devuelve el id. */
@@ -287,10 +308,12 @@ final class CashFlowHttpTest extends MysqlTestCase
         $t = $this->seedTenant('a');
         $register2 = $this->makeRegister($t->business, $t->branch, 'Caja a-2');
 
-        $this->openSession($t->operator, $t->register->id);
+        // Se usa ROL-02 (exento de asignación/sucursal) para ejercer el candado de MOTOR open_user_lock:
+        // un ROL-03 solo tiene UNA caja asignada, de modo que la asignación le impediría abrir una segunda
+        // caja ANTES de llegar al candado. El candado sigue siendo la garantía profunda (defensa en capas).
+        $this->openSession($t->admin, $t->register->id);
 
-        // El MISMO cajero abre en OTRA caja → open_user_lock (motor).
-        $this->asUser($t->operator)->postJson('/api/v1/cash-sessions', [
+        $this->asUser($t->admin)->postJson('/api/v1/cash-sessions', [
             'cash_register_id' => $register2->id,
             'opening_amount'   => '0.00',
         ])->assertStatus(409)->assertJsonPath('error', 'CASH_USER_BUSY');

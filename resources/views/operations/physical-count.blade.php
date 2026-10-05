@@ -22,26 +22,26 @@
 
     <form class="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" data-physical-count-form novalidate hidden>
         <div>
-            <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-warehouse">Bodega</label>
-            <select id="physical-count-warehouse" name="warehouse_id" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" required></select>
-            <p class="mt-1 text-sm text-red-700" data-field-error="warehouse_id"></p>
+            <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-warehouse">Bodega · Obligatorio</label>
+            <select id="physical-count-warehouse" name="warehouse_id" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" aria-describedby="physical-count-warehouse-error" required></select>
+            <p id="physical-count-warehouse-error" class="mt-1 text-sm text-red-700" data-field-error="warehouse_id"></p>
         </div>
         <div>
             <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-product-search">Buscar producto</label>
             <input id="physical-count-product-search" type="search" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="Nombre o SKU" autocomplete="off" data-product-search>
-            <label class="mt-4 block text-sm font-semibold text-gintly-text-primary" for="physical-count-product">Producto</label>
-            <select id="physical-count-product" name="product_id" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" required></select>
-            <p class="mt-1 text-sm text-red-700" data-field-error="product_id"></p>
+            <label class="mt-4 block text-sm font-semibold text-gintly-text-primary" for="physical-count-product">Producto · Obligatorio</label>
+            <select id="physical-count-product" name="product_id" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" aria-describedby="physical-count-product-error" required></select>
+            <p id="physical-count-product-error" class="mt-1 text-sm text-red-700" data-field-error="product_id"></p>
         </div>
         <div>
-            <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-quantity">Cantidad contada</label>
-            <input id="physical-count-quantity" name="counted_quantity" type="text" inputmode="decimal" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="0.000" required>
-            <p class="mt-1 text-sm text-red-700" data-field-error="counted_quantity"></p>
+            <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-quantity">Cantidad contada · Obligatorio</label>
+            <input id="physical-count-quantity" name="counted_quantity" type="text" inputmode="decimal" class="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm" placeholder="0.000" aria-describedby="physical-count-quantity-error" required>
+            <p id="physical-count-quantity-error" class="mt-1 text-sm text-red-700" data-field-error="counted_quantity"></p>
         </div>
         <div>
-            <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-notes">Observaciones</label>
-            <textarea id="physical-count-notes" name="notes" rows="4" maxlength="500" class="mt-2 w-full rounded-xl border border-slate-300 p-3 text-sm"></textarea>
-            <p class="mt-1 text-sm text-red-700" data-field-error="notes"></p>
+            <label class="text-sm font-semibold text-gintly-text-primary" for="physical-count-notes">Observaciones · Opcional</label>
+            <textarea id="physical-count-notes" name="notes" rows="4" maxlength="500" class="mt-2 w-full rounded-xl border border-slate-300 p-3 text-sm" aria-describedby="physical-count-notes-error"></textarea>
+            <p id="physical-count-notes-error" class="mt-1 text-sm text-red-700" data-field-error="notes"></p>
         </div>
         <div class="rounded-xl bg-slate-50 p-4 text-sm text-gintly-text-secondary" data-physical-count-result role="status" tabindex="-1" hidden></div>
         <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-gintly-brand px-5 font-semibold text-white disabled:cursor-wait disabled:opacity-60" data-physical-count-submit>Registrar conteo</button>

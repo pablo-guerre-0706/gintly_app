@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
+use App\Services\Purchasing\SupplierGeocodingService;
 use App\Services\Purchasing\SupplierService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ final class ApproveSupplierController extends Controller
 
     public function __construct(
         private readonly SupplierService $suppliers,
+        private readonly SupplierGeocodingService $geocoding,
     ) {}
 
     public function __invoke(Request $request, Supplier $supplier): SupplierResource
@@ -26,6 +28,11 @@ final class ApproveSupplierController extends Controller
         // Puebla approved_by/approved_at (coherencia estructural H-35). Devuelve el modelo 'aprobado'.
         $supplier = $this->suppliers->aprobar($request->user(), $supplier);
 
-        return new SupplierResource($supplier);
+        // DESPUÉS de aprobar (ya commiteado): se solicita la geocodificación de forma INDEPENDIENTE. Si no
+        // hay proveedor configurado o falla, la ubicación queda pendiente y el proveedor sigue aprobado
+        // (el servicio aísla todo error). La confirmación del marcador sigue siendo un acto aparte.
+        $this->geocoding->geocodificarPendientesDe($supplier);
+
+        return new SupplierResource($supplier->load('locations'));
     }
 }

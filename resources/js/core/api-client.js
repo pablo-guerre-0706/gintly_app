@@ -127,7 +127,7 @@ function normalizeResponseError(response, payload) {
 
     return new ApiError({
         status: response.status,
-        code: data.code ?? data.error?.code ?? null,
+        code: data.code ?? (typeof data.error === 'string' ? data.error : data.error?.code) ?? null,
         message: data.message ?? defaultMessage(response.status),
         errors: data.errors ?? {},
         payload,
@@ -167,6 +167,7 @@ async function fetchJson(
         headers = {},
         timeout = 30000,
         signal = null,
+        expectedStatus = null,
     } = {},
 ) {
     const verb = method.toUpperCase();
@@ -210,6 +211,15 @@ async function fetchJson(
         });
         const payload = await responsePayload(response);
 
+        if (response.ok && expectedStatus !== null && response.status !== expectedStatus) {
+            throw new ApiError({
+                status: response.status,
+                code: 'unexpected_status',
+                message: `El servidor respondió ${response.status}; se esperaba ${expectedStatus}. Verifica el estado antes de reintentar.`,
+                payload,
+            });
+        }
+
         if (!response.ok) {
             throw normalizeResponseError(response, payload);
         }
@@ -250,6 +260,7 @@ export async function request(
         headers = {},
         timeout = 30000,
         signal = null,
+        expectedStatus = null,
         redirectOn401 = true,
         dispatchErrors = true,
     } = {},
@@ -268,6 +279,7 @@ export async function request(
             headers,
             timeout,
             signal,
+            expectedStatus,
         });
     } catch (error) {
         const normalized = error instanceof ApiError

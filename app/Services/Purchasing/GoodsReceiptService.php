@@ -34,6 +34,7 @@ final class GoodsReceiptService
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly AnomalyService $anomalies,
+        private readonly \App\Services\Inventory\WarehouseAssignmentService $assignments,
     ) {}
 
     /**
@@ -70,6 +71,9 @@ final class GoodsReceiptService
             // nada (goods_receipts/items/inventario/CxP), de modo que una llamada interna directa no
             // pueda saltarse el FormRequest. ROL-01/ROL-02 conservan el alcance de negocio.
             $this->assertOperatorBranchCoherence($actor, $order, $warehouse);
+
+            // RF-03 asignación Bodega–Bodeguero: un ROL-03 solo recibe en una bodega que tenga asignada.
+            $this->assignments->assertOperates($actor, $warehouseId);
 
             if (! $order->status->canReceive()) {
                 throw InvalidPurchaseStateException::orderNotReceivable($order->id);
