@@ -84,8 +84,11 @@ final class UpdateThresholdsRequest extends BaseTenantRequest
 
     public function resolveStockLevel(): ?StockLevel
     {
-        $productId = (int) $this->route('product');
-        $warehouseId = (int) $this->route('warehouse');
+        // {product} y {warehouse} llegan como MODELOS (binding implícito del controlador), no como escalares:
+        // un `(int) $modelo` lanzaba un fatal ("Object ... could not be converted to int"). routeId() normaliza
+        // el parámetro de ruta a su clave entera tanto si viene como modelo enlazado como si viene como escalar.
+        $productId = $this->routeId('product');
+        $warehouseId = $this->routeId('warehouse');
 
         return StockLevel::query()
             ->where('business_id', $this->businessId())

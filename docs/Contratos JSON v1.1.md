@@ -537,7 +537,7 @@
 
 - "response_200": "Paginated<StockLevelResource>", 
 
-"resource_fields": { "quantity": "string (existencia registrada)", "reserved_quantity": "string", "available": "string (quantity - reserved, accesor)", "average_cost": "string", "min_stock": "string|null", "max_stock": "string|null", "below_min": "bool (quantity < min)", "available_below_min": "bool (disponible <= min)", "last_count": "null | { id, counted_quantity, system_quantity, difference, status, status_label, counted_at } — vista consolidada: último conteo físico del par (producto, bodega). NO es la existencia actual (campos separados). La diferencia es el dato del conteo y NUNCA desaparece por el umbral de la anomalía." }, 
+"resource_fields": { "quantity": "string (existencia registrada)", "reserved_quantity": "string", "available": "string (quantity - reserved, accesor)", "average_cost": "string", "min_stock": "string|null", "max_stock": "string|null", "below_min": "bool (quantity < min)", "available_below_min": "bool (disponible <= min)", "last_count": "null | { id, counted_quantity, system_quantity, difference, status, status_label, counted_at } — vista consolidada: último conteo físico del par (producto, bodega). NO es la existencia actual (campos separados). La diferencia es el dato del conteo y NUNCA desaparece por el umbral de la anomalía.", "product": "ProductResource con `unit` embebido (eager-load product.unit): unit={ id, name, abbreviation } para mostrar la unidad de medida legible. No requiere acceso a /units." }, 
 
 "note_rol03_visibility": "Microcierre MOD-03: ROL-03 solo ve existencias de bodegas con asignación ACTIVA (WarehouseAssignment), aun cuando varias bodegas pertenezcan a su misma sucursal. Sin asignación → lista vacía. ROL-01/ROL-02: alcance de negocio." }, 
 
@@ -557,15 +557,17 @@
 
 "request": { "min_stock": "decimal|nullable", "max_stock": "decimal|nullable" }, 
 
-"note": "Solo edita umbrales min/max. quantity y reserved NUNCA son editables por API.", 
+"note": "Solo edita umbrales min/max. quantity y reserved NUNCA son editables por API. {product_id}/{warehouse_id} se resuelven por binding del modelo y su clave se obtiene del modelo enlazado (no se castea el modelo a int). Valida min <= max (chk_stock_min_le_max + after()); min > max → 422 en min_stock.", 
 
-"response_200": "StockLevelResource" } 
+"response_200": "StockLevelResource (incluye product.unit y last_count)" } 
 
 ], 
 
 "physical_counts": [ 
 
-- { "method": "GET", "path": "/physical-counts", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.conteo — acotado a su sucursal)"], 
+"_resource_note": "PhysicalCountResource embebe `product` como ProductResource con `unit` (eager-load product.unit): unit={ id, name, abbreviation } para la unidad legible, en índice, detalle, alta (201) y acciones apply/justify. No abre /units ni amplía permisos.", 
+
+- { "method": "GET", "path": "/physical-counts", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.conteo — SOLO bodegas ASIGNADAS)"], 
 
 "query": { "warehouse_id": "int|opt", "status": "enum[abierto,justificado,ajustado]|opt", "product_id": "int|opt" }, "response_200": "Paginated<PhysicalCountResource>" }, 
 

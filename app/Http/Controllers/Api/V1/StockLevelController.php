@@ -34,7 +34,7 @@ final class StockLevelController extends Controller
         // sucursal); así dos bodegas de una misma sucursal no se filtran entre sí en la lectura.
         $user = $request->user();
         $stock = StockLevel::query()
-            ->with(['product', 'warehouse'])
+            ->with(['product.unit', 'warehouse'])
             ->forOperatorWarehouses($user)
             ->when(
                 $request->validated('warehouse_id'),
@@ -72,7 +72,7 @@ final class StockLevelController extends Controller
         $stock = StockLevel::query()
             ->where('product_id', $product->getKey())
             ->where('warehouse_id', $warehouse->getKey())
-            ->with(['product', 'warehouse'])
+            ->with(['product.unit', 'warehouse'])
             ->firstOrFail();
 
         $this->authorize('view', $stock);
@@ -136,6 +136,6 @@ final class StockLevelController extends Controller
             $request->validated('max_stock'),
         );
 
-        return new StockLevelResource($stock->load(['product', 'warehouse']));
+        return new StockLevelResource($stock->load(['product.unit', 'warehouse']));
     }
 }

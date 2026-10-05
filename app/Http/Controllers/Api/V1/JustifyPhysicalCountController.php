@@ -30,6 +30,6 @@ final class JustifyPhysicalCountController extends Controller
             $request->validated('reason'),
         );
 
-        return new PhysicalCountResource($count->load(['product', 'warehouse', 'user']));
+        return new PhysicalCountResource($count->load(['product.unit', 'warehouse', 'user']));
     }
 }

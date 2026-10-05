@@ -26,6 +26,6 @@ final class ApplyPhysicalCountController extends Controller
         // única vía de la corrección. Devuelve el conteo actualizado ('ajustado').
         $count = $this->inventory->ajustarPorConteo($request->user(), $physicalCount);
 
-        return new PhysicalCountResource($count->load(['product', 'warehouse', 'user']));
+        return new PhysicalCountResource($count->load(['product.unit', 'warehouse', 'user']));
     }
 }

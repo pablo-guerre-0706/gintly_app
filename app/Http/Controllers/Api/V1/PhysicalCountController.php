@@ -31,7 +31,7 @@ final class PhysicalCountController extends Controller
         // Microcierre MOD-03: ROL-03 solo ve conteos de bodegas que tenga ASIGNADAS (no toda la sucursal).
         $counts = PhysicalCount::query()
             ->forOperatorWarehouses($request->user())
-            ->with(['product', 'warehouse', 'user'])
+            ->with(['product.unit', 'warehouse', 'user'])
             ->when(
                 $request->validated('warehouse_id'),
                 fn ($q, $warehouseId) => $q->where('warehouse_id', $warehouseId)
@@ -63,7 +63,7 @@ final class PhysicalCountController extends Controller
             $request->validated('notes'),
         );
 
-        return (new PhysicalCountResource($count->load(['product', 'warehouse', 'user'])))
+        return (new PhysicalCountResource($count->load(['product.unit', 'warehouse', 'user'])))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
@@ -72,6 +72,6 @@ final class PhysicalCountController extends Controller
     {
         $this->authorize('view', $physicalCount);
 
-        return new PhysicalCountResource($physicalCount->load(['product', 'warehouse', 'user']));
+        return new PhysicalCountResource($physicalCount->load(['product.unit', 'warehouse', 'user']));
     }
 }
