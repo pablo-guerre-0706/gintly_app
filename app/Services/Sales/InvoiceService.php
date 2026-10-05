@@ -509,20 +509,10 @@ final class InvoiceService
 
     private function defaultWarehouseId(int $businessId, int $branchId): int
     {
-        $warehouse = Warehouse::query()
-            ->where('business_id', $businessId)
-            ->where('branch_id', $branchId)
-            ->where('is_default', true)
-            ->first();
-
-        // Sin bodega default explícita, se toma la primera activa de la sucursal.
-        if ($warehouse === null) {
-            $warehouse = Warehouse::query()
-                ->where('business_id', $businessId)
-                ->where('branch_id', $branchId)
-                ->where('is_active', true)
-                ->firstOrFail();
-        }
+        // Fuente única (Warehouse::defaultForBranch): predeterminada, o primera activa como respaldo. La
+        // consulta de disponibilidad usa EXACTAMENTE la misma resolución, para no divergir del destino de reserva.
+        $warehouse = Warehouse::defaultForBranch($businessId, $branchId)
+            ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Warehouse::class);
 
         return (int) $warehouse->id;
     }

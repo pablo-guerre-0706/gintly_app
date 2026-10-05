@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\PhysicalCountStatus;
 use App\Models\Concerns\BelongsToBusiness;
+use App\Models\Concerns\ScopesToAssignedWarehouses;
 use App\Models\Concerns\ScopesToOperatorBranch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,7 @@ final class PhysicalCount extends Model
 {
     use BelongsToBusiness;
     use HasFactory;
+    use ScopesToAssignedWarehouses; // visibilidad ROL-03 por bodega asignada (más estricto que sucursal)
     use ScopesToOperatorBranch;
 
     // Sucursal INDIRECTA: por la bodega del conteo.

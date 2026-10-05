@@ -8,12 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StockLevel\IndexStockLevelRequest;
 use App\Http\Requests\Api\V1\StockLevel\UpdateThresholdsRequest;
 use App\Http\Resources\StockLevelResource;
+use App\Models\PhysicalCount;
 use App\Models\Product;
 use App\Models\StockLevel;
 use App\Models\Warehouse;
 use App\Services\Inventory\InventoryService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 
 final class StockLevelController extends Controller
 {
@@ -28,14 +30,12 @@ final class StockLevelController extends Controller
         $this->authorize('viewAny', StockLevel::class);
 
         // IndexStockLevelRequest valida filtros/orden/paginación (contrato MOD-03).
-        // Fase 5: ROL-03 solo ve existencias de bodegas de SU sucursal (por la bodega).
+        // Microcierre MOD-03: ROL-03 solo ve existencias de bodegas que tenga ASIGNADAS (no toda la
+        // sucursal); así dos bodegas de una misma sucursal no se filtran entre sí en la lectura.
         $user = $request->user();
         $stock = StockLevel::query()
             ->with(['product', 'warehouse'])
-            ->when(
-                $user->isOperator(),
-                fn ($q) => $q->whereHas('warehouse', fn ($w) => $w->where('branch_id', $user->branch_id))
-            )
+            ->forOperatorWarehouses($user)
             ->when(
                 $request->validated('warehouse_id'),
                 fn ($q, $warehouseId) => $q->where('warehouse_id', $warehouseId)
@@ -59,6 +59,11 @@ final class StockLevelController extends Controller
             ->orderBy($request->sortColumn('updated_at'), $request->sortDirection('desc'))
             ->paginate($request->perPage());
 
+        // Adjunta el ÚLTIMO conteo físico por par (producto, bodega) de la página: la vista consolidada
+        // muestra existencia + reservado + disponible JUNTO al último conteo/diferencia/estado de conciliación,
+        // sin presentar el conteo como existencia actual (campos separados).
+        $this->attachLatestCounts($stock->getCollection());
+
         return StockLevelResource::collection($stock);
     }
 
@@ -72,7 +77,41 @@ final class StockLevelController extends Controller
 
         $this->authorize('view', $stock);
 
+        $this->attachLatestCounts(collect([$stock]));
+
         return new StockLevelResource($stock);
+    }
+
+    /**
+     * Adjunta a cada saldo su último conteo físico (par producto+bodega), en una sola consulta.
+     * setRelation siempre se invoca (incluso con null) para que el recurso distinga "sin conteo aún".
+     *
+     * @param  Collection<int, StockLevel>  $levels
+     */
+    private function attachLatestCounts(Collection $levels): void
+    {
+        if ($levels->isEmpty()) {
+            return;
+        }
+
+        $productIds   = $levels->pluck('product_id')->unique()->values()->all();
+        $warehouseIds = $levels->pluck('warehouse_id')->unique()->values()->all();
+
+        // Último por par: orden descendente y se toma el primero de cada grupo. El BusinessScope global
+        // de PhysicalCount acota al negocio activo (lectura HTTP autenticada).
+        $latestByPair = PhysicalCount::query()
+            ->whereIn('product_id', $productIds)
+            ->whereIn('warehouse_id', $warehouseIds)
+            ->orderByDesc('counted_at')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy(fn (PhysicalCount $c): string => $c->product_id.':'.$c->warehouse_id)
+            ->map(fn (Collection $group): PhysicalCount => $group->first());
+
+        foreach ($levels as $level) {
+            $key = $level->product_id.':'.$level->warehouse_id;
+            $level->setRelation('latestCount', $latestByPair->get($key));
+        }
     }
 
     public function updateThresholds(

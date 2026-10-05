@@ -90,6 +90,31 @@ class User extends Authenticatable
         return $this->hasMany(UserOperativeProfile::class);
     }
 
+    // MOD-03 · Historial de asignaciones Bodega–Bodeguero de este usuario (activas e históricas).
+    public function warehouseAssignments(): HasMany
+    {
+        return $this->hasMany(WarehouseAssignment::class);
+    }
+
+    /**
+     * MOD-03 · IDs de las bodegas que el usuario tiene ACTIVAMENTE asignadas (par vigente, ended_at NULL),
+     * acotado al negocio activo. Fuente única de la visibilidad de inventario de ROL-03 (listados) y de la
+     * compuerta operatorOperatesWarehouse (detalle). ROL-01/ROL-02 no se acotan por asignación; este método
+     * se consulta solo para operadores, pero devuelve el conjunto real para quien sea.
+     *
+     * @return array<int, int>
+     */
+    public function activeAssignedWarehouseIds(): array
+    {
+        return WarehouseAssignment::query()
+            ->where('business_id', $this->business_id)
+            ->where('user_id', $this->getKey())
+            ->whereNull('ended_at')
+            ->pluck('warehouse_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
+    }
+
     /**
      * Perfiles operativos (valores string) del usuario. Solo aplican a ROL-03.
      * @return array<int, string>

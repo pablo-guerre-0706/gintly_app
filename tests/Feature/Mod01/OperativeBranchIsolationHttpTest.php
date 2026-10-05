@@ -23,6 +23,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserOperativeProfile;
 use App\Models\Warehouse;
+use App\Models\WarehouseAssignment;
 use App\Services\Inventory\StockTransferService;
 use App\Services\Returns\ReturnService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -139,6 +140,16 @@ final class OperativeBranchIsolationHttpTest extends MysqlTestCase
         }
 
         return $op;
+    }
+
+    /** MOD-03 (microcierre) · Asignación Bodega–Bodeguero activa (precondición de visibilidad de inventario). */
+    private function assignWarehouse(object $t, User $keeper, Warehouse $warehouse): void
+    {
+        $a = new WarehouseAssignment;
+        $a->forceFill([
+            'business_id' => $t->business->id, 'branch_id' => $warehouse->branch_id,
+            'warehouse_id' => $warehouse->id, 'user_id' => $keeper->id, 'assigned_by' => $t->admin->id, 'assigned_at' => now(),
+        ])->save();
     }
 
     // ---------------- Builders de recursos (forceFill: sin factories en el proyecto) ----------------
@@ -319,12 +330,14 @@ final class OperativeBranchIsolationHttpTest extends MysqlTestCase
     //  B) Aislamiento de índice — recursos de sucursal INDIRECTA
     // ============================================================
 
-    public function test_conteos_indice_solo_bodegas_de_su_sucursal(): void
+    public function test_conteos_indice_solo_bodegas_asignadas(): void
     {
         $t = $this->seedTenant('a');
-        $this->makePhysicalCount($t, $t->wh1); // S1
+        $this->makePhysicalCount($t, $t->wh1); // S1 (se asignará)
         $this->makePhysicalCount($t, $t->wh2); // S2
         $op = $this->operator($t, ['bodeguero'], $t->branch);
+        // Microcierre MOD-03: la visibilidad de conteos de ROL-03 exige asignación ACTIVA de la bodega.
+        $this->assignWarehouse($t, $op, $t->wh1);
 
         $data = $this->asUser($op)->getJson('/api/v1/physical-counts')->assertOk()->json('data');
 
@@ -332,16 +345,17 @@ final class OperativeBranchIsolationHttpTest extends MysqlTestCase
         $this->assertSame($t->wh1->id, $data[0]['warehouse_id']);
     }
 
-    public function test_conteo_detalle_bodeguero_su_sucursal_ok_otra_rechazada(): void
+    public function test_conteo_detalle_bodeguero_bodega_asignada_ok_otra_rechazada(): void
     {
         $t = $this->seedTenant('a');
         $countA1 = $this->makePhysicalCount($t, $t->wh1);
         $countA2 = $this->makePhysicalCount($t, $t->wh2);
         $op = $this->operator($t, ['bodeguero'], $t->branch);
+        $this->assignWarehouse($t, $op, $t->wh1);
 
-        // NUEVO: el bodeguero (inventario.ver) ahora SÍ abre el detalle de su sucursal (antes requería Admin).
+        // El bodeguero (inventario.ver) abre el detalle de la bodega que tiene ASIGNADA.
         $this->asUser($op)->getJson("/api/v1/physical-counts/{$countA1->id}")->assertOk();
-        // Pero NO el de otra sucursal.
+        // Pero NO el de una bodega que no tiene asignada (aquí, además, de otra sucursal).
         $this->asUser($op)->getJson("/api/v1/physical-counts/{$countA2->id}")->assertStatus(403);
     }
 

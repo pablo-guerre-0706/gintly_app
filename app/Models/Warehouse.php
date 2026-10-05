@@ -55,6 +55,31 @@ final class Warehouse extends Model
         return $query->where('is_default', true);
     }
 
+    /**
+     * MOD-03/07 · Bodega sobre la que opera una sucursal: la PREDETERMINADA, o la primera ACTIVA si no hay
+     * default explícita. Fuente ÚNICA compartida por la reserva de facturación (InvoiceService) y la consulta
+     * de DISPONIBILIDAD, de modo que lo que se muestra como disponible sea exactamente contra lo que se
+     * reserva. El soft-delete queda excluido por el global scope. Devuelve null si la sucursal no tiene ninguna.
+     */
+    public static function defaultForBranch(int $businessId, int $branchId): ?self
+    {
+        $default = self::query()
+            ->where('business_id', $businessId)
+            ->where('branch_id', $branchId)
+            ->where('is_default', true)
+            ->first();
+
+        if ($default !== null) {
+            return $default;
+        }
+
+        return self::query()
+            ->where('business_id', $businessId)
+            ->where('branch_id', $branchId)
+            ->where('is_active', true)
+            ->first();
+    }
+
     // True si tiene saldos con existencia o reserva: bloquea el borrado físico.
     public function hasStock(): bool
     {

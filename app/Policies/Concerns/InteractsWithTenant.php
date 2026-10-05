@@ -84,6 +84,22 @@ trait InteractsWithTenant
             && (int) $branchId === (int) $actor->branch_id;
     }
 
+    /**
+     * MOD-03 (microcierre) · Alcance de BODEGA ASIGNADA para ROL-03 (más estricto que operatorInBranch).
+     * La visibilidad de inventario de un bodeguero se limita a las bodegas que tiene ACTIVAMENTE asignadas,
+     * aun cuando varias bodegas pertenezcan a su misma sucursal. ROL-01/ROL-02 no se acotan. Un ROL-03 sin
+     * la bodega asignada (o sin bodega resoluble) nunca supera el alcance.
+     */
+    protected function operatorOperatesWarehouse(User $actor, ?int $warehouseId): bool
+    {
+        if (! $this->isOperator($actor)) {
+            return true;
+        }
+
+        return $warehouseId !== null
+            && in_array((int) $warehouseId, $actor->activeAssignedWarehouseIds(), true);
+    }
+
     
     // Compara el negocio del usuario directamente contra la empresa dueña 
     //de la sesión para evitar mezclar datos    

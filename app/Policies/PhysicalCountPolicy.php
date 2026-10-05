@@ -33,9 +33,10 @@ final class PhysicalCountPolicy
             return Response::deny('No tiene autorización para consultar este conteo.');
         }
 
-        return $this->operatorInBranch($actor, $count->warehouse?->branch_id)
+        // ROL-03: solo conteos de una bodega que tenga asignada (aislamiento por bodega, no solo por sucursal).
+        return $this->operatorOperatesWarehouse($actor, (int) $count->warehouse_id)
             ? Response::allow()
-            : Response::deny('El conteo pertenece a otra sucursal.');
+            : Response::deny('El conteo pertenece a una bodega que no tiene asignada.');
     }
 
     // El conteo lo registra el operativo (ROL-03) con perfil BODEGUERO; la bodega debe ser de su sucursal (servicio).

@@ -297,16 +297,19 @@ final class OperativeEnforcementHttpTest extends MysqlTestCase
         }
     }
 
-    public function test_rol03_solo_lista_stock_de_su_sucursal(): void
+    public function test_rol03_solo_lista_stock_de_bodegas_asignadas(): void
     {
         $t = $this->seedTenant('a');
         $w2 = $this->makeWarehouse($t->business, $t->branch2, 'B2');
-        $this->makeStock($t, $t->warehouse);  // S1
-        $this->makeStock($t, $w2);            // S2
+        $this->makeStock($t, $t->warehouse);  // S1 (se asignará)
+        $this->makeStock($t, $w2);            // S2 (no asignada)
         $op = $this->operator($t, ['bodeguero'], $t->branch);
+        // Microcierre MOD-03: la visibilidad de inventario de ROL-03 exige asignación ACTIVA de la bodega.
+        $this->assignWarehouse($op, $t->warehouse);
 
         $data = $this->asUser($op)->getJson('/api/v1/stock')->assertOk()->json('data');
-        $this->assertCount(1, $data); // solo la existencia de S1.
+        $this->assertCount(1, $data); // solo la existencia de la bodega ASIGNADA (S1).
+        $this->assertSame($t->warehouse->id, (int) $data[0]['warehouse_id']);
     }
 
     // ---------------- Abono CxC cross-branch ----------------

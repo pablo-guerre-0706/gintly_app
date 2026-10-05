@@ -28,8 +28,9 @@ final class PhysicalCountController extends Controller
         $this->authorize('viewAny', PhysicalCount::class);
 
         // IndexPhysicalCountRequest valida filtros/orden/paginación (contrato MOD-03).
+        // Microcierre MOD-03: ROL-03 solo ve conteos de bodegas que tenga ASIGNADAS (no toda la sucursal).
         $counts = PhysicalCount::query()
-            ->forOperator($request->user()) // ROL-03: solo conteos de bodegas de SU sucursal.
+            ->forOperatorWarehouses($request->user())
             ->with(['product', 'warehouse', 'user'])
             ->when(
                 $request->validated('warehouse_id'),

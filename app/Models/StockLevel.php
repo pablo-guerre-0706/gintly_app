@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToBusiness;
+use App\Models\Concerns\ScopesToAssignedWarehouses;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ final class StockLevel extends Model
 {
     use BelongsToBusiness;
     use HasFactory;
+    use ScopesToAssignedWarehouses;
 
     public const CREATED_AT = null;
 
@@ -61,5 +63,29 @@ final class StockLevel extends Model
     {
         return $query->whereNotNull('min_stock')
             ->whereColumn('quantity', '<', 'min_stock');
+    }
+
+    /**
+     * MOD-03 (microcierre) · ¿El DISPONIBLE (quantity − reserved) alcanzó o cayó bajo el mínimo?
+     * Base del AVISO operativo de mínimo (distinto de scopeBelowMin, que mira la existencia física
+     * en mano): el aviso de reposición se dispara sobre lo que REALMENTE queda vendible.
+     */
+    public function isAvailableAtOrBelowMin(): bool
+    {
+        if ($this->min_stock === null) {
+            return false;
+        }
+
+        return bccomp((string) $this->available, (string) $this->min_stock, 3) <= 0;
+    }
+
+    /**
+     * MOD-03 (microcierre) · Filas con mínimo configurado cuyo DISPONIBLE (quantity − reserved)
+     * alcanza o cae bajo ese mínimo. Solo aplica si hay mínimo (si no existe, no se inventa uno).
+     */
+    public function scopeAvailableAtOrBelowMin(Builder $query): Builder
+    {
+        return $query->whereNotNull('min_stock')
+            ->whereRaw('(quantity - reserved_quantity) <= min_stock');
     }
 }

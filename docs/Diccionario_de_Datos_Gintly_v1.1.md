@@ -217,6 +217,7 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 
 **CHECK:** `chk_stock_qty_non_negative` · `chk_stock_reserved_non_negative` · `chk_stock_available_non_negative` (`reserved_quantity <= quantity`, anti-sobreventa de motor).
 **Derivado (accesor):** `available = quantity − reserved_quantity`.
+**Microcierre MOD-03 (sin cambio de esquema):** la consulta `/stock` adjunta en lectura el último `physical_counts` del par (producto, bodega) como bloque `last_count` (conteo/diferencia/estado), separado de `quantity`. El AVISO de mínimo (`/stock/alerts`) es DERIVADO del estado vivo (no tabla): filas con `min_stock` no nulo y `available <= min_stock` (`available_below_min`); el filtro histórico `below_min` sigue siendo `quantity < min_stock`. Visibilidad de ROL-03: SOLO bodegas con asignación activa (`warehouse_assignments`), no toda la sucursal.
 
 ### `physical_counts`
 | Campo | Tipo | Atributos | Llave/Índice | Propósito |
@@ -227,7 +228,7 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | user_id | bigint | NN, FK RSTR | — | Responsable del conteo. |
 | system_quantity | decimal(14,3) | NN | — | Existencia que declaraba el sistema. **bcmath.** |
 | counted_quantity | decimal(14,3) | NN | — | Existencia contada físicamente. **bcmath.** |
-| difference | decimal(14,3) | **GEN** stored | — | `counted − system`. No editable. **bcmath.** |
+| difference | decimal(14,3) | **GEN** stored | — | `counted − system`. No editable. **bcmath.** Columna generada STORED: SIEMPRE registra la diferencia del conteo, independientemente del umbral de la anomalía `faltante_inventario`. El umbral solo decide si se LEVANTA una anomalía; la diferencia del conteo nunca desaparece y se expone en `/stock` (`last_count.difference`). |
 | status | enum | NN | IDX | `abierto` / `justificado` / `ajustado`. |
 | notes | string(500) | NULL | — | Observación del conteo. |
 | counted_at | timestamp | NN | — | Momento del conteo. |
@@ -833,7 +834,7 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | business_id | bigint | NN, FK CASC | UQ(business_id,code) | Negocio propietario. |
 | code | enum | NN | UQ(business_id,code), IDX | `descuadre_caja` / `faltante_inventario` / `discrepancia_3way` / `cuenta_vencida` / `omision_registro` / `venta_sin_sesion`. |
 | name | string(120) | NN | — | Nombre legible de la regla. |
-| threshold_value | decimal(14,2) | NULL | — | Umbral bajo el cual no se genera anomalía. **bcmath.** |
+| threshold_value | decimal(14,2) | NULL | — | Umbral bajo el cual no se LEVANTA la anomalía (NULL ⇒ siempre se levanta). **bcmath.** Para `faltante_inventario` (`threshold_type='cantidad'`) se compara `|difference|` del conteo en la UNIDAD del producto; por eso NO deben sumarse diferencias de productos con unidades distintas. El umbral filtra solo el catálogo de anomalías: la diferencia del conteo (`physical_counts.difference`) y su visibilidad en `/stock` no dependen de él (ninguna diferencia desaparece por estar bajo el umbral). |
 | threshold_type | enum | NN | — | `monto` / `porcentaje` / `cantidad` / `tiempo`. |
 | default_severity | enum | NN | — | `informativa` / `advertencia` / `critica`. |
 | is_active | boolean | NN, def. true | — | Regla habilitada; si es false no se detecta. |

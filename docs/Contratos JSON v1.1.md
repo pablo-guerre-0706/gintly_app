@@ -531,15 +531,27 @@
 
 - "stock_levels": [ 
 
-- { "method": "GET", "path": "/stock", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.ver)"], 
+- { "method": "GET", "path": "/stock", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.ver — SOLO bodegas ASIGNADAS)"], 
 
-"query": { "warehouse_id": "int|opt", "product_id": "int|opt", "below_min": "bool|opt", "search": "string|opt" }, 
+"query": { "warehouse_id": "int|opt", "product_id": "int|opt", "below_min": "bool|opt (existencia física < min)", "search": "string|opt" }, 
 
 - "response_200": "Paginated<StockLevelResource>", 
 
-"resource_fields": { "quantity": "string", "reserved_quantity": "string", "available": "string (quantity - reserved, accesor)", "average_cost": "string", "min_stock": "string|null", "max_stock": "string|null" } }, 
+"resource_fields": { "quantity": "string (existencia registrada)", "reserved_quantity": "string", "available": "string (quantity - reserved, accesor)", "average_cost": "string", "min_stock": "string|null", "max_stock": "string|null", "below_min": "bool (quantity < min)", "available_below_min": "bool (disponible <= min)", "last_count": "null | { id, counted_quantity, system_quantity, difference, status, status_label, counted_at } — vista consolidada: último conteo físico del par (producto, bodega). NO es la existencia actual (campos separados). La diferencia es el dato del conteo y NUNCA desaparece por el umbral de la anomalía." }, 
 
-{ "method": "GET", "path": "/stock/{product_id}/{warehouse_id}", "roles": ["ROL-02", "ROL-03"], "response_200": "StockLevelResource" }, 
+"note_rol03_visibility": "Microcierre MOD-03: ROL-03 solo ve existencias de bodegas con asignación ACTIVA (WarehouseAssignment), aun cuando varias bodegas pertenezcan a su misma sucursal. Sin asignación → lista vacía. ROL-01/ROL-02: alcance de negocio." }, 
+
+{ "method": "GET", "path": "/stock/{product_id}/{warehouse_id}", "roles": ["ROL-02", "ROL-01", "ROL-03 (SOLO si la bodega está asignada; si no, 403)"], "response_200": "StockLevelResource (incluye last_count)" }, 
+
+- { "method": "GET", "path": "/stock/alerts", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil bodeguero: inventario.ver — SOLO bodegas ASIGNADAS)"], 
+
+"query": { "branch_id": "int|opt", "warehouse_id": "int|opt", "product_id": "int|opt" }, 
+
+"note": "AVISO operativo de mínimo (RF-03-07). DERIVADO del estado vivo (sin tabla ni duplicado; se actualiza solo al variar stock/reserva): filas con min_stock configurado cuyo DISPONIBLE (quantity - reserved) <= min_stock. SEPARADO del catálogo cerrado de anomalías. Si no hay mínimo, no se inventa.", 
+
+"response_200": "Paginated<LowStockAlertResource { product_id, sku, product_name, unit, warehouse_id, warehouse_name, branch_id, available, min_stock, max_stock, replenishment:{ product_id, unit, branch_id, warehouse_id, available, min_stock, suggested_quantity } }>", 
+
+"meta": { "can_request_purchase": "bool — ¿el viewer puede iniciar una orden de compra? (PurchaseOrderPolicy::create: compras.crear para ROL-03; nivel para ROL-01/02). NO crea ni aprueba orden alguna; solo habilita la acción en la interfaz, reutilizando el flujo de /purchase-orders." }, 
 
 - { "method": "PUT", "path": "/stock/{product_id}/{warehouse_id}/thresholds", "roles": ["ROL-02"], 
 
@@ -1249,6 +1261,16 @@
 "resources": { 
 
 "sales": [ 
+
+{ "method": "GET", "path": "/sales/availability", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil facturador: ventas.crear o facturas.crear)"], 
+
+"query": { "branch_id": "int|req para ROL-01/02 | prohibido distinto al propio para ROL-03", "product_id": "int|opt", "search": "string|opt" }, 
+
+"note": "Microcierre MOD-03 (disponibilidad para facturar). Existencia/reservado/disponible de la bodega PREDETERMINADA de la sucursal (misma resolución que la reserva de facturación: Warehouse::defaultForBranch). Autoriza StockLevelPolicy::viewForSelling: NO exige inventario.ver ni concede acceso general a bodegas ni a COSTOS. ROL-03 → su propia sucursal (otra sucursal → 422); ROL-01/02 → branch_id requerido. Solo productos que controlan inventario.", 
+
+"response_200": "Paginated<ProductAvailabilityResource { product_id, sku, name, unit, warehouse_id, quantity, reserved_quantity, available }> (SIN average_cost)", 
+
+"errors": [ { "http": 422, "when": "ROL-01/02 sin branch_id; o ROL-03 con branch_id de otra sucursal; o ROL-03 sin sucursal asignada." }, { "http": 403, "when": "Operador sin ventas.crear ni facturas.crear (p. ej. cajero)." } ] }, 
 
 { "method": "GET", "path": "/sales", "roles": ["ROL-02", "ROL-01", "ROL-03 (perfil facturador: ventas.ver — índice y detalle acotados a su sucursal)"], 
 
