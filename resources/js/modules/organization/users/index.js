@@ -1,15 +1,15 @@
 import { api, ApiError } from '@/core/api-client';
 import { getSessionContext } from '@/core/session-context';
 import { element, formatDate, responseMessage, ROLE_LABELS } from '../shared';
-import { getActiveCashAssignments, usersWithProfiles } from '@/data/cash-assignments';
-import { canManageCashAssignments, isCashier } from '@/modules/administration/cash-assignment-rules';
+import { usersWithProfiles } from '@/data/cash-assignments';
+import { assignedProfileLabels, profileCatalogLabels } from './profile-labels';
 
 const state = {
     page: 1,
     search: '',
     request: null,
     context: null,
-    assignments: [],
+    profileLabels: null,
 };
 
 function renderState(root, message, { error = false, retry = false } = {}) {
@@ -54,16 +54,17 @@ function userRow(root, user) {
 
     const lastLogin = element('td', { className: 'whitespace-nowrap px-5 py-4 text-xs', text: formatDate(user.last_login_at) });
     const assigned = element('td', { className: 'min-w-40 px-5 py-4 text-sm' });
-    if (user.role === 'ROL-03' && !Array.isArray(user.profiles)) {
-        assigned.textContent = 'Asignación no disponible';
-    } else if (isCashier(user)) {
-        const assignment = state.assignments.find((row) => row.user_id === user.id);
-        assigned.append(element('p', { text: assignment ? assignment.cash_register?.name ?? `Caja #${assignment.cash_register_id}` : 'Sin caja asignada', className: 'font-semibold' }));
-        if (canManageCashAssignments(state.context)) assigned.append(element('a', {
-            text: assignment ? 'Gestionar caja–cajero' : 'Asignar una caja', className: 'mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-gintly-brand underline',
-            attributes: { href: `${root.dataset.cashRegistersUrl}?cashier=${user.id}` },
+    const profiles = assignedProfileLabels(user, state.profileLabels);
+    if (profiles.length) {
+        const list = element('ul', { className: 'flex flex-wrap gap-2', attributes: { 'aria-label': 'Perfiles asignados' } });
+        for (const label of profiles) list.append(element('li', {
+            text: label,
+            className: 'rounded-full bg-gintly-brand/10 px-3 py-1 text-xs font-semibold text-gintly-brand',
         }));
-    } else assigned.textContent = 'No aplica';
+        assigned.append(list);
+    } else assigned.textContent = user.role === 'ROL-03'
+        ? 'Sin perfiles operativos asignados'
+        : 'Sin perfiles operativos; autoridad por rol';
     const actions = element('td', { className: 'px-5 py-4 text-right sm:px-6' });
 
     if (state.context.capabilities.includes('usuarios.gestionar')) {
@@ -116,7 +117,7 @@ async function loadUsers(root) {
     root.querySelector('[data-users-pagination]').hidden = true;
 
     try {
-        const response = await api.get(root.dataset.usersEndpoint, {
+        const [response, catalog] = await Promise.all([api.get(root.dataset.usersEndpoint, {
             page: state.page,
             per_page: 20,
             search: state.search || undefined,
@@ -125,14 +126,16 @@ async function loadUsers(root) {
         }, {
             signal: controller.signal,
             dispatchErrors: false,
-        });
-        if (canManageCashAssignments(state.context)) {
-            const [assignments, users] = await Promise.all([getActiveCashAssignments({}, controller.signal), usersWithProfiles(response.data, controller.signal)]);
-            state.assignments = assignments; response.data = users;
-        }
+        }), state.profileLabels ? Promise.resolve(null) : api.get(root.dataset.profilesEndpoint, {}, {
+            signal: controller.signal,
+            dispatchErrors: false,
+        })]);
+        if (controller.signal.aborted) return;
+        if (catalog !== null) state.profileLabels = profileCatalogLabels(catalog);
+        response.data = await usersWithProfiles(response.data, controller.signal);
         if (!controller.signal.aborted) renderUsers(root, response);
     } catch (error) {
-        if (error instanceof ApiError && error.code === 'request_aborted') return;
+        if (controller.signal.aborted || (error instanceof ApiError && error.code === 'request_aborted')) return;
         root.querySelector('[data-users-body]').replaceChildren();
         root.querySelector('[data-users-summary]').textContent = 'Consulta no disponible';
         renderState(root, responseMessage(error, 'No fue posible consultar los usuarios.'), { error: true, retry: true });

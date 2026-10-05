@@ -67,9 +67,10 @@ test('respuesta incierta al finalizar nunca permite crear otra asignación a cie
         finish:async()=>({data:{id:10,active:true,ended_at:null}}),assign:async()=>assert.fail('Finalización no confirmada')}));
 });
 
-test('Personal enlaza a una única gestión y apertura usa una caja de solo lectura', async () => {
+test('Personal muestra perfiles sin duplicar gestión de cajas; apertura usa una caja de solo lectura', async () => {
     const users = await readFile(new URL('../../resources/js/modules/organization/users/index.js', import.meta.url),'utf8');
-    assert.ok(users.includes('root.dataset.cashRegistersUrl')); assert.ok(users.includes('usersWithProfiles'));
+    assert.ok(!users.includes('root.dataset.cashRegistersUrl')); assert.ok(users.includes('usersWithProfiles'));
+    assert.ok(users.includes('assignedProfileLabels'));
     const opening = await readFile(new URL('../../resources/views/operations/cash-open.blade.php', import.meta.url),'utf8');
     assert.ok(opening.includes('name="cash_register_id" readonly')); assert.ok(!opening.includes('<select'));
     const page = await readFile(new URL('../../resources/js/modules/administration/cash-registers.js', import.meta.url),'utf8');

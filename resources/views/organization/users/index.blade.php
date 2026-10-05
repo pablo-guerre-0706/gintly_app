@@ -11,9 +11,9 @@
     class="space-y-6"
     data-users-root
     data-users-endpoint="/users"
+    data-profiles-endpoint="/operative-profiles"
     data-create-url="{{ route('panel.users.create') }}"
     data-access-url-template="{{ url('/organization/users/__USER__/access') }}"
-    data-cash-registers-url="{{ route('panel.admin.cash-registers') }}"
     aria-labelledby="users-title"
 >
     <header class="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -56,7 +56,7 @@
                         <th scope="col" class="px-5 py-4 font-bold sm:px-6">Usuario</th>
                         <th scope="col" class="px-5 py-4 font-bold">Rol</th>
                         <th scope="col" class="px-5 py-4 font-bold">Sucursal</th>
-                        <th scope="col" class="px-5 py-4 font-bold">Caja asignada</th>
+                        <th scope="col" class="px-5 py-4 font-bold">Perfil asignado</th>
                         <th scope="col" class="px-5 py-4 font-bold">Estado</th>
                         <th scope="col" class="px-5 py-4 font-bold">Último acceso</th>
                         <th scope="col" class="px-5 py-4 text-right font-bold sm:px-6">Acciones</th>
@@ -76,5 +76,11 @@
             <button type="button" class="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50" data-page-next>Siguiente</button>
         </nav>
     </section>
+
+    <aside class="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-gintly-text-secondary" aria-label="Disponibilidad de perfiles">
+        <p>Los perfiles operativos son combinables y se administran desde «Administrar acceso». La gestión de cajas permanece en «Cajas registradoras».</p>
+        <p class="mt-2">Las denominaciones personalizadas, como «Cajero #1», requieren persistencia en Backend y todavía no se pueden editar.</p>
+        <p class="mt-2"><span class="font-semibold text-gintly-text-primary">Responsable de compras:</span> pendiente de soporte Backend; no asignable todavía. Su alcance previsto es la creación, edición en borrador y emisión de órdenes, sin conceder automáticamente recepción, permisos de Bodeguero ni aprobación o resolución.</p>
+    </aside>
 </section>
 @endsection
