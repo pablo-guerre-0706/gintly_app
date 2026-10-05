@@ -1,0 +1,13 @@
+/* Leaflet owns its panes; isolate their z-index from the shared shell and dialogs. */
+.supplier-map-canvas { isolation: isolate; width: 100%; height: clamp(340px, 58dvh, 640px); border-radius: 1rem; }
+.supplier-map-picker { height: 280px; }
+.supplier-map-canvas .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; }
+.supplier-map-canvas .leaflet-control-attribution { max-width: 100%; font-size: 11px; }
+.gintly-map-pin span { display: block; width: 30px; height: 30px; margin: 7px; border: 3px solid white; border-radius: 50% 50% 50% 0; background: #146f8a; box-shadow: 0 2px 8px #082c3755; transform: rotate(-45deg); }
+.gintly-map-pin.is-selected span { background: #082c37; box-shadow: 0 0 0 4px #a9d5e2; }
+.gintly-map-pin:focus-visible { outline: 3px solid #082c37; outline-offset: 4px; border-radius: 8px; }
+@media (max-width: 767px) {
+    [data-supplier-explorer][data-mobile-view="list"] [data-map-column],
+    [data-supplier-explorer][data-mobile-view="map"] [data-list-column] { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .supplier-map-canvas * { scroll-behavior: auto; } }

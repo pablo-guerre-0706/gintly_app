@@ -109,12 +109,7 @@ Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
     Route::view('/settings', 'hubs.settings')->name('panel.settings');
     Route::view('/help', 'hubs.help')->name('panel.help');
 
-    Route::view('/suppliers', 'supervision.resource-list', [
-        'resourceType' => 'suppliers',
-        'pageTitle' => 'Proveedores registrados',
-        'pageDescription' => 'Directorio interno de proveedores pertenecientes al negocio.',
-        'breadcrumbRoot' => 'Compras y proveedores',
-    ])->name('panel.suppliers.index');
+    Route::view('/suppliers', 'suppliers.index')->name('panel.suppliers.index');
     Route::view('/suppliers/explore', 'suppliers.explore')->name('panel.suppliers.explore');
 
     Route::view('/intelligence/anomalies', 'administration.anomalies')->name('panel.anomalies.index');

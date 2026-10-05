@@ -10,12 +10,12 @@
     <x-panel.hub-page
         title="Compras y proveedores"
         description="Accede a los procesos de abastecimiento que tu cuenta puede consultar o gestionar."
-        note="Explorar proveedores usa una frontera externa separada del directorio interno. No creará proveedores registrados ni aprobará resultados automáticamente."
+        note="El mapa muestra proveedores aprobados y activos con ubicaciones confirmadas. La exploración de negocios externos no está conectada."
         :items="[
             ['title' => 'Proveedores registrados', 'description' => 'Directorio interno de proveedores del negocio.', 'icon' => 'fa-building', 'capabilities' => ['proveedores.ver'], 'url' => route('panel.suppliers.index')],
             ['title' => 'Órdenes de compra', 'description' => 'Supervisión del ciclo de órdenes emitidas.', 'icon' => 'fa-file-circle-check', 'capabilities' => ['compras.ver'], 'roles' => ['ROL-02'], 'url' => route('panel.admin.purchase-orders')],
             ['title' => 'Recepciones', 'description' => 'Consulta administrativa de recepciones y discrepancias.', 'icon' => 'fa-dolly', 'capabilities' => ['compras.ver'], 'roles' => ['ROL-02'], 'url' => route('panel.admin.goods-receipts')],
-            ['title' => 'Explorar proveedores', 'description' => 'Proveedores potenciales externos, separados del directorio interno.', 'icon' => 'fa-map-location-dot', 'roles' => ['ROL-01', 'ROL-02'], 'badge' => 'Externo', 'url' => route('panel.suppliers.explore')],
+            ['title' => 'Mapa de proveedores', 'description' => 'Ubicaciones confirmadas de los proveedores del negocio.', 'icon' => 'fa-map-location-dot', 'capabilities' => ['proveedores.ver'], 'roles' => ['ROL-01', 'ROL-02'], 'url' => route('panel.suppliers.explore')],
         ]"
     />
 @endsection

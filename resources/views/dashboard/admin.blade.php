@@ -21,13 +21,13 @@
                 <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-gintly-brand/10 text-2xl text-gintly-brand" aria-hidden="true"><i class="fa-solid fa-map-location-dot"></i></span>
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-3">
-                        <h2 id="admin-suppliers-title" class="text-xl font-bold text-gintly-text-primary">Explorar proveedores cercanos</h2>
-                        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">Externo</span>
+                        <h2 id="admin-suppliers-title" class="text-xl font-bold text-gintly-text-primary">Mapa de proveedores</h2>
+                        <span class="rounded-full bg-gintly-brand/10 px-2.5 py-1 text-xs font-bold text-gintly-brand">Confirmados</span>
                     </div>
-                    <p class="mt-2 max-w-3xl text-sm leading-6 text-gintly-text-secondary">Consulta el estado de disponibilidad de la futura exploración externa, separada de los proveedores registrados.</p>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-gintly-text-secondary">Consulta ubicaciones confirmadas y gestiona las direcciones de proveedores del negocio. La aprobación corresponde al propietario.</p>
                 </div>
             </div>
-            <a class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gintly-brand px-5 text-sm font-semibold text-white hover:bg-gintly-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand focus-visible:ring-offset-2" href="{{ route('panel.suppliers.explore') }}">Ver disponibilidad <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            <a class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gintly-brand px-5 text-sm font-semibold text-white hover:bg-gintly-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gintly-brand focus-visible:ring-offset-2" href="{{ route('panel.suppliers.explore') }}">Abrir mapa <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         </div>
     </aside>
 

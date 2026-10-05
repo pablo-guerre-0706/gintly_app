@@ -40,6 +40,7 @@ const modules = import.meta.glob([
     './modules/reports/summary.js',
     './modules/supervision/resource-list.js',
     './modules/suppliers/explore.js',
+    './modules/suppliers/index.js',
 ]);
 
 initNotifications();
