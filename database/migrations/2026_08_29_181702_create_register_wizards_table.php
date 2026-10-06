@@ -12,40 +12,52 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
 
-            // Paso 1: Perfil inicial
-            $table->string('nombres', 100)->nullable();
-            $table->string('apellidos', 100)->nullable();
-            $table->string('email', 150)->nullable();
+            // Paso 1: Configuración de tu Perfil
+            $table->string('nombre', 100)->nullable();
+            $table->string('apellido', 100)->nullable();
+            $table->string('correo', 150)->nullable();
+            $table->string('telefono', 20)->nullable();
+            $table->string('codigo_pais', 10)->nullable();
+            $table->string('password', 255)->nullable();
 
-            // Paso 2: Información de la tienda
+            // Paso 2: Configura el espacio de tú negocio
             $table->string('nombre_tienda', 150)->nullable();
-            $table->string('pais', 100)->nullable();
+            $table->string('pais_region', 100)->nullable();
             $table->string('ciudad', 100)->nullable();
             $table->string('codigo_postal', 15)->nullable();
             $table->string('direccion', 255)->nullable();
-            $table->string('email_tienda', 150)->nullable();
-            $table->string('telefono_tienda', 20)->nullable();
+            $table->string('correo_tienda', 150)->nullable();
+            $table->string('numero_convencional', 20)->nullable();
             $table->unsignedSmallInteger('numero_sucursales')->default(1);
-            $table->string('ruc_identificacion', 50)->nullable();
+            $table->string('ruc', 50)->nullable();
 
             // Paso 3: Tipo de negocio
             $table->string('tipo_negocio', 50)->nullable();
 
-            // Pasos 4 y 5: Datos del empleado
-            $table->string('empleado_nombres', 100)->nullable();
-            $table->string('empleado_apellidos', 100)->nullable();
-            $table->string('empleado_email', 150)->nullable();
+            // Paso 4: Preferencias regionales
+            $table->string('zona_horaria', 100)->nullable();
+            $table->string('moneda', 10)->nullable();
+            $table->date('fecha_creacion')->nullable();
+
+            // Paso 5: Creación de usuarios / Empleados (Opcional)
+            $table->string('empleado_nombre', 100)->nullable();
+            $table->string('empleado_apellido', 100)->nullable();
+            $table->string('empleado_correo', 150)->nullable();
             $table->string('empleado_telefono', 20)->nullable();
             $table->string('empleado_rol', 50)->nullable();
 
-            // Paso 7: Plan y suscripción
-            $table->string('plan_seleccionado', 50)->nullable();
-            $table->enum('frecuencia_pago', ['mensual', 'anual'])->default('mensual');
-
-            // Paso 8: Facturación y Pago
-            $table->string('titular_razon_social', 150)->nullable();
-            $table->string('email_facturacion', 150)->nullable();
-            $table->enum('metodo_pago', ['tarjeta', 'transferencia'])->nullable();
+            // Paso 6: Suscripción, Planes y Facturación
+            $table->string('plan', 50)->nullable();
+            $table->string('ciclo', 20)->nullable(); // monthly o annual
+            $table->string('billing_nombre', 150)->nullable();
+            $table->string('billing_razon', 150)->nullable();
+            $table->string('billing_correo', 150)->nullable();
+            $table->string('metodo_pago', 30)->nullable(); // tarjeta o transferencia
+            $table->string('numero_tarjeta', 30)->nullable();
+            $table->string('nombre_tarjeta', 150)->nullable();
+            $table->string('vencimiento', 10)->nullable();
+            $table->string('cvc', 10)->nullable();
+            $table->string('referencia_transferencia', 100)->nullable();
 
             $table->timestamps();
         });

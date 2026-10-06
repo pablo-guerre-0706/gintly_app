@@ -28,16 +28,6 @@
       animation: modalScale 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      20%, 60% { transform: translateX(-5px); }
-      40%, 80% { transform: translateX(5px); }
-    }
-    .animate-shake {
-      animation: shake 0.4s ease-in-out;
-    }
-
-    /* Transiciones globales fluidas */
     * {
       transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
       transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -52,10 +42,23 @@
 <body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-5 overflow-hidden">
 
   <!-- Contenedor Principal -->
-  <div class="flex flex-col w-full max-w-[1240px] h-[94vh] max-h-[820px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white p-5 md:p-8 animate-fade-in justify-between">
+  <div class="flex flex-col w-full max-w-[1240px] h-[94vh] max-h-[820px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white p-5 md:p-8 animate-fade-in justify-between overflow-y-auto custom-scroll">
     
     <!-- Header General -->
     <div class="flex flex-col gap-2.5">
+      
+      <!-- Alerta de Errores de Laravel (Muestra por qué se regresa si falla la validación) -->
+      @if ($errors->any())
+        <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl shadow-sm">
+          <strong>¡Atención! Revisa los siguientes campos:</strong>
+          <ul class="list-disc pl-4 mt-1">
+            @foreach ($errors->all() as $error)
+              <li>{{ $error }}</li>
+            @endforeach
+          </ul>
+        </div>
+      @endif
+
       <div class="flex justify-between items-center">
         <a href="{{ route('register.step', ['step' => 5]) }}" class="flex items-center justify-center w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full shadow-sm hover:scale-105 active:scale-95 cursor-pointer">
           <span class="font-bold text-sm">←</span>
@@ -136,7 +139,7 @@
           </ul>
         </div>
         <div class="pt-4">
-          <button type="button" onclick="openCheckoutModal('Plan inicial')" class="w-full h-10 bg-slate-100 group-hover:bg-[#146F8A] text-slate-700 group-hover:text-white font-bold text-xs tracking-wide rounded-xl shadow-sm hover:shadow-md cursor-pointer active:scale-95">
+          <button type="button" onclick="openCheckoutModal('inicial')" class="w-full h-10 bg-slate-100 group-hover:bg-[#146F8A] text-slate-700 group-hover:text-white font-bold text-xs tracking-wide rounded-xl shadow-sm hover:shadow-md cursor-pointer active:scale-95">
             Seleccionar Plan Inicial
           </button>
         </div>
@@ -174,7 +177,7 @@
           </ul>
         </div>
         <div class="pt-4">
-          <button type="button" onclick="openCheckoutModal('Plan Comercio')" class="w-full h-10 bg-[#146F8A] hover:bg-[#10596e] text-white font-bold text-xs tracking-wide rounded-xl shadow-md shadow-[#146F8A]/25 hover:shadow-lg cursor-pointer active:scale-95 hover:scale-[1.01]">
+          <button type="button" onclick="openCheckoutModal('comercio')" class="w-full h-10 bg-[#146F8A] hover:bg-[#10596e] text-white font-bold text-xs tracking-wide rounded-xl shadow-md shadow-[#146F8A]/25 hover:shadow-lg cursor-pointer active:scale-95 hover:scale-[1.01]">
             Comenzar Prueba Gratis de 7 Días
           </button>
         </div>
@@ -209,7 +212,7 @@
           </ul>
         </div>
         <div class="pt-4">
-          <button type="button" onclick="openCheckoutModal('Plan Cadena')" class="w-full h-10 bg-slate-100 group-hover:bg-[#146F8A] text-slate-700 group-hover:text-white font-bold text-xs tracking-wide rounded-xl shadow-sm hover:shadow-md cursor-pointer active:scale-95">
+          <button type="button" onclick="openCheckoutModal('cadena')" class="w-full h-10 bg-slate-100 group-hover:bg-[#146F8A] text-slate-700 group-hover:text-white font-bold text-xs tracking-wide rounded-xl shadow-sm hover:shadow-md cursor-pointer active:scale-95">
             Seleccionar Plan Cadena
           </button>
         </div>
@@ -288,7 +291,7 @@
         </div>
       </div>
 
-      <!-- Columna Derecha del Modal (Formulario Reactivo) -->
+      <!-- Columna Derecha del Modal (Formulario de Envío) -->
       <div class="w-full md:w-[62%] flex flex-col gap-3">
         
         <div class="flex justify-between items-center">
@@ -298,13 +301,18 @@
           </button>
         </div>
 
-        <form id="checkoutForm" @submit.prevent="submitCheckoutForm" class="flex flex-col gap-3" novalidate>
+        <form action="{{ route('register.step.store', ['step' => 6]) }}" method="POST" class="flex flex-col gap-3">
+          @csrf
+          <input type="hidden" name="plan" id="input_plan" value="inicial">
+          <input type="hidden" name="ciclo" id="input_ciclo" value="monthly">
+          <input type="hidden" name="metodo_pago" id="input_metodo" value="tarjeta">
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- Nombres -->
             <div class="flex flex-col gap-0.5">
               <label class="text-[11px] font-bold text-slate-900">Nombres completos</label>
               <input type="text" 
+                     name="billing_nombre"
                      x-model="form.nombres" 
                      @keypress="return validateTextOnly(event)" 
                      placeholder="Ejemplo: María José" 
@@ -328,6 +336,7 @@
             <div class="flex flex-col gap-0.5">
               <label class="text-[11px] font-bold text-slate-900">Razón social</label>
               <input type="text" 
+                     name="billing_razon"
                      x-model="form.razon" 
                      @keypress="return validateTextOnly(event)" 
                      placeholder="Ejemplo: Cruz Valdivia" 
@@ -352,6 +361,7 @@
           <div class="flex flex-col gap-0.5">
             <label class="text-[11px] font-bold text-slate-900">Correo electrónico</label>
             <input type="email" 
+                   name="billing_correo"
                    x-model="form.correo" 
                    placeholder="Ejemplo: mariajosecruz21@gmail.com" 
                    class="w-full h-10 px-3 bg-white border rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-4 shadow-sm"
@@ -387,7 +397,7 @@
           <div id="cardPaymentFields" class="flex flex-col gap-3" x-show="method === 'tarjeta'">
             <div class="flex flex-col gap-0.5">
               <label class="text-[11px] font-bold text-slate-900">Número de tarjeta</label>
-              <input type="text" x-model="form.cardNum" placeholder="0000 0000 0000 0000" maxlength="19" @input="formatCardNumber($event)" @keypress="return validateNumberOnly(event)" 
+              <input type="text" name="numero_tarjeta" x-model="form.cardNum" placeholder="0000 0000 0000 0000" maxlength="19" @input="formatCardNumber($event)" @keypress="return validateNumberOnly(event)" 
                      class="w-full h-10 px-3 bg-white border rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-4 shadow-sm"
                      :class="{
                        'border-slate-200 focus:border-[#146F8A] focus:ring-[#146F8A]/10': form.cardNum.length === 0,
@@ -397,7 +407,7 @@
             </div>
             <div class="flex flex-col gap-0.5">
               <label class="text-[11px] font-bold text-slate-900">Nombre en la tarjeta</label>
-              <input type="text" x-model="form.cardName" placeholder="Tal y como aparece en la tarjeta" @keypress="return validateTextOnly(event)" 
+              <input type="text" name="nombre_tarjeta" x-model="form.cardName" placeholder="Tal y como aparece en la tarjeta" @keypress="return validateTextOnly(event)" 
                      class="w-full h-10 px-3 bg-white border rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-4 shadow-sm"
                      :class="{
                        'border-slate-200 focus:border-[#146F8A] focus:ring-[#146F8A]/10': form.cardName.length === 0,
@@ -408,7 +418,7 @@
             <div class="grid grid-cols-2 gap-3">
               <div class="flex flex-col gap-0.5">
                 <label class="text-[11px] font-bold text-slate-900">Vencimiento (MM/AA)</label>
-                <input type="text" x-model="form.cardExp" placeholder="MM/AA" maxlength="5" @input="formatExpiryDate($event)" @keypress="return validateNumberOnly(event)" 
+                <input type="text" name="vencimiento" x-model="form.cardExp" placeholder="MM/AA" maxlength="5" @input="formatExpiryDate($event)" @keypress="return validateNumberOnly(event)" 
                        class="w-full h-10 px-3 bg-white border rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-4 shadow-sm"
                        :class="{
                          'border-slate-200 focus:border-[#146F8A] focus:ring-[#146F8A]/10': form.cardExp.length === 0,
@@ -418,7 +428,7 @@
               </div>
               <div class="flex flex-col gap-0.5">
                 <label class="text-[11px] font-bold text-slate-900">CVC / CVV</label>
-                <input type="password" x-model="form.cardCvc" placeholder="••••" maxlength="4" @keypress="return validateNumberOnly(event)" 
+                <input type="password" name="cvc" x-model="form.cardCvc" placeholder="••••" maxlength="4" @keypress="return validateNumberOnly(event)" 
                        class="w-full h-10 px-3 bg-white border rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-4 shadow-sm"
                        :class="{
                          'border-slate-200 focus:border-[#146F8A] focus:ring-[#146F8A]/10': form.cardCvc.length === 0,
@@ -438,7 +448,7 @@
             </p>
             <div class="flex flex-col gap-1 pt-1 border-t border-slate-200">
               <label class="font-bold text-slate-900">Número de referencia o comprobante de transferencia *</label>
-              <input type="text" x-model="form.transferRef" placeholder="Ej: TRF-98231049" 
+              <input type="text" name="referencia_transferencia" x-model="form.transferRef" placeholder="Ej: TRF-98231049" 
                      class="w-full h-9 px-3 bg-white border rounded-lg text-xs text-slate-700 font-medium focus:outline-none focus:ring-4 shadow-sm"
                      :class="{
                        'border-slate-200 focus:border-[#146F8A] focus:ring-[#146F8A]/10': form.transferRef.length === 0,
@@ -449,7 +459,7 @@
             </div>
           </div>
 
-          <!-- Botón de Confirmación Controlado por Estado (Deshabilitado hasta completar datos válidos) -->
+          <!-- Botón de Confirmación Controlado por Estado -->
           <div class="pt-2">
             <button type="submit" 
                     :disabled="!isFormValid"
@@ -472,19 +482,22 @@
     const checkoutModal = document.getElementById('checkoutModal');
 
     const plansData = {
-      'Plan inicial': {
+      'inicial': {
+        name: 'Plan inicial',
         desc: 'Pulperías pequeñas o en etapa de digitalización',
         monthly: { price: 'C$ 1,160.00', usd: '$32 USD por mes', badge: 'C$ 13,920.00 facturado anualmente' },
         annual: { price: 'C$ 928.00', usd: '$26 USD por mes', badge: 'C$ 11,136.00 facturado anualmente (Ahorras 20%)' },
         features: ['1 Caja / POS activo', '1 Sucursal', 'POS de cobro en vivo', 'Catálogo e Inventario completo', 'Cierre de caja con Arqueo Ciego', 'Devoluciones y Mermas']
       },
-      'Plan Comercio': {
+      'comercio': {
+        name: 'Plan Comercio',
         desc: 'Minisúper, pulperías grandes y comercios consolidados',
         monthly: { price: 'C$ 2,280.00', usd: '$62 USD por mes', badge: 'C$ 27,360.00 facturado anualmente' },
         annual: { price: 'C$ 1,824.00', usd: '$50 USD por mes', badge: 'C$ 21,888.00 facturado anualmente (Ahorras 20%)' },
         features: ['Hasta 3 Cajas simultáneas', '1 Sucursal', 'Todo lo del Plan Inicial', 'Cuentas por Cobrar (Fiados)', 'Verificación 3-Way Match', 'Centro de Alertas y Anomalías', 'Mapa de Proveedores integrado']
       },
-      'Plan Cadena': {
+      'cadena': {
+        name: 'Plan Cadena',
         desc: 'Comerciantes con múltiples puntos de venta o bodega central',
         monthly: { price: 'C$ 4,400.00', usd: '$120 USD por mes', badge: 'C$ 52,800.00 facturado anualmente' },
         annual: { price: 'C$ 3,520.00', usd: '$96 USD por mes', badge: 'C$ 42,240.00 facturado anualmente (Ahorras 20%)' },
@@ -493,111 +506,92 @@
     };
 
     function setBillingCycle(cycle) {
-        billingCycle = cycle;
-        const btnM = document.getElementById('btnMensual');
-        const btnA = document.getElementById('btnAnual');
+      billingCycle = cycle;
+      document.getElementById('input_ciclo').value = cycle;
+      const btnMensual = document.getElementById('btnMensual');
+      const btnAnual = document.getElementById('btnAnual');
 
-        if (cycle === 'monthly') {
-            btnM.className = "px-4 py-1.5 text-xs font-bold rounded-xl bg-[#146F8A] text-white shadow-sm cursor-pointer hover:scale-[1.02] active:scale-95";
-            btnA.className = "px-4 py-1.5 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 cursor-pointer hover:scale-[1.02] active:scale-95";
-            
-            document.getElementById('price-inicial').innerText = plansData['Plan inicial'].monthly.price;
-            document.getElementById('subtext-inicial').innerText = plansData['Plan inicial'].monthly.usd;
-            document.getElementById('badge-inicial').innerText = plansData['Plan inicial'].monthly.badge;
+      if (cycle === 'monthly') {
+        btnMensual.className = 'px-4 py-1.5 text-xs font-bold rounded-xl bg-[#146F8A] text-white shadow-sm cursor-pointer hover:scale-[1.02] active:scale-95';
+        btnAnual.className = 'px-4 py-1.5 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 cursor-pointer hover:scale-[1.02] active:scale-95';
+      } else {
+        btnAnual.className = 'px-4 py-1.5 text-xs font-bold rounded-xl bg-[#146F8A] text-white shadow-sm cursor-pointer hover:scale-[1.02] active:scale-95';
+        btnMensual.className = 'px-4 py-1.5 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 cursor-pointer hover:scale-[1.02] active:scale-95';
+      }
 
-            document.getElementById('price-comercio').innerText = plansData['Plan Comercio'].monthly.price;
-            document.getElementById('subtext-comercio').innerText = plansData['Plan Comercio'].monthly.usd;
-            document.getElementById('badge-comercio').innerText = plansData['Plan Comercio'].monthly.badge;
-
-            document.getElementById('price-cadena').innerText = plansData['Plan Cadena'].monthly.price;
-            document.getElementById('subtext-cadena').innerText = plansData['Plan Cadena'].monthly.usd;
-            document.getElementById('badge-cadena').innerText = plansData['Plan Cadena'].monthly.badge;
-        } else {
-            btnA.className = "px-4 py-1.5 text-xs font-bold rounded-xl bg-[#146F8A] text-white shadow-sm cursor-pointer hover:scale-[1.02] active:scale-95";
-            btnM.className = "px-4 py-1.5 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 cursor-pointer hover:scale-[1.02] active:scale-95";
-            
-            document.getElementById('price-inicial').innerText = plansData['Plan inicial'].annual.price;
-            document.getElementById('subtext-inicial').innerText = plansData['Plan inicial'].annual.usd;
-            document.getElementById('badge-inicial').innerText = plansData['Plan inicial'].annual.badge;
-
-            document.getElementById('price-comercio').innerText = plansData['Plan Comercio'].annual.price;
-            document.getElementById('subtext-comercio').innerText = plansData['Plan Comercio'].annual.usd;
-            document.getElementById('badge-comercio').innerText = plansData['Plan Comercio'].annual.badge;
-
-            document.getElementById('price-cadena').innerText = plansData['Plan Cadena'].annual.price;
-            document.getElementById('subtext-cadena').innerText = plansData['Plan Cadena'].annual.usd;
-            document.getElementById('badge-cadena').innerText = plansData['Plan Cadena'].annual.badge;
-        }
+      ['inicial', 'comercio', 'cadena'].forEach(key => {
+        const data = plansData[key][cycle];
+        document.getElementById(`price-${key}`).innerText = data.price;
+        document.getElementById(`subtext-${key}`).innerText = data.usd;
+        document.getElementById(`badge-${key}`).innerText = data.badge;
+      });
     }
 
-    function openCheckoutModal(planName) {
-        const data = plansData[planName];
-        const currentData = billingCycle === 'monthly' ? data.monthly : data.annual;
+    function openCheckoutModal(planKey) {
+      const plan = plansData[planKey];
+      const currentData = plan[billingCycle];
 
-        document.getElementById('modalPlanTitle').innerText = planName;
-        document.getElementById('modalPlanDesc').innerText = data.desc;
-        document.getElementById('modalPlanPrice').innerText = currentData.price;
-        document.getElementById('modalPlanUSD').innerText = currentData.usd;
-        document.getElementById('modalPlanBadge').innerText = currentData.badge;
+      document.getElementById('modalPlanTitle').innerText = plan.name;
+      document.getElementById('modalPlanDesc').innerText = plan.desc;
+      document.getElementById('modalPlanPrice').innerText = currentData.price;
+      document.getElementById('modalPlanUSD').innerText = currentData.usd;
+      document.getElementById('modalPlanBadge').innerText = currentData.badge;
+      
+      document.getElementById('input_plan').value = planKey;
+      document.getElementById('input_ciclo').value = billingCycle;
 
-        const featuresList = document.getElementById('modalPlanFeatures');
-        featuresList.innerHTML = '';
-        data.features.forEach(feat => {
-            const li = document.createElement('li');
-            li.className = "flex items-center gap-2 hover:translate-x-1";
-            li.innerHTML = `<span class="text-emerald-600 font-bold">✓</span> ${feat}`;
-            featuresList.appendChild(li);
-        });
+      const featuresList = document.getElementById('modalPlanFeatures');
+      featuresList.innerHTML = '';
+      plan.features.forEach(feat => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-2';
+        li.innerHTML = `<span class="text-emerald-600 font-bold">✓</span> ${feat}`;
+        featuresList.appendChild(li);
+      });
 
-        checkoutModal.classList.remove('opacity-0', 'pointer-events-none');
+      checkoutModal.classList.remove('opacity-0', 'pointer-events-none');
     }
 
     function closeCheckoutModal() {
-        checkoutModal.classList.add('opacity-0', 'pointer-events-none');
+      checkoutModal.classList.add('opacity-0', 'pointer-events-none');
     }
 
     function setPaymentMethod(method) {
-        currentPaymentMethod = method;
+      currentPaymentMethod = method;
+      document.getElementById('input_metodo').value = method;
     }
 
-    function validateTextOnly(event) {
-        const char = String.fromCharCode(event.keyCode || event.which);
-        const pattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
-        return pattern.test(char);
+    function validateTextOnly(e) {
+      const char = String.fromCharCode(e.keyCode || e.which);
+      if (!/^[a-zA-ZÀ-ÿ\s]$/.test(char)) {
+        e.preventDefault();
+        return false;
+      }
+      return true;
     }
 
-    function validateNumberOnly(event) {
-        const char = String.fromCharCode(event.keyCode || event.which);
-        const pattern = /^[0-9]*$/;
-        return pattern.test(char);
+    function validateNumberOnly(e) {
+      const char = String.fromCharCode(e.keyCode || e.which);
+      if (!/^[0-9]$/.test(char)) {
+        e.preventDefault();
+        return false;
+      }
+      return true;
     }
 
-    function formatCardNumber(event) {
-        let input = event.target;
-        let value = input.value.replace(/\D/g, '');
-        value = value.substring(0, 16);
-        let formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-        input.value = formatted;
-        input.dispatchEvent(new Event('input')); 
+    function formatCardNumber(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      value = value.replace(/(.{4})/g, '$1 ').trim();
+      e.target.value = value;
     }
 
-    function formatExpiryDate(event) {
-        let input = event.target;
-        let value = input.value.replace(/\D/g, '');
-        value = value.substring(0, 4);
-        if (value.length >= 3) {
-            value = value.substring(0, 2) + '/' + value.substring(2);
-        }
-        input.value = value;
-        input.dispatchEvent(new Event('input')); 
+    function formatExpiryDate(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+      }
+      e.target.value = value;
     }
-
-    function submitCheckoutForm() {
-        // Redirige al paso 7 utilizando la ruta agrupada con parámetros de Laravel
-        window.location.href = "{{ route('register.step', ['step' => 7]) }}";
-    }
-
-    checkoutModal.addEventListener('click', (e) => {
-        if (e.target === checkoutModal) closeCheckoutModal();
-    });
   </script>
+</body>
+</html>

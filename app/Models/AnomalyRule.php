@@ -4,37 +4,30 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\AnomalyRuleCode;
-use App\Enums\AnomalySeverity;
-use App\Enums\AnomalyThresholdType;
 use App\Models\Concerns\BelongsToBusiness;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class AnomalyRule extends Model
 {
     use BelongsToBusiness;
+    use HasFactory;
 
-    // code y name son inmutables (catálogo cerrado): solo se parametriza el resto.
     protected $fillable = [
-        'threshold_value',
+        'business_id',
+        'code',             // <--- VITAL: Debe estar aquí para que el firstOrCreate lo evalúe
+        'name',
+        'threshold_type',
         'default_severity',
+        'threshold_value',
         'is_active',
     ];
 
     protected function casts(): array
     {
         return [
-            'code'             => AnomalyRuleCode::class,
-            'threshold_type'   => AnomalyThresholdType::class,
-            'default_severity' => AnomalySeverity::class,
-            'threshold_value'  => 'decimal:2',
-            'is_active'        => 'boolean',
+            'threshold_value' => 'decimal:2',
+            'is_active'       => 'boolean',
         ];
-    }
-
-    public function anomalies(): HasMany
-    {
-        return $this->hasMany(Anomaly::class);
     }
 }

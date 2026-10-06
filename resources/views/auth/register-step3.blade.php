@@ -29,13 +29,18 @@
     /* Scroll personalizado y limpio exclusivamente para el contenedor del formulario */
     .custom-scroll::-webkit-scrollbar { width: 4px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+
+    .page-transition-out {
+      opacity: 0;
+      transform: translateX(-15px);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
- <div>
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
-  <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
+  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
     
     <!-- Columna Izquierda: Panel Visual Único del Paso de Negocio -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -70,15 +75,15 @@
       </div>
     </div>
 
-    <!-- Columna Derecha: Selección de Tipo de Negocio con Scroll Interno -->
+    <!-- Columna Derecha: Selección de tipo de negocio con Scroll Interno -->
     <div class="flex flex-col justify-between w-full lg:w-[58%] h-full p-6 md:p-8 bg-white overflow-hidden">
       
       <div class="w-full max-w-[620px] mx-auto flex flex-col gap-3 h-full">
         
-        <!-- Header: Regresar y Logo -->
+        <!-- Header: Regresar al Paso 2 y Logo -->
         <div class="flex flex-col gap-2 w-full shrink-0">
           <div class="flex justify-between items-center">
-            <a href="{{ route('register.step', ['step' => 2]) }}" class="flex items-center justify-center w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all duration-200 shadow-sm hover:scale-105 active:scale-95">
+            <a href="{{ route('register.step', ['step' => 2]) }}" class="flex items-center justify-center w-9 h-9 bg-slate-100 hover:bg-[#146F8A] hover:text-white text-slate-600 rounded-full transition-all duration-200 shadow-sm hover:scale-105 active:scale-95">
               <span class="font-bold text-base">←</span>
             </a>
             <div class="flex items-center justify-center h-8 px-2 bg-slate-50/50 rounded-xl">
@@ -94,7 +99,19 @@
           </div>
         </div>
 
-        <!-- Stepper -->
+        <!-- Alertas de errores del servidor (Laravel Validation) -->
+        @if ($errors->any())
+          <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex flex-col gap-1 shrink-0">
+            <span class="font-bold">Por favor corrige los siguientes errores:</span>
+            <ul class="list-disc pl-4">
+              @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+              @endforeach
+            </ul>
+          </div>
+        @endif
+
+        <!-- Stepper dinámico actual (Paso 3 de 7) -->
         <div class="grid grid-cols-4 gap-2 w-full shrink-0">
           <div class="flex flex-col gap-1">
             <div class="h-1.5 w-full bg-emerald-600 rounded-full transition-all duration-500"></div>
@@ -114,14 +131,14 @@
           </div>
         </div>
 
-        <!-- Formulario adaptado a GET sin directiva CSRF -->
-        <form id="businessTypeForm" action="{{ route('register.step.store', ['step' => 3]) }}" method="GET" class="flex flex-col gap-3 w-full overflow-y-auto custom-scroll pr-1 py-1">
+        <!-- Formulario configurado con method="POST" apuntando al paso 4 -->
+        <form id="businessTypeForm" action="{{ route('register.step.store', ['step' => 3]) }}" method="POST" class="flex flex-col gap-3.5 w-full overflow-y-auto custom-scroll pr-1 max-h-[340px]">
+          @csrf
           <input type="hidden" id="tipo_negocio" name="tipo_negocio" value="{{ old('tipo_negocio', $formData['tipo_negocio'] ?? '') }}" required />
 
-          <!-- Opciones de Negocio (Grid de Tarjetas) -->
+          <!-- Grilla de Opciones Comerciales -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             
-            <!-- Opción 1: Ferretería -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="ferreteria">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/ferreteria.png') }}" alt="Ferretería" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -135,7 +152,6 @@
               </div>
             </div>
 
-            <!-- Opción 2: Restaurante -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="restaurante">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/restaurante.png') }}" alt="Restaurante" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -149,7 +165,6 @@
               </div>
             </div>
 
-            <!-- Opción 3: Supermercado -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="supermercado">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/supermercado.png') }}" alt="Supermercado" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -163,7 +178,6 @@
               </div>
             </div>
 
-            <!-- Opción 4: Ropa y accesorios -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="ropa_accesorios">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/ropaaccesorios.png') }}" alt="Ropa y accesorios" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -177,7 +191,6 @@
               </div>
             </div>
 
-            <!-- Opción 5: Farmacia -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="farmacia">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/farmacia.png') }}" alt="Farmacia" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -191,7 +204,6 @@
               </div>
             </div>
 
-            <!-- Opción 6: Tienda de electrónicos -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="electronicos">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/electronic.png') }}" alt="Tienda de electrónicos" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -205,7 +217,6 @@
               </div>
             </div>
 
-            <!-- Opción 7: Cafetería -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="cafeteria">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/cafeteria.png') }}" alt="Cafetería" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -219,7 +230,6 @@
               </div>
             </div>
 
-            <!-- Opción 8: Distribuidora -->
             <div class="business-card relative flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 group" data-value="distribuidora">
               <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
                 <img src="{{ asset('images/distribuidora.png') }}" alt="Distribuidora" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -235,7 +245,7 @@
 
           </div>
 
-          <!-- Opción 9: Otro (Ancho completo) -->
+          <!-- Opción "Otro" a ancho completo fuera de la grilla de dos columnas -->
           <div class="business-card relative flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-[#146F8A]/60 hover:shadow-md cursor-pointer transition-all duration-300 w-full group" data-value="otro">
             <div class="w-12 h-12 shrink-0 bg-slate-50 group-hover:bg-sky-50/50 rounded-xl flex items-center justify-center p-2 border border-slate-100 transition-colors">
               <img src="{{ asset('images/otro.png') }}" alt="Otro" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" />
@@ -251,7 +261,7 @@
 
         </form>
 
-        <!-- Botón de envío fijo al pie -->
+        <!-- Botón de envío asociado por el atributo form="..." -->
         <div class="shrink-0 pt-1">
           <button type="submit" form="businessTypeForm" id="submitBtn" disabled class="w-full h-11 bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm transition-all duration-300 ease-in-out cursor-not-allowed">
             Continuar
@@ -264,15 +274,17 @@
 
   </div>
 
-  <!-- Lógica de selección y animaciones interactivas -->
+  <!-- Lógica Interactiva y Transición Animada -->
   <script>
     const cards = document.querySelectorAll('.business-card');
     const hiddenInput = document.getElementById('tipo_negocio');
     const submitBtn = document.getElementById('submitBtn');
+    const mainContainer = document.getElementById('mainContainer');
+    const businessForm = document.getElementById('businessTypeForm');
 
     cards.forEach(card => {
       card.addEventListener('click', () => {
-        // Remover estado seleccionado de todas con transición suave
+        // Remover estado seleccionado de todas las tarjetas con transición suave
         cards.forEach(c => {
           c.classList.remove('border-[#146F8A]', 'bg-sky-50/40', 'ring-2', 'ring-[#146F8A]/25', 'shadow-md');
           c.classList.add('border-slate-200', 'bg-white');
@@ -295,7 +307,7 @@
         activeBox.classList.add('bg-[#146F8A]', 'border-[#146F8A]');
         activeIcon.classList.remove('hidden');
 
-        // Asignar valor y habilitar botón de forma dinámica
+        // Asignar valor al input oculto y habilitar botón de forma interactiva
         hiddenInput.value = card.getAttribute('data-value');
         submitBtn.disabled = false;
         submitBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed', 'shadow-sm');
@@ -303,7 +315,18 @@
       });
     });
 
-    // Restaurar selección previa si existe (old() de Laravel)
+    // Interceptar envío del formulario para aplicar animación visual fluida de salida
+    businessForm.addEventListener('submit', function(e) {
+      if (!submitBtn.disabled) {
+        e.preventDefault();
+        mainContainer.classList.add('page-transition-out');
+        setTimeout(() => {
+          businessForm.submit();
+        }, 320);
+      }
+    });
+
+    // Restaurar selección previa si existe (old() de Laravel o $formData)
     const initialValue = hiddenInput.value;
     if (initialValue) {
       const targetCard = document.querySelector(`.business-card[data-value="${initialValue}"]`);
@@ -312,4 +335,6 @@
       }
     }
   </script>
-</div>
+
+</body>
+</html>

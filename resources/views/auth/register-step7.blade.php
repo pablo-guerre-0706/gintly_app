@@ -27,7 +27,7 @@
             overflow: hidden;
         }
 
-        /*  imágenes de fondo */
+        /* Imágenes de fondo */
         .dashboard-bg {
             background-size: cover;
             background-position: top center;
@@ -101,12 +101,12 @@
                      style="background-image: url('{{ asset('images/catalogoproductos.png') }}');">
                 </div>
 
-                <!-- 2. Dashboard Izquierda (General / dashboard - Rotación negativa -->
+                <!-- 2. Dashboard Izquierda (General / dashboard) -->
                 <div class="absolute top-[75px] left-[-70px] w-[900px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden transform rotate-12 transition-all duration-500 ease-out hover:scale-[1.01] hover:rotate-12 hover:z-30 origin-top-left pointer-events-auto cursor-pointer dashboard-bg"
                      style="background-image: url('{{ asset('images/dashboard.png') }}');">
                 </div>
 
-                <!-- 3. Dashboard Derecha (cierre de caja) - Rotación negativa -->
+                <!-- 3. Dashboard Derecha (cierre de caja) -->
                 <div class="absolute top-[75px] right-[-70px] w-[900px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden transform -rotate-12 transition-all duration-500 ease-out hover:scale-[1.01] hover:-rotate-12 hover:z-30 origin-top-right pointer-events-auto cursor-pointer dashboard-bg"
                      style="background-image: url('{{ asset('images/cierrecaja.png') }}');">
                 </div>

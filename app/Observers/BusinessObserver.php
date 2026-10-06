@@ -14,11 +14,11 @@ use App\Models\Customer;
 use App\Models\DocumentSequence;
 use Illuminate\Support\Facades\DB;
 
-
-
 final class BusinessObserver
 {
-    // Se dispara automaticamente despues que un negocio se guarda en la BD.
+    /**
+     * Se dispara automáticamente después de que un negocio se guarda en la BD.
+     */
     public function created(Business $business): void
     {
         DB::transaction(function () use ($business): void {
@@ -30,7 +30,9 @@ final class BusinessObserver
         });
     }
 
-    // Cliente genérico "Consumidor Final": uno por negocio, protegido.
+    /**
+     * Cliente genérico "Consumidor Final": uno por negocio, protegido.
+     */
     private function seedGenericCustomer(Business $business): void
     {
         Customer::query()->firstOrCreate(
@@ -39,24 +41,27 @@ final class BusinessObserver
                 'is_generic'  => true,
             ],
             [
-                'name'          => 'Consumidor Final',
-                'document_type' => DocumentType::Generico,
+                'name'            => 'Consumidor Final',
+                'document_type'   => DocumentType::Generico,
                 'document_number' => null,
-                'is_active'     => true,
+                'is_active'       => true,
             ]
         );
     }
 
-    // Secuencia de documentos por defecto para el negocio
+    /**
+     * Secuencia de documentos por defecto para el negocio.
+     */
     private function seedDocumentSequences(Business $business): void
     {
         if (! class_exists(DocumentSequence::class)) {
             return;
         }
 
+        // Definimos las secuencias asegurando que los tipos coincidan con los permitidos por la BD
         $sequences = [
-            'invoice'     => 'F-',
-            'credit_note' => 'NC-',
+            'invoice'      => 'F-',
+            'credit_note'  => 'NC-',
             'sales_return' => 'DV-',
         ];
 
@@ -74,9 +79,11 @@ final class BusinessObserver
         }
     }
 
+    /**
+     * Catálogo inicial de reglas de anomalía para el negocio.
+     */
     private function seedAnomalyRules(Business $business): void
     {
-        // Catálogo cerrado de 6 reglas con umbral/severidad por defecto. firstOrCreate ⇒ idempotente.
         $rules = [
             [AnomalyRuleCode::DescuadreCaja,      'Descuadre de caja',           AnomalyThresholdType::Monto,    AnomalySeverity::Advertencia, null],
             [AnomalyRuleCode::FaltanteInventario, 'Faltante de inventario',      AnomalyThresholdType::Cantidad, AnomalySeverity::Advertencia, null],
@@ -90,7 +97,8 @@ final class BusinessObserver
             AnomalyRule::query()->firstOrCreate(
                 [
                     'business_id' => $business->id,
-                    'code' => $code->value],
+                    'code'        => $code->value,
+                ],
                 [
                     'name'             => $name,
                     'threshold_type'   => $type->value,

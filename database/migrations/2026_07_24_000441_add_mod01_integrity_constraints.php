@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,14 +9,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // tasa impositiva
+        // 1. Desactivar temporalmente las foreign keys para evitar bloqueos de índices
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+        // Tasa impositiva
         DB::statement('
             ALTER TABLE businesses
             ADD CONSTRAINT chk_business_tax_rate
             CHECK (tax_rate >= 0 AND tax_rate < 1)
         ');
 
-         // Unicidad de sucursal compatible con borrado lógico
+        // Unicidad de sucursal compatible con borrado lógico
         DB::statement("
             ALTER TABLE branches
             ADD COLUMN name_lock VARCHAR(150)
@@ -29,10 +30,15 @@ return new class extends Migration
         Schema::table('branches', function (Blueprint $table): void {
             $table->unique(['business_id', 'name_lock'], 'uniq_branch_active_name');
         });
+
+        // 2. Reactivar las foreign keys
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
     }
 
     public function down(): void
     {
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
         Schema::table('branches', function (Blueprint $table): void {
             $table->dropUnique('uniq_branch_active_name');
         });
@@ -40,5 +46,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE branches DROP COLUMN name_lock');
 
         DB::statement('ALTER TABLE businesses DROP CONSTRAINT chk_business_tax_rate');
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
     }
 };

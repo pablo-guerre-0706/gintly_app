@@ -21,13 +21,18 @@
     /* Scroll personalizado y limpio exclusivamente para el contenedor del formulario */
     .custom-scroll::-webkit-scrollbar { width: 4px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+
+    .page-transition-out {
+      opacity: 0;
+      transform: translateX(-15px);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
-  <div>
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
-  <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
+  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
     
     <!-- Columna Izquierda: Panel Visual Único del Paso Regional -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -70,7 +75,7 @@
         <!-- Header: Regresar al paso 3 y Logo -->
         <div class="flex flex-col gap-2 w-full shrink-0">
           <div class="flex justify-between items-center">
-            <a href="{{ route('register.step', ['step' => 3]) }}" class="flex items-center justify-center w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all duration-200 shadow-sm hover:scale-105 active:scale-95">
+            <a href="{{ route('register.step', ['step' => 3]) }}" class="flex items-center justify-center w-9 h-9 bg-slate-100 hover:bg-[#146F8A] hover:text-white text-slate-600 rounded-full transition-all duration-200 shadow-sm hover:scale-105 active:scale-95">
               <span class="font-bold text-base">←</span>
             </a>
             <div class="flex items-center justify-center h-8 px-2 bg-slate-50/50 rounded-xl">
@@ -86,7 +91,19 @@
           </div>
         </div>
 
-        <!-- Stepper -->
+        <!-- Alertas de errores del servidor (Laravel Validation) -->
+        @if ($errors->any())
+          <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex flex-col gap-1 shrink-0">
+            <span class="font-bold">Por favor corrige los siguientes errores:</span>
+            <ul class="list-disc pl-4">
+              @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+              @endforeach
+            </ul>
+          </div>
+        @endif
+
+        <!-- Stepper actualizado al paso 4 -->
         <div class="grid grid-cols-4 gap-2 w-full shrink-0">
           <div class="flex flex-col gap-1">
             <div class="h-1.5 w-full bg-emerald-600 rounded-full transition-all duration-500"></div>
@@ -106,8 +123,9 @@
           </div>
         </div>
 
-        <!-- Formulario con Scroll Interno -->
-        <form id="regionalForm" action="{{ route('register.step.store', ['step' => 4]) }}" method="GET" class="flex flex-col gap-4 w-full overflow-y-auto custom-scroll pr-1 py-1 my-auto">
+        <!-- Formulario con Scroll Interno apuntando a route('register.step.store', ['step' => 4]) -->
+        <form id="regionalForm" action="{{ route('register.step.store', ['step' => 4]) }}" method="POST" class="flex flex-col gap-4 w-full overflow-y-auto custom-scroll pr-1 py-1 my-auto max-h-[360px]">
+          @csrf
           
           <!-- Campo 1: Zona Horaria -->
           <div class="flex flex-col gap-1.5 w-full">
@@ -185,8 +203,8 @@
 
         </form>
 
-        <!-- Botón de envío fijo al pie -->
-        <div class="shrink-0 pt-2">
+        <!-- Botón de envío asociado por el atributo form="..." -->
+        <div class="shrink-0 pt-1">
           <button type="submit" form="regionalForm" id="submitBtn" class="w-full h-11 bg-[#146F8A] text-white hover:bg-[#10596e] font-bold text-sm tracking-wide rounded-2xl shadow-lg shadow-[#146F8A]/25 transition-all duration-300 ease-in-out cursor-pointer active:scale-[0.99]">
             Continuar
           </button>
@@ -198,12 +216,14 @@
 
   </div>
 
-  <!-- Lógica de validación dinámica -->
+  <!-- Lógica de validación dinámica y animación de salida -->
   <script>
     const monedaSelect = document.getElementById('moneda');
     const fechaInput = document.getElementById('fecha_creacion');
     const zonaHorariaSelect = document.getElementById('zona_horaria');
     const submitBtn = document.getElementById('submitBtn');
+    const mainContainer = document.getElementById('mainContainer');
+    const regionalForm = document.getElementById('regionalForm');
 
     function checkFormValidity() {
       if (monedaSelect.value !== "" && fechaInput.value !== "" && zonaHorariaSelect.value !== "") {
@@ -221,7 +241,19 @@
     fechaInput.addEventListener('input', checkFormValidity);
     zonaHorariaSelect.addEventListener('change', checkFormValidity);
 
+    // Interceptar envío para aplicar transición suave de salida
+    regionalForm.addEventListener('submit', function(e) {
+      if (!submitBtn.disabled) {
+        e.preventDefault();
+        mainContainer.classList.add('page-transition-out');
+        setTimeout(() => {
+          regionalForm.submit();
+        }, 320);
+      }
+    });
+
     // Validación inicial al cargar la página
     checkFormValidity();
   </script>
-</div>
+</body>
+</html>

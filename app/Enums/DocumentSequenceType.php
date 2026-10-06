@@ -9,22 +9,25 @@ namespace App\Enums;
  */
 enum DocumentSequenceType: string
 {
-    case Invoice    = 'invoice';
-    case CreditNote = 'credit_note';
+    case Invoice     = 'invoice';
+    case CreditNote  = 'credit_note';
+    case SalesReturn = 'sales_return'; // <--- CASO AÑADIDO PARA EVITAR EL ERROR
 
     public function label(): string
     {
         return match ($this) {
-            self::Invoice    => 'Factura',
-            self::CreditNote => 'Nota de crédito',
+            self::Invoice     => 'Factura',
+            self::CreditNote  => 'Nota de crédito',
+            self::SalesReturn => 'Devolución de venta',
         };
     }
 
     public function defaultPrefix(): string
     {
         return match ($this) {
-            self::Invoice    => 'F-',
-            self::CreditNote => 'NC-',
+            self::Invoice     => 'F-',
+            self::CreditNote  => 'NC-',
+            self::SalesReturn => 'DV-',
         };
     }
 
@@ -35,4 +38,6 @@ enum DocumentSequenceType: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    
 }

@@ -67,7 +67,7 @@
 
       <div class="relative z-10 flex flex-col gap-4 my-auto text-white">
         <h1 class="text-3xl xl:text-4xl font-bold leading-[1.2] tracking-tight">
-          Gestiona a distancia. Control tus finanzas. Protege tu patrimonio.
+          Gestiona a distancia. Controla tus finanzas. Protege tu patrimonio.
         </h1>
         <p class="text-slate-100 text-sm xl:text-base leading-relaxed opacity-95">
           Desde el control de inventario hasta revisiones automáticas, nuestra plataforma te da gobernanza absoluta sobre tu negocio desde cualquier parte del mundo.
@@ -152,7 +152,7 @@
             Omitir
           </a>
           <!-- Confirmar: Deshabilitado por defecto hasta que exista al menos 1 empleado -->
-          <a id="confirmBtn" href="{{ route('register.step', ['step' => 5]) }}" onclick="handleConfirm(event)" class="w-2/3 h-11 flex items-center justify-center bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm pointer-events-none transition-all duration-300">
+          <a id="confirmBtn" href="{{ route('register.step', ['step' => 6]) }}" onclick="handleConfirm(event)" class="w-2/3 h-11 flex items-center justify-center bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm pointer-events-none transition-all duration-300">
             Confirmar
           </a>
         </div>
@@ -281,7 +281,7 @@
     </div>
   </div>
 
-  <!-- Scripts con Activación Dinámica del Botón Confirmar -->
+  <!-- Scripts con Activación Dinámica del Botón Confirmar y corrección de validación del rol -->
   <script>
     const modal = document.getElementById('employeeModal');
     const deleteModal = document.getElementById('deleteModal');
@@ -319,7 +319,11 @@
         document.getElementById('emp_password_confirmation').value = emp.password;
 
         Object.keys(validationState).forEach(k => validationState[k] = true);
-        document.querySelectorAll('input, select').forEach(el => el.classList.add('border-emerald-500'));
+        document.querySelectorAll('input, select').forEach(el => {
+          el.classList.add('border-emerald-500');
+          el.classList.remove('border-rose-500');
+        });
+        document.querySelectorAll('[id^="err_"]').forEach(el => el.classList.add('hidden'));
         checkFormValidity();
       } else {
         document.getElementById('modalTitle').innerText = "Registrar nuevo empleado";
@@ -391,6 +395,7 @@
 
       if (!isValid && input.value.length > 0) {
         input.classList.add('border-rose-500');
+        input.classList.remove('border-emerald-500');
         errorSpan.classList.remove('hidden');
       } else if (isValid) {
         input.classList.remove('border-rose-500');
@@ -420,6 +425,7 @@
 
       if (!passValid && pass.length > 0) {
         passInput.classList.add('border-rose-500');
+        passInput.classList.remove('border-emerald-500');
         passErr.classList.remove('hidden');
       } else if (passValid) {
         passInput.classList.remove('border-rose-500');
@@ -432,6 +438,7 @@
 
       if (!matchValid && confirm.length > 0) {
         confirmInput.classList.add('border-rose-500');
+        confirmInput.classList.remove('border-emerald-500');
         confirmErr.classList.remove('hidden');
       } else if (matchValid) {
         confirmInput.classList.remove('border-rose-500');
@@ -447,7 +454,12 @@
 
     document.getElementById('emp_rol').addEventListener('change', function() {
       validationState.emp_rol = this.value !== "";
-      if(this.value !== "") this.classList.add('border-emerald-500');
+      if (this.value !== "") {
+        this.classList.add('border-emerald-500');
+        this.classList.remove('border-rose-500');
+      } else {
+        this.classList.remove('border-emerald-500');
+      }
       checkFormValidity();
     });
 
@@ -467,6 +479,16 @@
 
     function saveEmployee(event) {
       event.preventDefault();
+      
+      // Forzar evaluación del select de rol antes de guardar por si el evento change no se disparó explícitamente
+      const rolSelect = document.getElementById('emp_rol');
+      validationState.emp_rol = rolSelect.value !== "";
+      if (!validationState.emp_rol) {
+        rolSelect.classList.add('border-rose-500');
+        checkFormValidity();
+        return;
+      }
+
       if (!Object.values(validationState).every(val => val === true)) return;
       
       const index = document.getElementById('emp_index').value;
@@ -476,7 +498,7 @@
         correo: document.getElementById('emp_correo').value,
         ext: document.getElementById('emp_ext').value,
         telefono: document.getElementById('emp_telefono').value,
-        rol: document.getElementById('emp_rol').value,
+        rol: rolSelect.value,
         password: document.getElementById('emp_password').value
       };
 

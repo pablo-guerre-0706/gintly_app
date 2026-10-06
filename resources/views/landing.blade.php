@@ -20,11 +20,11 @@
 </head>
 <body 
     style="background-image: url('{{ asset('images/backgroundhero.png') }}');" 
-    class="bg-cover bg-center bg-no-repeat bg-fixed font-sans text-white antialiased min-h-screen selection:bg-[#146F8A] selection:text-white"
+    class="bg-cover bg-center bg-no-repeat bg-fixed font-sans text-white antialiased min-h-screen selection:bg-[#146F8A] selection:text-white overflow-x-hidden"
 >
 
-    <!-- CONTENEDOR PRINCIPAL HERO -->
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <!-- CONTENEDOR PRINCIPAL HERO (ANCHO AJUSTADO) -->
+    <div class="w-full max-w-[100vw] px-4 py-6 sm:px-6 lg:px-8">
 
         <!-- NAVBAR HEADER -->
         <header class="mb-12 flex items-center justify-between gap-4 pt-2 transition-all duration-500">
@@ -34,10 +34,10 @@
                     <img 
                         src="{{ asset('images/logo.png') }}" 
                         alt="Logo" 
-                        class="h-full w-full object-contain"
+                        class="h-8 w-8 object-contain"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                     >
-                    <svg class="hidden h-6 w-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="hidden h-8 w-8 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                 </div>
@@ -129,34 +129,44 @@
                 <!-- Columna Derecha: Tarjetas Compuestas -->
                 <div class="relative flex flex-col gap-6 lg:col-span-6">
 
-                    <!-- Tarjetas Superiores -->
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        
-                        <!-- Tarjeta 1: Personal -->
-                        <div class="relative overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
-                            <div class="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-[#3988A0]/20 blur-sm"></div>
-                            <div class="relative z-10 flex items-center justify-between gap-4">
-                                <div class="flex flex-col space-y-2">
-                                    <span class="text-xs font-normal text-[#333333] opacity-70">Gestiona tu personal</span>
-                                    <h3 class="text-xl font-semibold leading-snug text-black">Une a todo tu equipo de trabajo</h3>
-                                </div>
-                                <img src="{{ asset('images/profesionales.png') }}" alt="Profesionales" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
-                            </div>
-                        </div>
+<!-- Tarjetas Superiores -->
+<div class="grid grid-cols-1 gap-16 sm:grid-cols-2">
 
-                        <!-- Tarjeta 2: Inventario -->
-                        <div class="relative overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
-                            <div class="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#3988A0]/20 blur-sm"></div>
-                            <div class="relative z-10 flex items-center justify-between gap-4">
-                                <img src="{{ asset('images/cash.png') }}" alt="Inventario" class="h-[70px] w-[70px] shrink-0 object-contain transition-transform duration-300 hover:scale-110">
-                                <div class="flex flex-col space-y-2 text-right">
-                                    <span class="text-xs font-normal text-[#333333] opacity-70">Maneja tu inventario</span>
-                                    <h3 class="text-xl font-semibold leading-snug text-black">Las mejores herramientas</h3>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Tarjeta 1: Personal -->
+    <div class="relative flex min-h-[140px] items-center justify-between overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
+        <!-- Círculo decorativo original de fondo -->
+        <div class="absolute -top-12 -right-12 h-80 w-80 rounded-full bg-[#3988A0]/20 blur-sm pointer-events-none"></div>
 
-                    </div>
+        <!-- Contenido principal -->
+        <div class="relative z-10 flex w-full items-center justify-between gap-0">
+            <div class="flex flex-col space-y-1 text-left">
+                <span class="text-xs font-normal text-[#333333] opacity-70">Gestiona tu personal</span>
+                <h3 class="text-lg font-bold leading-tight text-black">
+                    Une a todo tu<br>equipo de trabajo
+                </h3>
+            </div>
+            <img src="{{ asset('images/profesionales.png') }}" alt="Profesionales" class="h-16 w-16 shrink-0 object-contain transition-transform duration-300 hover:scale-110">
+        </div>
+    </div>
+
+    <!-- Tarjeta 2: Inventario -->
+    <div class="relative flex min-h-[140px] items-center justify-between overflow-hidden rounded-[24px] bg-[#A9D5E2] p-6 text-slate-900 shadow-md transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:shadow-xl">
+        <!-- Círculo decorativo original de fondo -->
+        <div class="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#3988A0]/20 blur-sm pointer-events-none"></div>
+
+        <!-- Contenido principal -->
+        <div class="relative z-10 flex w-full items-center justify-between gap-4">
+            <img src="{{ asset('images/cash.png') }}" alt="Inventario" class="h-16 w-16 shrink-0 object-contain transition-transform duration-300 hover:scale-110">
+            <div class="flex flex-col space-y-1 text-right">
+                <span class="text-xs font-normal text-[#333333] opacity-70">Maneja tu inventario</span>
+                <h3 class="text-lg font-bold leading-tight text-black">
+                    Las mejores<br>herramientas
+                </h3>
+            </div>
+        </div>
+    </div>
+
+</div>
 
                     <!-- Tarjeta Inferior Modelo Con Ondas -->
                     <div class="relative flex min-h-[420px] w-full items-end justify-center overflow-hidden rounded-[24px] bg-gradient-to-b from-[#A9D5E2] to-white shadow-xl transition-all duration-300 hover:shadow-2xl">

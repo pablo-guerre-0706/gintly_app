@@ -2,33 +2,36 @@
 
 declare(strict_types=1);
 
-namespace App\Models;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-use App\Enums\DocumentSequenceType;
-use App\Models\Concerns\BelongsToBusiness;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-/**
- * Contador de folios secuenciales por negocio y tipo. Reutilizada para NC en MOD-10.
- */
-final class DocumentSequence extends Model
+// Secuencias de folio por negocio y tipo.
+return new class extends Migration
 {
-    use BelongsToBusiness;
-    use HasFactory;
-
-    protected $fillable = [
-        'document_type',
-        'prefix',
-        'next_number',
-    ];
-
-    protected function casts(): array
+    public function up(): void
     {
-        return [
-            'document_type' => DocumentSequenceType::class,
-            'next_number'   => 'integer',
-        ];
-    }
-}
+        if (Schema::hasTable('document_sequences')) {
+            return;
+        }
 
+        Schema::create('document_sequences', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('business_id')->constrained('businesses')->cascadeOnDelete();
+            
+            // Definido explícitamente como VARCHAR de 50 caracteres (evita cualquier restricción de tipo ENUM en MySQL)
+            $table->string('document_type', 50);
+            
+            $table->string('prefix', 20)->nullable();
+            $table->unsignedBigInteger('next_number')->default(1);
+            $table->timestamps();
+
+            $table->unique(['business_id', 'document_type'], 'uniq_sequence_business_type');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('document_sequences');
+    }
+};

@@ -18,11 +18,11 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'password',       // el cast 'hashed' lo cifra al asignar
+        'password',       // El cast 'hashed' se encarga de cifrarlo automáticamente
         'is_active',
-        'branch_id',      // validar en FormRequest que sea del mismo tenant
+        'branch_id',      
         'last_login_at',
-        // 'business_id' EXCLUIDO a propósito → se asigna explícito en el Service
+
     ];
 
     protected $hidden = [
@@ -36,11 +36,9 @@ class User extends Authenticatable
             'password'      => 'hashed',
             'is_active'     => 'boolean',
             'last_login_at' => 'datetime',
-            // NADA de 'email_verified_at' → la columna no existe
         ];
     }
 
-    // business() manual (no viene de trait, para no arrastrar el scope global)
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
@@ -64,5 +62,9 @@ class User extends Authenticatable
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
+    }
+    public function registerWizard(): HasOne
+    {
+        return $this->hasOne(RegisterWizard::class);
     }
 }

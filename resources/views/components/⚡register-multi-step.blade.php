@@ -1,6 +1,7 @@
 namespace App\Http\Livewire;
 
 use App\Models\User;
+use App\Models\RegisterWizard;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
 

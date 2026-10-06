@@ -21,12 +21,18 @@
     /* Scroll personalizado y limpio exclusivamente para el contenedor del formulario */
     .custom-scroll::-webkit-scrollbar { width: 4px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+
+    .page-transition-out {
+      opacity: 0;
+      transform: translateX(-15px);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-teal-50/20 flex justify-center items-center min-h-screen p-3 md:p-6 overflow-hidden">
 
   <!-- Contenedor Principal (Individual y Sin Scroll General) -->
-  <div class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in">
+  <div id="mainContainer" class="flex flex-col lg:flex-row items-center w-full max-w-[1380px] h-[92vh] max-h-[860px] bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_20px_50px_rgba(12,67,83,0.08)] border border-white overflow-hidden animate-fade-in transition-all duration-300">
     
     <!-- Columna Izquierda: Panel Visual Único del Paso de Negocio -->
     <div class="hidden lg:flex flex-col justify-between p-10 xl:p-12 w-[42%] h-full relative overflow-hidden bg-[#0C4353]">
@@ -62,14 +68,14 @@
     </div>
 
     <!-- Columna Derecha: Formulario Individual de Negocio con Scroll Interno -->
-    <div class="flex flex-col justify-between w-full lg:w-[58%] h-full p-6 md:p-10 bg-white overflow-hidden">
+    <div class="flex flex-col justify-between w-full lg:w-[58%] h-full p-6 md:p-10 bg-white overflow-y-auto custom-scroll">
       
       <div class="w-full max-w-[580px] mx-auto flex flex-col gap-3 h-full">
         
         <!-- Header: Regresar al Paso 1 y Logo -->
         <div class="flex flex-col gap-2 w-full shrink-0">
           <div class="flex justify-between items-center">
-            <a href="{{ route('register.step', ['step' => 1]) }}" class="flex items-center justify-center w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all shadow-sm">
+            <a href="{{ route('register.step', ['step' => 1]) }}" class="flex items-center justify-center w-9 h-9 bg-slate-100 hover:bg-[#146F8A] hover:text-white text-slate-600 rounded-full transition-all shadow-sm">
               <span class="font-bold text-base">←</span>
             </a>
             <div class="flex items-center justify-center h-8 px-2 bg-slate-50/50 rounded-xl">
@@ -80,34 +86,47 @@
           <div class="flex flex-col gap-0.5">
             <h2 class="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Completa el perfil de tu tienda</h2>
             <p class="text-xs text-slate-500 leading-relaxed">
-              Proporciona la información de tu tienda para crear un perfil completo y personalizado. Estos datos nos permitirán organizar mejor tu negocio.
+              Proporciona la información de tu tienda para crear un perfil completo y personalizado.
             </p>
           </div>
         </div>
 
-        <!-- Stepper (Paso 1 Completado, Paso 2 Activo) -->
+        <!-- Alertas de errores del servidor (Laravel Validation) -->
+        @if ($errors->any())
+          <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex flex-col gap-1 shrink-0">
+            <span class="font-bold">Por favor corrige los siguientes errores:</span>
+            <ul class="list-disc pl-4">
+              @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+              @endforeach
+            </ul>
+          </div>
+        @endif
+
+        <!-- Stepper dinámico actual (Paso 2 de 7) -->
         <div class="grid grid-cols-4 gap-2 w-full shrink-0">
           <div class="flex flex-col gap-1">
-            <div class="h-1.5 w-full bg-emerald-600 rounded-full"></div>
-            <span class="text-[10px] font-semibold text-emerald-600">01 Perfil ✓</span>
+            <div class="h-1.5 w-full bg-emerald-600 rounded-full transition-all duration-500"></div>
+            <span class="text-[10px] font-semibold text-emerald-600">Configuración de tu Perfil</span>
           </div>
           <div class="flex flex-col gap-1">
-            <div class="h-1.5 w-full bg-[#146F8A] rounded-full"></div>
-            <span class="text-[10px] font-bold text-[#146F8A]">02 Negocio</span>
-          </div>
-          <div class="flex flex-col gap-1">
-            <div class="h-1.5 w-full bg-slate-100 rounded-full"></div>
-            <span class="text-[10px] font-medium text-slate-400">03 Región</span>
+            <div class="h-1.5 w-full bg-[#146F8A] rounded-full transition-all duration-500 shadow-sm shadow-[#146F8A]/30"></div>
+            <span class="text-[10px] font-bold text-[#146F8A]">Configura el espacio de tú negocio</span>
           </div>
           <div class="flex flex-col gap-1">
             <div class="h-1.5 w-full bg-slate-100 rounded-full"></div>
-            <span class="text-[10px] font-medium text-slate-400">04 Usuarios</span>
+            <span class="text-[10px] font-medium text-slate-400">Preferencias regionales</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <div class="h-1.5 w-full bg-slate-100 rounded-full"></div>
+            <span class="text-[10px] font-medium text-slate-400">Creación de usuarios</span>
           </div>
         </div>
 
-        <!-- Formulario configurado con method="GET" y scroll interno -->
-        <form id="businessForm" action="{{ route('register.step.store', ['step' => 2]) }}" method="GET" class="flex flex-col gap-3 w-full overflow-y-auto custom-scroll pr-1 py-1">
-          
+        <!-- Formulario configurado con method="POST" -->
+        <form id="profileForm" action="{{ route('register.step.store', ['step' => 2]) }}" method="POST" class="flex flex-col gap-3.5 w-full">
+          @csrf
+
           <!-- Fila 1: Nombre de la tienda y País o región -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
@@ -127,13 +146,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
               <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Ciudad</label>
-              <input type="text" id="ciudad" name="ciudad" value="{{ old('ciudad', $formData['ciudad'] ?? '') }}" placeholder="Ej: Managua" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
+              <input type="text" id="ciudad" name="ciudad" value="{{ old('ciudad', $formData['ciudad'] ?? '') }}" placeholder="Ej: Ocotal" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
               <span id="ciudadMsg" class="text-[10px] text-slate-500 flex items-center gap-1">Es de carácter obligatorio</span>
             </div>
 
             <div class="flex flex-col gap-1">
               <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Código postal</label>
-              <input type="text" id="codigo_postal" name="codigo_postal" value="{{ old('codigo_postal', $formData['codigo_postal'] ?? '') }}" placeholder="Ej: 11001" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
+              <input type="text" id="codigo_postal" name="codigo_postal" value="{{ old('codigo_postal', $formData['codigo_postal'] ?? '') }}" placeholder="Ej: 32100" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
               <span id="codigoPostalMsg" class="text-[10px] text-slate-500 flex items-center gap-1">Es de carácter obligatorio</span>
             </div>
           </div>
@@ -141,7 +160,7 @@
           <!-- Fila 3: Dirección -->
           <div class="flex flex-col gap-1">
             <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Dirección</label>
-            <input type="text" id="direccion" name="direccion" value="{{ old('direccion', $formData['direccion'] ?? '') }}" placeholder="Ej: De los semáforos 2 cuadras abajo" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
+            <input type="text" id="direccion" name="direccion" value="{{ old('direccion', $formData['direccion'] ?? '') }}" placeholder="Ej: Del parque central 2 cuadras al norte" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
             <span id="direccionMsg" class="text-[10px] text-slate-500 flex items-center gap-1">Es de carácter obligatorio</span>
           </div>
 
@@ -155,7 +174,7 @@
 
             <div class="flex flex-col gap-1">
               <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Número convencional</label>
-              <input type="tel" id="numero_convencional" name="numero_convencional" value="{{ old('numero_convencional', $formData['numero_convencional'] ?? '') }}" placeholder="22223344" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" />
+              <input type="tel" id="numero_convencional" name="numero_convencional" value="{{ old('numero_convencional', $formData['numero_convencional'] ?? '') }}" placeholder="27322233" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" />
               <span id="numConvencionalMsg" class="text-[10px] text-slate-400 flex items-center gap-1">Opcional, pero recomendado como contacto</span>
             </div>
           </div>
@@ -165,7 +184,7 @@
             <div class="flex flex-col gap-1">
               <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Número de sucursales</label>
               <input type="number" min="1" id="numero_sucursales" name="numero_sucursales" value="{{ old('numero_sucursales', $formData['numero_sucursales'] ?? '1') }}" class="px-3.5 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#146F8A]/20 focus:border-[#146F8A] transition-all shadow-sm" required />
-              <span id="sucursalesMsg" class="text-[10px] text-slate-500 flex items-center gap-1">Obligatorio para entender la capacidad de tu negocio.</span>
+              <span id="sucursalesMsg" class="text-[10px] text-slate-500 flex items-center gap-1">Obligatorio para la capacidad del negocio.</span>
             </div>
 
             <div class="flex flex-col gap-1">
@@ -175,14 +194,14 @@
             </div>
           </div>
 
-        </form>
+          <!-- Botón de envío -->
+          <div class="shrink-0 pt-1">
+            <button type="submit" id="submitBtn" disabled class="w-full h-11 bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm transition-all duration-300 ease-in-out cursor-not-allowed">
+              Continuar
+            </button>
+          </div>
 
-        <!-- Botón de envío fijo al pie con etiqueta "Continuar" -->
-        <div class="shrink-0 pt-1">
-          <button type="submit" form="businessForm" id="submitBtn" disabled class="w-full h-11 bg-slate-200 text-slate-400 font-bold text-sm tracking-wide rounded-2xl shadow-sm transition-all duration-300 ease-in-out cursor-not-allowed">
-            Continuar
-          </button>
-        </div>
+        </form>
 
       </div>
 
@@ -190,7 +209,7 @@
 
   </div>
 
-  <!-- Lógica de validación y restricción de caracteres -->
+  <!-- Lógica de validación, restricción y envío con animación -->
   <script>
     const state = {
       nombre_tienda: false,
@@ -259,7 +278,6 @@
       ejecutarValidacion(key, input, msg, condicion, textoError, textoValido, msgObligatorio, esOpcional);
     };
 
-    // Campos Obligatorios
     registrarValidacion('nombre_tienda', document.getElementById('nombre_tienda'), document.getElementById('nombreTiendaMsg'), () => document.getElementById('nombre_tienda').value.trim().length >= 2, "El nombre de la tienda es muy corto", "Nombre válido");
     registrarValidacion('pais_region', document.getElementById('pais_region'), document.getElementById('paisRegionMsg'), () => document.getElementById('pais_region').value.trim().length >= 2, "El país o región es muy corto", "País válido");
     registrarValidacion('ciudad', document.getElementById('ciudad'), document.getElementById('ciudadMsg'), () => document.getElementById('ciudad').value.trim().length >= 2, "El nombre de la ciudad es muy corto", "Ciudad válida");
@@ -268,16 +286,26 @@
     registrarValidacion('numero_sucursales', document.getElementById('numero_sucursales'), document.getElementById('sucursalesMsg'), () => parseInt(document.getElementById('numero_sucursales').value) >= 1, "Debe ser al menos 1 sucursal", "Cantidad válida", "Obligatorio para entender la capacidad de tu negocio.");
     registrarValidacion('ruc', document.getElementById('ruc'), document.getElementById('rucMsg'), () => document.getElementById('ruc').value.trim().length >= 5, "RUC o identificación fiscal inválida", "RUC válido");
 
-    // Correo Electrónico
     registrarValidacion('correo_tienda', document.getElementById('correo_tienda'), document.getElementById('correoTiendaMsg'), () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(document.getElementById('correo_tienda').value), "Formato de correo no válido", "Correo de tienda válido", "Opcional, pero recomendado como contacto", true);
 
-    // Número Convencional (Bloqueo estricto: solo permite números)
     const inputConvencional = document.getElementById('numero_convencional');
     inputConvencional.addEventListener('input', (e) => {
       e.target.value = e.target.value.replace(/\D/g, '');
     });
 
     registrarValidacion('numero_convencional', inputConvencional, document.getElementById('numConvencionalMsg'), () => inputConvencional.value === "" || /^[0-9]{7,15}$/.test(inputConvencional.value), "Debe tener entre 7 y 15 dígitos", "Número convencional válido", "Opcional, pero recomendado como contacto", true);
+
+    const form = document.getElementById('profileForm');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const mainContainer = document.getElementById('mainContainer');
+      
+      mainContainer.classList.add('page-transition-out');
+
+      setTimeout(() => {
+        form.submit();
+      }, 320);
+    });
 
     updateSubmitButton();
   </script>

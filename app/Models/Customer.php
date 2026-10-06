@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use Illuminate\Support\Facades\Auth; 
 
 // Cliente. El "Consumidor Final" (is_generic=true), singleton del sistema, sembrado por BusinessObserver.
 final class Customer extends Model
@@ -22,6 +22,7 @@ final class Customer extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'business_id',
         'name',
         'document_type',
         'document_number',
@@ -44,6 +45,19 @@ final class Customer extends Model
         ];
     }
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Usamos la fachada Auth::check() y Auth::user() para evitar errores en Intelephense
+        static::creating(function ($customer) {
+            if (empty($customer->business_id) && Auth::check() && Auth::user()->business_id) {
+                $customer->business_id = Auth::user()->business_id;
+            }
+        });
+    }
+
+    // ... (el resto de tus métodos continúan igual)
     public function addresses(): HasMany
     {
         return $this->hasMany(CustomerAddress::class);
@@ -90,4 +104,3 @@ final class Customer extends Model
         return bccomp((string) $this->credit_limit, '0', 2) > 0;
     }
 }
-
