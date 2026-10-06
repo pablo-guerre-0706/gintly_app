@@ -58,6 +58,7 @@ use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReceivablePaymentsController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
+use App\Http\Controllers\Api\V1\RegisterController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportDefinitionController;
 use App\Http\Controllers\Api\V1\ResolveGoodsReceiptController;
@@ -97,6 +98,11 @@ Route::prefix('v1')->group(function (): void {
     // Público. El límite de intentos es throttle, no contador en BD.
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
+
+    // Alta pública canónica. Público (fuera de auth:sanctum y de compuertas de tenant); conserva la
+    // infraestructura stateful/CSRF del SPA. Idempotency-Key obligatorio (header). No autentica al propietario.
+    Route::post('/auth/register', RegisterController::class)
+        ->middleware('throttle:register');
 
     Route::middleware(['auth:sanctum', EnsureOperableUser::class])->group(function (): void {
 

@@ -109,7 +109,22 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | metodo_pago | enum | NULL | — | `tarjeta` / `transferencia`. |
 | created_at / updated_at | timestamp | NULL | — | Auditoría. |
 
-**Nota:** borrador del asistente de registro (rutas web `register/*` + `RegisterWizardController`); NO forma parte del núcleo transaccional multi-tenant. El aprovisionamiento atómico definitivo del negocio (propietario, roles, cliente genérico, bodega/caja predeterminada, secuencias, reglas de anomalía) lo ejecuta el flujo de provisioning, no esta tabla.
+**Nota:** borrador del asistente de registro (rutas web `register/*` + `RegisterWizardController`); NO forma parte del núcleo transaccional multi-tenant. El alta canónica definitiva es `POST /api/v1/auth/register` (RegistrationService): crea el Business y su evento dispara `BusinessObserver`, cuyo aprovisionamiento REAL es cliente genérico, secuencias de documentos, reglas de anomalía, configuración fiscal estándar y la matriz de roles del negocio. El alta **NO** crea sucursales, bodegas ni cajas (se administran después). **LEGADO** pendiente de retiro (ver nota de riesgo en Contratos/entrega): sus rutas incluyen escrituras por GET.
+
+### `registration_requests` · idempotencia del alta pública canónica *(añadida en registro público)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| id | bigint | PK | — | Identificador. |
+| uuid | char(36) | NN | **UQ** `uniq_registration_request_uuid` | Idempotency-Key canónica. El índice UNIQUE es el ÁRBITRO de concurrencia: dos solicitudes con la misma clave compiten aquí; el perdedor hace rollback integral. |
+| fingerprint | char(64) | NN | — | HMAC-SHA256 (hex) de la representación canónica y versionada del payload normalizado (incluye la contraseña EXACTA, que NO se persiste). Distingue payloads bajo la misma clave; se compara en tiempo constante. |
+| business_id | bigint | NN, FK CASC | — | Negocio creado por este registro (se fija dentro de la transacción de alta). |
+| business_slug | string(160) | NN | — | Resultado público persistido (parte del cuerpo del endpoint). |
+| owner_email | string(180) | NN | — | Resultado público persistido (correo del propietario). |
+| created_at / updated_at | timestamp | NULL | — | Auditoría. |
+
+**Notas:** INFRAESTRUCTURA pre-tenant: el modelo `RegistrationRequest` **NO** usa `BelongsToBusiness`/BusinessScope (se consulta antes de existir sesión). La fila se escribe dentro de la MISMA transacción de creación (Business + Observer + propietario + ROL-01). El resultado persistido se conserva aunque luego se muten datos del negocio o del propietario. Alias de morphMap: `registration_request` (invariante del proyecto).
+
+**Concurrencia (distinción explícita):** el **lock con nombre** de MySQL (`GET_LOCK('gintly_reg_'+uuid)`, espera finita [1,60]s) SERIALIZA las solicitudes que comparten Idempotency-Key; bajo el flujo actual la solicitud que llega segunda ESPERA y, al liberarse el lock, encuentra al ganador por lectura nueva y resuelve (mismo 201 o 409) **sin ejecutar el aprovisionamiento** (no provisiona-y-revierte en el caso normal). El índice **UNIQUE** `uniq_registration_request_uuid` es una garantía de INTEGRIDAD independiente (árbitro/backstop): si por timeout no se obtuvo el lock y se continuara, el UNIQUE seguiría impidiendo duplicados; la ruta de colisión en transacción + rollback + relectura existe solo como respaldo. Un timeout/error del lock degrada a 500 sanitizado (no a 409).
 
 ---
 

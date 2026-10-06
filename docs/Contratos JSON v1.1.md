@@ -38,7 +38,43 @@
 
 "constraint": "to >= from" }, "error_envelope_422": { "message": "string", "errors": { "campo": ["string"] } } }, 
 
-"resources": { "auth": [ { "method": "POST", "path": "/auth/login", "roles": ["public"], "request_class": "LoginRequest", "middleware": ["throttle:login"], "request": { "business_slug": "string(160)|required", "email": "string(180)|required|email", "password": "string|required", "remember": "bool|opt" }, 
+"resources": { "auth": [ { "method": "POST", "path": "/auth/register", "roles": ["public (visitante NO autenticado)"], "request_class": "RegisterRequest", "controller": "RegisterController (invocable)", "middleware": ["throttle:register", "stateful/CSRF del SPA (igual que login; no se desactiva)"], 
+
+"headers": { "Idempotency-Key": "UUID válido|required (se valida DESDE EL HEADER; un campo homónimo en el body se rechaza como clave desconocida)" }, 
+
+"request": { "business": { "name": "string(150)|required", "timezone": "string(64)|required|timezone" }, "owner": { "first_name": "string|required", "last_name": "string|required (nombre combinado normalizado <= 150)", "email": "string(180)|required|email:rfc", "password": "string|required|confirmed|Password::defaults()", "password_confirmation": "string|required" } }, 
+
+"strict_allowlist": "Solo se admiten EXACTAMENTE esas claves. Cualquier clave extra (incl. privilegiadas: business_id, slug, business_slug, owner_user_id, branch_id, role, roles, permissions, profiles, status, plan, tax_rate, employees, subscription, payment, payment_method, card, card_number, cvc, cvv, transfer_data), aun con null/false/vacío, produce 422 en su ruta.", 
+
+"normalization": "Trim del nombre del negocio; trim + colapso de espacios en nombre/apellido; trim + minúsculas en email; UUID a minúsculas. La CONTRASEÑA se preserva EXACTA (espacios incluidos): TrimStrings se omite SOLO en esta ruta.", 
+
+"backend_defaults": "plan='basic' y status='trial' los fija el backend (no se aceptan del cliente); tax_rate por defecto del esquema.", 
+
+"response_201": "{ data: { business_slug, owner_email } } — idéntico en el alta inicial y en la repetición idempotente exitosa. NUNCA IDs internos, contraseña, hash, permisos, roles, tokens ni detalles de aprovisionamiento.", 
+
+"no_auto_login": "El alta NO autentica al propietario ni emite token: después debe usar el login canónico. La infraestructura puede emitir cookies de sesión anónima/CSRF; eso no autentica al propietario.", 
+
+"idempotency": "Idempotency-Key (header) + fingerprint HMAC-SHA256 (payload normalizado incl. contraseña exacta; la contraseña NO se persiste; secreto estable de backend). Misma clave + mismo payload (orden JSON/normalización equivalentes) → mismo 201 sin nuevas filas; misma clave + payload distinto (incl. contraseña) → 409 REGISTRATION_IDEMPOTENCY_CONFLICT. El resultado original se conserva aunque luego se muten datos del negocio/propietario.", 
+
+"concurrency": "Dos solicitudes con la MISMA clave se serializan con un lock con nombre de MySQL por Idempotency-Key (GET_LOCK('gintly_reg_'+uuid), espera FINITA y acotada [1,60]s, PDO de escritura): la ganadora crea y confirma, la perdedora ESPERA y luego halla el resultado por lectura nueva (reutiliza → mismo 201, o 409) SIN ejecutar aprovisionamiento ni dejar filas parciales. Claves distintas no contienden (paralelismo pleno; mismo nombre de negocio → slugs distintos por sufijo). El índice UNIQUE de uuid es el árbitro definitivo/backstop; los deadlocks/esperas de la transacción se reintentan acotadamente y NO se etiquetan como colisión de slug. Verificado con dos procesos PHP reales y barrera (RegisterConcurrencyTest).", 
+
+"lock_http_behavior": "Si el lock NO se adquiere dentro del timeout (GET_LOCK=0) o hay error de motor (NULL), NO se continúa ni se inventa un 409: es indisponibilidad de infraestructura → 500 SANITIZADO { message } (sin SQL, nombre de lock, fingerprint ni stack). El cliente reintenta con la MISMA Idempotency-Key. El agotamiento de reintentos transaccionales ajenos a slug también degrada a 500 sanitizado, nunca a un 409 de slug/idempotencia.", 
+
+"config_env": "REGISTRATION_FINGERPRINT_SECRET (secreto estable del HMAC del fingerprint; si no se define, recae en APP_KEY). Debe ser ESTABLE por entorno: si cambia entre la solicitud original y sus repeticiones, el fingerprint deja de coincidir y un replay legítimo se trataría como payload distinto (409). Parámetros: gintly.registration.lock_timeout_seconds (10), slug_retries (5), deadlock_retries (3), max_per_minute (5), max_per_hour (20), fingerprint_version (v1). No se exponen valores de secretos.", 
+
+"atomicity": "TODO-O-NADA en una sola transacción: Business + aprovisionamiento del BusinessObserver (cliente genérico, secuencias, reglas de anomalía, config fiscal, matriz de roles) + propietario (is_active, branch_id=null) + owner_user_id + ROL-01 bajo el team del negocio + fila de idempotencia. Cualquier fallo revierte TODO; sin filas parciales.", 
+
+"errors": [ 
+{ "http": 403, "when": "Un visitante con sesión HUMANA autenticada (guard web) intenta registrar; no crea nada." }, 
+{ "http": 422, "when": "Validación: datos faltantes/erróneos, tipos incorrectos, claves no permitidas, header de idempotencia ausente/ inválido o sustituido por el body, contraseña contra la política o confirmación, zona horaria, nombre combinado > 150." }, 
+{ "code": "REGISTRATION_IDEMPOTENCY_CONFLICT", "http": 409, "when": "Misma Idempotency-Key con payload distinto." }, 
+{ "code": "BUSINESS_SLUG_CONFLICT", "http": 409, "when": "Agotamiento REAL de colisiones del índice businesses_slug_unique (no deadlocks ni otros errores)." }, 
+{ "http": 419, "when": "Petición stateful del SPA sin token CSRF válido (ValidateCsrfToken). Verificado con servidor real (RegisterCsrfHttpTest)." }, 
+{ "code": "THROTTLE", "http": 429, "when": "Rate limit de registro (5/min por IP+email, 20/hora por IP)." }, 
+{ "http": 500, "when": "SANITIZADO { message } · lock de idempotencia no adquirido (timeout/errores) o agotamiento de reintentos transaccionales; NO es 409. Reintentar con la misma Idempotency-Key." } 
+] 
+
+}, { "method": "POST", "path": "/auth/login", "roles": ["public"], "request_class": "LoginRequest", "middleware": ["throttle:login"], "request": { "business_slug": "string(160)|required", "email": "string(180)|required|email", "password": "string|required", "remember": "bool|opt" }, 
 
 "note": "H-05. El correo es único POR NEGOCIO (UQ business_id,email); el negocio se resuelve primero (RF-01-02). Si más adelante se resuelve por subdominio, business_slug se retira sin otro cambio. v2.1: autenticación por cookie de sesión (Sanctum SPA); el login establece la sesión y regenera el id (anti-fijación). NO devuelve token.", 
 
@@ -54,7 +90,11 @@
 
 }, { "method": "POST", "path": "/auth/logout", "roles": ["auth"], "response_204": null }, 
 
-{ "method": "GET", "path": "/me", "roles": ["auth"], "response_200": "MeResource { id, name, email, is_active, role (rol humano garantizado), branch_id, profiles[] (solo ROL-03), capabilities[] (capacidades EFECTIVAS de interfaz: ROL-01/02 = permisos del rol, ROL-03 = unión de capacidades de sus perfiles; NO son autorización por recurso), business{id,name,timezone,status} }. business_id SIEMPRE de la sesión, nunca del frontend. ROL-SYS/inactivos no acceden (EnsureOperableUser → 403 e invalida sesión)." } 
+{ "method": "GET", "path": "/me", "roles": ["auth"], "response_200": "MeResource { id, name, email, is_active, role (rol humano garantizado), branch_id, profiles[] (solo ROL-03), capabilities[] (capacidades EFECTIVAS de interfaz: ROL-01/02 = permisos del rol, ROL-03 = unión de capacidades de sus perfiles; NO son autorización por recurso), business{id,name,timezone,status} }. business_id SIEMPRE de la sesión, nunca del frontend. ROL-SYS/inactivos no acceden (EnsureOperableUser → 403 e invalida sesión)." }, 
+
+{ "_auth_flow": "REGISTRO → LOGIN → /me para el SPA de primera parte (Sanctum stateful por cookie, sin tokens Bearer). (1) El SPA pide GET /sanctum/csrf-cookie (fija XSRF-TOKEN + sesión). (2) POST /api/v1/auth/register con Idempotency-Key y X-XSRF-TOKEN → 201 con cuerpo EXACTO {\"data\":{\"business_slug\":\"...\",\"owner_email\":\"...\"}} (RegistrationResultResource; sin otros campos); NO autentica (sin token ni sesión del propietario). (3) POST /api/v1/auth/login con business_slug (el devuelto), email y password + X-XSRF-TOKEN → 200 UserResource; la sesión se regenera (anti-fijación) y viaja por cookie. (4) GET /api/v1/me confirma negocio, rol (ROL-01) y capacidades. Todas las peticiones de escritura del SPA envían la cookie de sesión y el header X-XSRF-TOKEN; sin token válido en una petición stateful → 419. El contrato de login (incluido 'remember') se conserva.", 
+
+"_register_conflict_examples": { "note": "Envelope LITERAL de las excepciones self-render (confirmado contra el código: RegistrationIdempotencyConflictException y BusinessSlugConflictException). Ambas HTTP 409 con propiedades message + code; sin más campos.", "idempotency_409": { "message": "La clave de idempotencia ya se usó con datos distintos.", "code": "REGISTRATION_IDEMPOTENCY_CONFLICT" }, "slug_409": { "message": "No se pudo generar un identificador único para el negocio. Reintente.", "code": "BUSINESS_SLUG_CONFLICT" } } } 
 
 ], 
 
@@ -274,7 +314,7 @@
 
 "documentation_gaps": { 
 
-"H-11": "branches y la configuración fiscal/horaria carecen de RF propio. Se propone para el addendum del FRD: RF-01-07 «Gestión de sucursales y acreditación operativa» (ROL-02, Must) y RF-0108 «Configuración fiscal y horaria del negocio» (ROL-01, Must)." 
+"H-11": "branches y la configuración fiscal/horaria carecen de RF propio. CORRECCIÓN: el identificador RF-01-07 YA está asignado al registro público canónico (POST /api/v1/auth/register), por lo que la propuesta de sucursales NO debe usarlo. Propuesta SIN numeración definitiva, pendiente de addendum del FRD y de numerar tras RF-01-07: «Gestión de sucursales y acreditación operativa» (ROL-02, Must) y «Configuración fiscal y horaria del negocio» (ROL-01, Must). No se crean aquí requisitos de otros módulos." 
 
 }, 
 
