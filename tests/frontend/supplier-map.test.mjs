@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { coordinate, position, mapRecords, filteredMap, supplier, location, supplierAccess } from '../../resources/js/modules/suppliers/contracts.js';
+import { coordinate, position, mapRecords, filteredMap, mapCounts, supplierFocus, supplier, location, supplierAccess } from '../../resources/js/modules/suppliers/contracts.js';
 import { NAVIGATION_GROUPS, authorizedNavigation, flattenedNavigation, isCurrentPageAuthorized } from '../../resources/js/shell/navigation.js';
 
 const fixture = () => ({ data: [{ id: 11, name: 'Proveedor Álamo', status: 'aprobado', locations: [
@@ -39,6 +39,41 @@ test('búsqueda y principal producen el mismo conjunto local de proveedores y ub
     assert.equal(filteredMap(rows, '', true)[0].locations[0].id, 21);
     assert.deepEqual(filteredMap(rows, 'sin resultados'), []);
     assert.equal(rows[0].locations.length, 2);
+});
+
+test('conteo distingue proveedores únicos de ubicaciones, también tras filtrar', () => {
+    const rows = mapRecords(fixture());
+    assert.deepEqual(mapCounts(rows), { suppliers: 1, locations: 2 });
+    assert.deepEqual(mapCounts([...rows, ...rows]), { suppliers: 1, locations: 2 });
+    assert.deepEqual(mapCounts(filteredMap(rows, '', true)), { suppliers: 1, locations: 1 });
+    assert.deepEqual(mapCounts(filteredMap(rows, 'sin resultados')), { suppliers: 0, locations: 0 });
+});
+
+test('selección centra principal visible o ubicación única; las adicionales se encuadran sin inventar una principal', () => {
+    const rows = mapRecords(fixture());
+    assert.equal(supplierFocus(rows[0]).id, 21);
+    assert.equal(supplierFocus(filteredMap(rows, 'León')[0]).id, 22);
+    const additional = { ...rows[0], locations: rows[0].locations.map((item) => ({ ...item, is_primary: false })) };
+    assert.equal(supplierFocus(additional), null);
+});
+
+test('pantalla dividida aislada: altura dinámica, panel desplazable, zoom inferior y retorno canónico', async () => {
+    const view = await readFile(new URL('../../resources/views/suppliers/explore.blade.php', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../resources/css/supplier-map.css', import.meta.url), 'utf8');
+    const controller = await readFile(new URL('../../resources/js/modules/suppliers/explore.js', import.meta.url), 'utf8');
+    const adapter = await readFile(new URL('../../resources/js/maps/provider-adapter.js', import.meta.url), 'utf8');
+    assert.match(view, /aria-label="Volver al dashboard"/); assert.match(view, /route\('dashboard'\)/);
+    assert.match(view, /Proveedores aprobados/); assert.doesNotMatch(view, /Explorar negocios|Overpass/);
+    assert.match(css, /html\[data-page="suppliers\/explore"\]:has\(\[data-supplier-explorer\]\)/);
+    assert.match(css, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
+    assert.match(css, /height: 100dvh/); assert.match(css, /clamp\(320px, 30%, 400px\)/);
+    assert.match(css, /@media \(width < 1024px\)/);
+    assert.match(css, /\.supplier-map-panel[^}]+overflow-y: auto/);
+    assert.doesNotMatch(css, /!important/);
+    assert.match(controller, /zoomPosition: 'bottomright'/); assert.match(controller, /supplierFocus\(record\)/);
+    assert.match(controller, /aria-pressed/); assert.match(controller, /window\.requestAnimationFrame/);
+    assert.match(controller, /\(width < 1024px\)/);
+    assert.match(controller, /onReady: focus/); assert.match(adapter, /container.clientWidth && container.clientHeight/);
 });
 
 test('Resources explícitos: proveedor y ubicación rechazan contratos contradictorios', () => {

@@ -62,6 +62,16 @@ export function filteredMap(records, query = '', primaryOnly = false) {
         (!primaryOnly || item.is_primary) && (!needle || normalize(`${record.name} ${item.address}`).includes(needle))) })).filter((record) => record.locations.length);
 }
 
+export function mapCounts(records) {
+    return { suppliers: new Set(records.map((record) => record.id)).size, locations: new Set(records.flatMap((record) => record.locations.map((item) => item.key))).size };
+}
+
+export function supplierFocus(record) {
+    // Only a visible primary or a single visible location can be selected
+    // automatically. Multiple additional locations must be framed together.
+    return record.locations.find((item) => item.is_primary) ?? (record.locations.length === 1 ? record.locations[0] : null);
+}
+
 export function supplierAccess(context) {
     const read = ['ROL-01', 'ROL-02', 'ROL-03'].includes(context?.role) && context.capabilities?.includes('proveedores.ver') === true;
     return { read, manage: read && ['ROL-01', 'ROL-02'].includes(context.role), approve: read && context.role === 'ROL-01' };
