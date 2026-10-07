@@ -41,6 +41,34 @@ test('búsqueda y principal producen el mismo conjunto local de proveedores y ub
     assert.equal(rows[0].locations.length, 2);
 });
 
+test('filtro por todas las palabras: ignora tildes, mayúsculas, comas y orden sin cruzar direcciones', () => {
+    const rows = mapRecords(fixture());
+    for (const query of ['PROVEEDOR ÁLAMO, Managua', 'centro / alamo; proveedor', 'managua... ÁLAMO']) {
+        assert.deepEqual(filteredMap(rows, query).map((row) => row.locations.map((item) => item.id)), [[21]]);
+    }
+    assert.deepEqual(filteredMap(rows, 'alamo leon', true), []);
+    assert.deepEqual(filteredMap(rows, 'managua norte'), []);
+    assert.deepEqual(filteredMap(rows, 'alamo ausente'), []);
+    assert.deepEqual(mapCounts(filteredMap(rows, ' , ; ')), { suppliers: 1, locations: 2 });
+    assert.deepEqual(mapCounts(filteredMap(rows, '')), mapCounts(rows));
+    assert.equal(rows[0].locations.length, 2);
+});
+
+test('Enter aplica sin navegación, limpiar restaura y los estados de consulta no ocultan errores', async () => {
+    const view = await readFile(new URL('../../resources/views/suppliers/explore.blade.php', import.meta.url), 'utf8');
+    const controller = await readFile(new URL('../../resources/js/modules/suppliers/explore.js', import.meta.url), 'utf8');
+    assert.match(view, /Filtrar mis proveedores/); assert.match(view, /No busca negocios externos/);
+    assert.match(view, /aria-describedby="supplier-map-search-help"/);
+    assert.match(view, /type="submit"[^>]*>Aplicar filtro/); assert.match(view, /data-map-clear/);
+    assert.match(controller, /'submit', \(event\) => \{ event.preventDefault\(\); this.filter\(\); \}/);
+    assert.match(controller, /this.form.reset\(\); this.filter\(\); this.form.elements.search.focus\(\)/);
+    assert.match(controller, /dataset.mapState = 'loading'/); assert.match(controller, /dataset.mapState = 'error'/);
+    assert.match(controller, /'no-results' : 'empty'/); assert.match(controller, /No hay coincidencias/);
+    assert.match(controller, /No hay proveedores elegibles/);
+    assert.match(controller, /\[data-directory-link\]'\).hidden = !this.access.manage/);
+    assert.match(view, /route\('panel.suppliers.index'\)/);
+});
+
 test('conteo distingue proveedores únicos de ubicaciones, también tras filtrar', () => {
     const rows = mapRecords(fixture());
     assert.deepEqual(mapCounts(rows), { suppliers: 1, locations: 2 });

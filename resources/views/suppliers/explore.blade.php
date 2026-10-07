@@ -20,9 +20,14 @@
             </div>
             <p class="mt-3 text-sm leading-6 text-gintly-text-secondary">Ubicaciones confirmadas de proveedores aprobados y activos</p>
         </header>
-        <form data-map-filters class="mt-5 space-y-3" role="search" aria-label="Buscar en el mapa de proveedores">
-            <label class="block text-sm font-semibold" for="supplier-map-search">Nombre o dirección</label>
-            <input id="supplier-map-search" type="search" name="search" autocomplete="off" class="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm" placeholder="Buscar proveedores o direcciones">
+        <form data-map-filters class="mt-5 space-y-3" role="search" aria-label="Filtrar mis proveedores">
+            <label class="block text-sm font-semibold" for="supplier-map-search">Filtrar mis proveedores</label>
+            <input id="supplier-map-search" type="search" name="search" autocomplete="off" aria-describedby="supplier-map-search-help" class="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm" placeholder="Nombre o dirección">
+            <p id="supplier-map-search-help" class="text-xs leading-5 text-gintly-text-secondary">Filtra por palabras de nombre o dirección dentro de tu catálogo elegible. No busca negocios externos. Pulsa Enter para aplicar.</p>
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" class="min-h-11 rounded-xl bg-gintly-sidebar px-3 text-sm font-semibold text-white">Aplicar filtro</button>
+                <button type="button" data-map-clear class="min-h-11 rounded-xl border border-slate-300 px-3 text-sm font-semibold">Limpiar filtros</button>
+            </div>
             <div class="supplier-map-filter-row">
                 <label class="flex min-h-11 items-center gap-2 text-xs leading-5"><input type="checkbox" name="primary">Solo ubicaciones principales</label>
                 <button type="button" data-map-fit class="min-h-11 rounded-xl border border-slate-300 px-2 text-xs font-semibold" disabled>Encuadrar resultados</button>
@@ -34,7 +39,10 @@
         <p data-map-loading role="status" class="mt-4 rounded-xl bg-slate-50 p-4 text-sm">Consultando proveedores y ubicaciones autorizadas…</p>
         <div data-map-error role="alert" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm" hidden><p data-map-error-message></p><button type="button" data-map-retry class="mt-3 min-h-11 rounded-xl border border-red-300 bg-white px-3 font-semibold">Reintentar consulta</button></div>
         <div data-map-content class="mt-4" hidden>
-            <p data-map-empty class="rounded-xl bg-slate-50 p-4 text-sm leading-6" hidden></p>
+            <div data-map-empty class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6" role="status" hidden>
+                <h3 data-map-empty-title class="font-semibold text-gintly-sidebar"></h3>
+                <p data-map-empty-message class="mt-2 text-gintly-text-secondary"></p>
+            </div>
             <div data-map-list class="space-y-3"></div>
         </div>
         <section id="supplier-map-detail" data-map-detail class="mt-3 rounded-xl bg-slate-50 p-3" aria-label="Detalle de ubicación" hidden></section>

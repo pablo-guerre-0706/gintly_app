@@ -33,6 +33,9 @@ class SupplierMap {
         this.form.addEventListener('submit', (event) => { event.preventDefault(); this.filter(); });
         this.form.addEventListener('input', () => this.filter());
         this.form.addEventListener('change', () => this.filter());
+        this.root.querySelector('[data-map-clear]').addEventListener('click', () => {
+            this.form.reset(); this.filter(); this.form.elements.search.focus();
+        });
         this.root.querySelector('[data-supplier-refresh]').addEventListener('click', () => { void this.load(); });
         this.root.querySelector('[data-map-retry]').addEventListener('click', () => { void this.load(); });
         this.root.querySelector('[data-tiles-retry]').addEventListener('click', () => {
@@ -84,6 +87,8 @@ class SupplierMap {
     async load({ replace = false } = {}) {
         if (this.loading && !replace) return;
         this.loading = true; this.request?.abort(); const controller = new AbortController(); this.request = controller;
+        this.root.dataset.mapState = 'loading';
+        this.root.querySelector('[data-map-count]').textContent = 'Consultando proveedores…';
         this.root.setAttribute('aria-busy', 'true'); this.root.querySelector('[data-supplier-refresh]').disabled = true;
         this.root.querySelector('[data-map-loading]').hidden = false; this.root.querySelector('[data-map-error]').hidden = true;
         this.root.querySelector('[data-map-content]').hidden = true;
@@ -93,6 +98,7 @@ class SupplierMap {
             this.root.querySelector('[data-map-content]').hidden = false; this.filter(); this.map?.resize(); this.map?.fit();
         } catch (error) {
             if (!isAbort(error)) {
+                this.root.dataset.mapState = 'error';
                 this.records = []; this.visible = []; this.selection = null; this.selectedSupplierId = null;
                 this.map?.setLocations([]); this.detailPanel.hidden = true; this.root.querySelector('[data-map-fit]').disabled = true;
                 this.root.querySelector('[data-map-count]').textContent = 'Consulta no disponible';
@@ -110,7 +116,11 @@ class SupplierMap {
         const counts = mapCounts(this.visible);
         this.root.querySelector('[data-map-count]').textContent = `${counts.suppliers} ${counts.suppliers === 1 ? 'proveedor' : 'proveedores'} · ${counts.locations} ${counts.locations === 1 ? 'ubicación confirmada' : 'ubicaciones confirmadas'}`;
         const empty = this.root.querySelector('[data-map-empty]'); empty.hidden = locations.length > 0;
-        empty.textContent = this.records.length ? 'Sin coincidencias para esta búsqueda o filtro.' : 'No hay proveedores aprobados y activos con ubicaciones confirmadas. Gestiona su aprobación y confirmación desde el directorio.';
+        this.root.dataset.mapState = locations.length ? 'ready' : (this.records.length ? 'no-results' : 'empty');
+        this.root.querySelector('[data-map-empty-title]').textContent = this.records.length ? 'No hay coincidencias' : 'No hay proveedores elegibles';
+        this.root.querySelector('[data-map-empty-message]').textContent = this.records.length
+            ? 'Prueba otras palabras del nombre o la dirección, o limpia los filtros para ver todos tus proveedores elegibles.'
+            : 'El mapa solo muestra proveedores de tu negocio aprobados y activos, con al menos una ubicación confirmada. Un candidato pendiente o una dirección sin confirmar no aparece aquí.';
         const output = this.root.querySelector('[data-map-list]');
         this.detailPanel.remove(); this.detailPanel.hidden = true;
         output.replaceChildren(...this.visible.map((record) => {
