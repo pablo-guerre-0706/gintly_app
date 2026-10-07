@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\V1\RegisterWizardController;
 use App\Http\Middleware\EnsureOperableUser;
 use Illuminate\Support\Facades\Route;
 
@@ -23,18 +22,22 @@ Route::get('/login', function () {
 })->name('login');
 
 // ==========================================
-// ASISTENTE DE REGISTRO MULTI-PASO (1-7)
+// ALTA PÚBLICA CANÓNICA: estas rutas solo presentan o redirigen; no escriben.
 // ==========================================
 Route::prefix('register')->name('register.')->group(function () {
-    Route::get('/', function () {
-        return redirect()->route('register.step', ['step' => 1]);
-    })->name('index');
+    Route::view('/', 'auth.register')->name('index');
 
-    Route::get('/step/{step}', [RegisterWizardController::class, 'showStep'])
+    // Compatibilidad segura con enlaces históricos: se descartan sus parámetros.
+    Route::get('/step/{step}', function () {
+        return redirect()->route('register.index');
+    })
         ->where('step', '[1-7]')
         ->name('step');
 
-    Route::get('/step/{step}/store', [RegisterWizardController::class, 'storeStep'])
+    // La antigua escritura por GET está retirada. No invoca el controlador legacy.
+    Route::get('/step/{step}/store', function () {
+        abort(410, 'El registro anterior fue retirado. Utilice /register.');
+    })
         ->where('step', '[1-7]')
         ->name('step.store');
 });

@@ -110,6 +110,8 @@ export default function initLogin() {
     }
 
     let submitting = false;
+    if (form.dataset.initialized === 'true') return;
+    form.dataset.initialized = 'true';
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -127,11 +129,15 @@ export default function initLogin() {
         try {
             await initializeCsrf();
 
-            const response = await api.post(
-                '/auth/login',
-                credentials(form),
-                { redirectOn401: false },
-            );
+            const payload = credentials(form);
+            const send = () => api.post('/auth/login', payload, { redirectOn401: false, expectedStatus: 200 });
+            let response;
+            try { response = await send(); }
+            catch (error) {
+                if (!(error instanceof ApiError) || error.status !== 419) throw error;
+                await initializeCsrf();
+                response = await send();
+            }
 
             if (!response?.data || typeof response.data !== 'object') {
                 throw new ApiError({
