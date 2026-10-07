@@ -88,6 +88,8 @@ final class StockTransferCreateHttpTest extends MysqlTestCase
         $product->business_id = $business->id;
         $product->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'operator', 'branch1', 'branch2', 'wh1', 'wh1b', 'wh2', 'product');
     }
 

@@ -127,6 +127,8 @@ final class ReturnFlowHttpTest extends MysqlTestCase
             'opened_at'        => now(),
         ])->saveQuietly();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact(
             'business', 'owner', 'admin', 'operator',
             'branch', 'branch2', 'warehouse', 'category', 'unit', 'customer', 'register', 'session',

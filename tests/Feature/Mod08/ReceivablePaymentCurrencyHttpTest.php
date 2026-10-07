@@ -101,6 +101,8 @@ final class ReceivablePaymentCurrencyHttpTest extends MysqlTestCase
         $product->business_id = $business->id;
         $product->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'operator', 'branch', 'warehouse', 'category', 'unit', 'customer', 'register', 'session', 'product');
     }
 

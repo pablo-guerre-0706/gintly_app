@@ -60,6 +60,8 @@ final class ExchangeRateHttpTest extends MysqlTestCase
         $admin = $this->makeUser($business, RoleName::Admin);
         $cajero = $this->makeUser($business, RoleName::Operator, $branch);
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'owner', 'admin', 'cajero');
     }
 

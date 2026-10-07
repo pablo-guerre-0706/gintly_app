@@ -61,6 +61,8 @@ final class CashMovementCurrencyHttpTest extends MysqlTestCase
         $cajero = $this->makeUser($business, RoleName::Operator, $branch);
         $this->assignProfile($cajero, $business->id, 'cajero');
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'register', 'admin', 'cajero');
     }
 

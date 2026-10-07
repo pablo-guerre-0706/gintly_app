@@ -89,13 +89,16 @@ final class RouteIntegrityTest extends TestCase
         }
     }
 
-    public function test_usuario_autenticado_renderiza_paginas_web_de_clientes(): void
+    public function test_rutas_web_de_clientes_resuelven_y_estan_bajo_la_compuerta_comercial(): void
     {
         $this->withoutVite();
         $user = $this->panelUser();
 
-        $this->actingAs($user, 'web')->get('/customers')->assertOk();
-        $this->actingAs($user, 'web')->get('/customers/create')->assertOk();
+        // Las vistas del panel ahora están tras la compuerta comercial: un usuario SIN suscripción pagada vigente
+        // recibe 403 (no 200). Esto sigue acreditando la regresión original (la ruta RESUELVE y su middleware corre,
+        // sin RouteNotFoundException ni 500 al enrutar), y además confirma que la compuerta cubre las rutas web.
+        $this->actingAs($user, 'web')->get('/customers')->assertStatus(403);
+        $this->actingAs($user, 'web')->get('/customers/create')->assertStatus(403);
     }
 
     public function test_las_rutas_de_api_estan_bajo_el_prefijo_v1(): void

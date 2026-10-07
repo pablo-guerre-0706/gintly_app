@@ -38,10 +38,14 @@ use App\Models\ProductRecipe;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\ReceivablePayment;
+use App\Models\BillingWebhookEvent;
+use App\Models\CheckoutIntent;
+use App\Models\PlanSubscription;
 use App\Models\ReconciliationRun;
 use App\Models\RegisterWizard;
 use App\Models\RegistrationRequest;
 use App\Models\ReportDefinition;
+use App\Models\SubscriptionPayment;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalesReturn;
@@ -173,6 +177,12 @@ $morphMap = [
     // RegistrationRequest NO usa BelongsToBusiness (se consulta antes de existir tenant),
     // pero la invariante del proyecto exige alias de morphMap para TODO app/Models.
     'registration_request' => RegistrationRequest::class,
+
+    // Suscripción SaaS de Gintly (cobro de Gintly al negocio; separado del ERP). Sin BelongsToBusiness.
+    'plan_subscription'     => PlanSubscription::class,
+    'checkout_intent'       => CheckoutIntent::class,
+    'billing_webhook_event' => BillingWebhookEvent::class,
+    'subscription_payment'  => SubscriptionPayment::class,
 ];
 
 return [

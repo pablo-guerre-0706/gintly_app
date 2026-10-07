@@ -96,6 +96,8 @@ final class OperativeBranchIsolationHttpTest extends MysqlTestCase
         $customer->business_id = $business->id;
         $customer->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'branch2', 'wh1', 'wh2', 'owner', 'admin', 'product', 'customer');
     }
 

@@ -67,6 +67,8 @@ final class CashCountHttpTest extends MysqlTestCase
         $bodeguero = $this->makeUser($business, RoleName::Operator, $branch);
         $this->assignProfile($bodeguero, $business->id, 'bodeguero');
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'register', 'admin', 'cajero', 'cajeroB', 'bodeguero');
     }
 

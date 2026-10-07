@@ -93,6 +93,8 @@ final class CustomerFlowHttpTest extends MysqlTestCase
         $generic = Customer::withoutGlobalScopes()
             ->where('business_id', $business->id)->where('is_generic', true)->firstOrFail();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'admin', 'operator', 'branch', 'generic');
     }
 

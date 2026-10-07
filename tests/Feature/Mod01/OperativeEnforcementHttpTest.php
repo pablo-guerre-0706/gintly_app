@@ -87,6 +87,8 @@ final class OperativeEnforcementHttpTest extends MysqlTestCase
         $customer->business_id = $business->id;
         $customer->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'branch2', 'warehouse', 'owner', 'admin', 'register', 'product', 'customer');
     }
 

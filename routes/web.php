@@ -45,7 +45,7 @@ Route::prefix('register')->name('register.')->group(function () {
 // ==========================================
 // PANEL DE ADMINISTRACIÓN (DASHBOARD)
 // ==========================================
-Route::middleware(['auth', EnsureOperableUser::class])->group(function () {
+Route::middleware(['auth', EnsureOperableUser::class, 'subscription.active'])->group(function () {
 
     Route::get('/dashboard', function () {
         return view('dashboard');

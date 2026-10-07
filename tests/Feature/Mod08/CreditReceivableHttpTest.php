@@ -129,6 +129,8 @@ final class CreditReceivableHttpTest extends MysqlTestCase
 
         $product = $this->makeProduct((object) compact('business', 'category', 'unit'), TaxClass::Standard, '100.00');
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact(
             'business', 'owner', 'admin', 'operator',
             'branch', 'warehouse', 'category', 'unit', 'customer', 'register', 'session', 'product',

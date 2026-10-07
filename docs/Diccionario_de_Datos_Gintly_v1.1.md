@@ -986,6 +986,62 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 
 ---
 
+## MOD-SUB — Suscripción SaaS de Gintly *(añadido; cobro de Gintly al negocio, SEPARADO del ERP)*
+
+Subsistema de cobro de la plataforma a cada negocio (Lemon Squeezy, checkout alojado). ESTRICTAMENTE separado de `invoice_payments`/`receivable_payments` (que son el cobro del negocio a SUS clientes). Ninguno de estos modelos usa `BelongsToBusiness`: se consultan desde la compuerta (por `business_id` explícito de la sesión) y desde el webhook (sin sesión). Alias morphMap: `plan_subscription`, `checkout_intent`, `billing_webhook_event`, `subscription_payment`.
+
+### `plan_subscriptions` · estado comercial vigente (uno por negocio)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | **UQ** `uniq_plan_subscription_business` | Una suscripción comercial por negocio (se reutiliza; sin paralelas). |
+| plan_key | string(20) | NN | — | `basic` / `comercio` / `cadena`. |
+| period | string(10) | NN | — | `monthly` / `annual`. |
+| status | string(20) | NN | IDX(status,paid_until) | `pending_payment`/`incomplete`/`active`/`past_due`/`canceled`/`expired`. |
+| provider / provider_mode | string | NN | IDX(provider,provider_mode) | `lemon_squeezy` / `test`\|`live`. |
+| store_id / provider_subscription_id / provider_variant_id | string | NULL | — | Referencias del proveedor para conciliar renovaciones. |
+| current_period_start / paid_until | timestamp | NULL | — | **paid_until = vigencia EFECTIVAMENTE pagada** (gobierna el acceso y el vencimiento). |
+| renews_at | timestamp | NULL | — | Informativo; NO demuestra pago (no se copia a paid_until). |
+| canceled_at | timestamp | NULL | — | Cancelación de renovaciones (conserva acceso hasta paid_until). |
+| pending_plan_key / pending_period / pending_variant_id / pending_effective_at | — | NULL | — | Cambio de plan PENDIENTE: plan/periodicidad/variante destino y fecha efectiva (NULL en ascenso ⇒ "al confirmarse el pago"; = paid_until en descenso ⇒ al cierre del período). pending_variant_id es la variante DESTINO esperada: el cambio se confirma SOLO cuando la variante ACTUAL de la suscripción en el proveedor (consulta oficial getSubscription, NO un campo de la subscription-invoice, que no trae variant_id) coincide con ella, y entonces se fija provider_variant_id coherente con lo cobrado. |
+
+**Acceso operativo** = estado que concede acceso (active/canceled/past_due) **Y** `paid_until` futuro. El estado por sí solo nunca basta.
+
+### `checkout_intents` · correlación de contratación (idempotencia propia)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX | Negocio contratante. |
+| idempotency_key | char(36) | NN | **UQ** `uniq_checkout_intent_key` | Idempotencia del checkout (independiente de registration_requests). |
+| plan_key / period | string | NN | — | Selección del catálogo. |
+| provider / provider_mode / store_id / provider_variant_id | string | — | — | Resueltos por backend (nunca por el cliente). |
+| status | string(20) | NN | — | `pending`/`created`/`uncertain`/`failed`/`completed`. `uncertain` = red falló tras enviarse (se RESUELVE consultando al proveedor por intent_key antes de recrear). `failed` = el proveedor confirmó que NO lo creó (resuelto; permite recrear). Un checkout abierto no se "reemplaza": otra selección mientras sigue pagable se bloquea (CHECKOUT_IN_PROGRESS). |
+| provider_checkout_id / checkout_url | — | NULL | IDX(provider_checkout_id) | Resultado del proveedor. |
+| expires_at | timestamp | NULL | — | Vencimiento FINITO de la URL (también enviado al proveedor): una URL vencida no es utilizable ni bloquea un intento nuevo. |
+| fingerprint | string(64) | NULL | — | plan+periodicidad normalizados (anti doble envío/conflicto y reutilización del checkout abierto por selección). |
+
+### `billing_webhook_events` · deduplicación de eventos
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| provider / provider_mode | string | NN | **UQ**(provider,provider_mode,event_identity) | Dedup por identidad persistente. |
+| event_identity | string(190) | NN | (UQ) | Identidad que distingue versiones/reenvíos (hash del payload inspeccionado). |
+| event_name | string(80) | NULL | — | Nombre del evento. |
+| payload | longtext | NULL | — | Cuerpo ORIGINAL del evento, guardado para reproducir eventos propios aparcados en la reconciliación (sin volver a pedirlos). |
+| business_id | bigint | NULL, FK SETNULL | — | Correlación (nunca por email ni por business_id del payload sin respaldo); se anota al correlacionar. |
+| received_at / processed_at | timestamp | NN/NULL | idx(parked_at,processed_at) | processed_at NULL ⇒ recibido, no procesado (recuperable); nunca procesado si la actualización falló. |
+| parked_at | timestamp | NULL | (idx) | ≠NULL con processed_at NULL ⇒ evento PROPIO aparcado por falta de correlación temporal (fuera de orden); recuperable, distinto de ajeno. |
+| attempts | uint | NN, def 0 | — | Reintentos de reconciliación de un evento aparcado; abandono acotado tras el máximo. |
+
+### `subscription_payments` · evidencia de períodos pagados (no es pago del ERP)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id / plan_subscription_id | bigint | NN, FK CASC | IDX(business_id) | Pertenencia. |
+| provider / provider_mode / provider_payment_id | string | NN | **UQ**(provider,provider_mode,provider_payment_id) | Anti doble conteo (dedup del pago; extender vigencia SOLO al insertar uno NUEVO). |
+| status | string(20) | NN | — | `paid` / `refunded` / `partial_refund`. |
+| amount_minor / currency | — | NN | — | Importe/moneda COBRADOS por el proveedor (p. ej. USD). |
+| catalog_amount_minor / catalog_currency | — | NULL/def NIO | — | Importe ANUNCIADO del catálogo (centavos NIO), de referencia. |
+| period_start / period_end | timestamp | NULL | — | Período cubierto por el pago. |
+
+---
+
 ## Anexo A — Tablas de solo inserción (append-only)
 
 `audit_logs` · `inventory_movements` · `cash_movements` · `cash_counts` · `exchange_rates` · `invoice_payments` · `receivable_payments` · `goods_receipt_items` · `reconciliation_runs` · `anomaly_events`

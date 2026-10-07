@@ -83,6 +83,8 @@ final class ReturnEligibilityHttpTest extends MysqlTestCase
         $customer->business_id = $business->id;
         $customer->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch1', 'branch2', 'wh1', 'owner', 'bodeguero', 'cajero', 'product', 'service', 'customer');
     }
 

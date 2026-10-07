@@ -145,6 +145,8 @@ final class PurchaseFlowHttpTest extends MysqlTestCase
         $wa = new \App\Models\WarehouseAssignment();
         $wa->forceFill(['business_id' => $business->id, 'branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'user_id' => $operator->id, 'assigned_by' => $admin->id, 'assigned_at' => now()])->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'admin', 'operator', 'category', 'unit', 'product', 'branch', 'warehouse');
     }
 

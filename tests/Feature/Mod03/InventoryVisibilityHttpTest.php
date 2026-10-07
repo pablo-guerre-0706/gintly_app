@@ -83,6 +83,8 @@ final class InventoryVisibilityHttpTest extends MysqlTestCase
         $unit->business_id = $business->id;
         $unit->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branchA', 'branchB', 'whA1', 'whA2', 'whB1', 'owner', 'admin', 'bodA', 'bodA2', 'bodB', 'category', 'unit');
     }
 

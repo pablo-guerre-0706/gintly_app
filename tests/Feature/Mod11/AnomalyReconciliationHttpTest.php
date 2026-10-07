@@ -110,6 +110,8 @@ final class AnomalyReconciliationHttpTest extends MysqlTestCase
             'is_active'   => true,
         ])->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'admin', 'admin2', 'operator', 'branch', 'warehouse', 'category', 'unit', 'register');
     }
 

@@ -117,6 +117,8 @@ final class ReportKpiHttpTest extends MysqlTestCase
         $customer->business_id = $business->id;
         $customer->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'warehouse', 'owner', 'admin', 'operator', 'category', 'unit', 'customer');
     }
 

@@ -60,6 +60,8 @@ final class SupplierCreateHttpTest extends MysqlTestCase
         $row->business_id = $business->id;
         $row->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'admin', 'operator');
     }
 

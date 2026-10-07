@@ -101,6 +101,16 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->registerGeocoder();
+        $this->registerSubscriptionGateway();
+    }
+
+    /**
+     * Puerto de suscripción → implementación REST única de Lemon Squeezy (sin SDK, sin multiproveedor). En
+     * pruebas se sustituye por un doble limpio vía $this->app->instance().
+     */
+    private function registerSubscriptionGateway(): void
+    {
+        $this->app->singleton(\App\Contracts\SubscriptionGateway::class, \App\Services\Billing\LemonSqueezyGateway::class);
     }
 
     /**

@@ -84,6 +84,8 @@ final class WarehouseAssignmentHttpTest extends MysqlTestCase
         $product->business_id = $business->id;
         $product->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branchA', 'branchB', 'whA1', 'whA2', 'whB1', 'owner', 'admin', 'bodA', 'bodA2', 'bodB', 'cajero', 'product');
     }
 

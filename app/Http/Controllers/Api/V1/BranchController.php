@@ -11,6 +11,7 @@ use App\Http\Requests\Branch\StoreBranchRequest;
 use App\Http\Requests\Branch\UpdateBranchRequest;
 use App\Http\Resources\BranchResource;
 use App\Models\Branch;
+use App\Services\Billing\PlanLimits;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -70,10 +71,14 @@ final class BranchController extends Controller
         );
     }
 
-    public function store(StoreBranchRequest $request): JsonResponse
+    public function store(StoreBranchRequest $request, PlanLimits $limits): JsonResponse
     {
         // business_id lo auto-rellena BelongsToBusiness en 'creating'. D5: pertenencia de manager_user_id validada en el request.
-        $branch = Branch::create($request->validated());
+        // Límite de sucursales activas del plan, verificado y aplicado bajo lock (sin carrera concurrente).
+        $branch = $limits->guardBranchActivation(
+            (int) $request->user()->business_id,
+            fn () => Branch::create($request->validated()),
+        );
 
         return (new BranchResource($branch))->response()->setStatusCode(Response::HTTP_CREATED);
     }
@@ -83,9 +88,29 @@ final class BranchController extends Controller
         return new BranchResource($branch);
     }
 
-    public function update(UpdateBranchRequest $request, Branch $branch): BranchResource
+    public function update(UpdateBranchRequest $request, Branch $branch, PlanLimits $limits): BranchResource
     {
-        $branch->update($request->validated());
+        $data = $request->validated();
+
+        // Reactivar una sucursal (is_active false→true) cuenta como ALTA frente al límite del plan: se verifica
+        // y aplica bajo el MISMO lock por negocio que la creación (sin carrera con altas concurrentes). Las demás
+        // actualizaciones (renombrar, etc.) no tocan el cupo.
+        $reactivating = array_key_exists('is_active', $data)
+            && (bool) $data['is_active'] === true
+            && ! (bool) $branch->is_active;
+
+        if ($reactivating) {
+            $limits->guardBranchActivation(
+                (int) $request->user()->business_id,
+                function () use ($branch, $data): Branch {
+                    $branch->update($data);
+
+                    return $branch;
+                },
+            );
+        } else {
+            $branch->update($data);
+        }
 
         return new BranchResource($branch);
     }
