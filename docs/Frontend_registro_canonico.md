@@ -416,7 +416,7 @@ suscripciones, planes, pagos ni contratación.
 
 ## Manifiesto mínimo
 
-Fuentes creadas (13):
+Fuentes creadas (14):
 
 - resources/js/modules/registration/contract.js
 - resources/js/modules/registration/attempt.js
@@ -430,6 +430,7 @@ Fuentes creadas (13):
 - tests/frontend/registration-browser-runtime.mjs (nuevo en verificación de entrega; servidor/guardas)
 - tests/frontend/registration-browser-db.php (nuevo en tests; helper CLI permanente que debe integrarse)
 - tests/frontend/registration-browser-guards.test.mjs (nuevo en verificación de entrega; regresión)
+- tests/frontend/registration-password-browser.mjs (nuevo en microcierre de contraseña; aceptación focalizada)
 - docs/Frontend_registro_canonico.md
 
 Fuentes modificadas o compartidas (6), reemplazar por su versión final:
@@ -470,3 +471,84 @@ package.json, package-lock.json, vite.config.js, app.css, landing y Backend no s
 modificaron. No hay nuevas dependencias de producción. Regenerar public/build mediante npm run build
 después de integración manual. No hacer staging general, commit, push ni copias
 automáticas. Esta declaración no incluye suscripciones ni pagos.
+
+## Microcierre de contraseña y contraste con Azure
+
+### Causa comprobada antes de editar
+
+El Backend integrado usa `RegisterRequest` con `Password::defaults()`. Se inspeccionó también la regla Laravel instalada y se obtuvo su configuración efectiva tras bootstrap: mínimo **12 caracteres**, al menos una **letra**, un **número** y un **símbolo/separador**, `uncompromised=true` con umbral 0; `mixedCase=false`, `max=null`. No se exigen simultáneamente mayúscula/minúscula ni se establece un máximo artificial. Unicode y espacios se preservan; el control de filtraciones es exclusivamente Backend.
+
+Azure se consultó **únicamente mediante GET**, sin enviar formularios ni llamar escrituras legacy:
+
+| Recurso público | Evidencia observada |
+| --- | --- |
+| `https://gintly-app-web.azurewebsites.net/` | 200; título antiguo `Gintly - Sistema de Facturación`. |
+| `https://gintly-app-web.azurewebsites.net/register` | 302 hacia `http://gintly-app-web.azurewebsites.net/register/step/1`. Se inspeccionó ese destino usando HTTPS, sin seguir la bajada a HTTP. |
+| `https://gintly-app-web.azurewebsites.net/register/step/1` | 200; título `Gintly App - Creación de Perfil`; Perfil/Región/Usuarios, campos `nombre`, `apellido`, `correo`, `codigo_pais`, `telefono`, `password`. No tiene los hooks de las cuatro etapas canónicas. |
+| Asset publicado | `wizard-zL-isU6L.js`, GET 200; SHA-256 `33F1BD64E4F78528E6BC67946B600FED77D2B72BEC68A49E6EB21A0D22DCBDED`. No consume `/auth/register`. |
+
+Su validación legacy utiliza `^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{12,}$`, pero anuncia solo «Mínimo 12 caracteres, letras y números». Esa whitelist rechaza `#`, `+`, guiones, espacios y letras acentuadas aun cumpliendo longitud, letras y números. «Las contraseñas coinciden» comprueba igualdad, no cumplimiento de esa regex. No se dedujo la contraseña de la captura ni se afirma qué carácter concreto escribió el usuario.
+
+La versión local es distinta: GET `/register` sirve `Registrar negocio · Gintly`, Cuenta → Negocio → Revisión → Resultado, sin teléfono. El build final de este microcierre tiene `assets/wizard-m3a8Shij.js`; el nombre es una huella de este build, **no debe hardcodearse**.
+
+Antes de modificar aplicación, Chrome comprobó el baseline con token `QA-REGISTER-PASSWORD-b752408d488c`: siete comprobaciones, salida 0, sin alta. Una contraseña válida sí avanzaba pese a los campos de Negocio todavía vacíos. Por tanto, no se reprodujo el bloqueo de Continuar de Azure en el canónico. Sí se reprodujo un defecto local menor: un error de política ya corregido seguía visible hasta otro submit (`correctedErrorBeforeSubmit=true`).
+
+### Ajuste aplicado y alcance
+
+Se modifica **solo `resources/js/modules/registration/wizard.js` como fuente de aplicación**. Los eventos `input` y `change` actualizan los errores de los campos editados y recalculan la confirmación al cambiar cualquiera de las dos contraseñas. Se reconstruyen resumen/ARIA sin robar foco. Los rechazos exclusivos del servidor no desaparecen por editar un campo ajeno. Continuar sigue validando únicamente la etapa actual; no se introduce bloqueo por etapas ocultas.
+
+No se cambia política, contrato, normalización de contraseñas, atributos de password, cliente HTTP, autenticación, rutas, vistas, Backend o suscripciones. La ayuda existente ya enumera letras, números, símbolos y comprobación Backend de filtraciones. No se añaden `trim`, whitelist ASCII, maxlength, setCustomValidity, nuevas dependencias o persistencia de credenciales.
+
+### Aceptación focalizada reproducible
+
+La herramienta nueva reutiliza `registration-browser-runtime.mjs` y `registration-browser-db.php`, entregados bajo `tests/frontend`; no depende de helpers en `storage/app/qa`. Verifica ENV, Laravel y PDO antes de cualquier escritura, servidor propio, URL `http://127.0.0.1:8840` y exclusivamente base `gintly_frontend_qa_rol03`. Requisitos externos: Node 22.12+, PHP/Composer del proyecto, MySQL local, Playwright externo 1.62.1 y Chrome existente. No instalar QA dentro del bundle ni usar perfiles personales.
+
+Desde la raíz de frontend-audit, PowerShell (las credenciales de BD permanecen en la configuración QA existente, nunca en este documento):
+
+```powershell
+$env:QA_REGISTRATION_BROWSER = '1'
+$env:APP_ENV = 'local'
+$env:APP_URL = 'http://127.0.0.1:8840'
+$env:DB_CONNECTION = 'mysql'
+$env:DB_HOST = '127.0.0.1'
+$env:DB_DATABASE = 'gintly_frontend_qa_rol03'
+$env:DB_URL = ''
+$env:DB_SOCKET = ''
+$env:QA_PLAYWRIGHT_MODULE = '<ruta-externa>/node_modules/playwright/index.mjs'
+$env:QA_CHROME = '<ruta-absoluta-al-chrome>/chrome.exe'
+$env:QA_PASSWORD_REPRO_ONLY = '0'
+node --check resources/js/modules/registration/wizard.js
+node --check tests/frontend/registration.test.mjs
+node --check tests/frontend/registration-password-browser.mjs
+node --test tests/frontend/registration.test.mjs tests/frontend/api-client-registration.test.mjs
+node --test tests/frontend/*.test.mjs
+npm run build
+php tests/frontend/render-registration.php
+node tests/frontend/registration-password-browser.mjs
+```
+
+En Codex, el equivalente disponible de build fue `node C:/laragon/bin/nodejs/node-v22/node_modules/npm/bin/npm-cli.js run build`; en el destino se usa su npm. El runtime fija sesión/caché file, debug false y dominio Sanctum QA para su proceso, sin editar `.env`. `QA_PASSWORD_REPRO_ONLY=1` ejecuta solo diagnóstico sin alta; el modo normal conserva intencionalmente un negocio QA identificable por ejecución y no altera fixtures anteriores.
+
+Run final **`QA-REGISTER-PASSWORD-27de93d24253`**, Chrome **154.0.8037.93**: **31 comprobaciones, salida 0**. Verificados contraseña larga coincidente pero sin complejidad, contraseña válida con caracteres fuera de la whitelist legacy, confirmación distinta, corrección inmediata, cambios en ambos campos, avance hasta Revisión sin exigir campos ocultos, pegado real desde clipboard (limpiado inmediatamente), espacios extremos intactos, request canónico exacto con UUID/cookies/CSRF, borrado de passwords después del 201 y login manual con la contraseña exacta.
+
+Autofill: comprobados los atributos `autocomplete="new-password"` y valores introducidos con evento **change sin input**, emulando el comportamiento de autofill. Esa parte es **inducida**, no una prueba de un gestor de contraseñas con credenciales almacenadas. No se guardaron contraseñas en Chrome. Se indujo un 422 para comprobar asociación de `owner.password` y `owner.password_confirmation`, conservación de valores/foco y corrección; no se simuló el alta principal ni el login.
+
+HTTP reales: handshake **204**, registro **201** (un único POST real), `/me` previo **401**, login explícito **200**, `/me` autenticado **200**, logout **204**. BD: negocio **34**, un propietario y una fila idempotente. No hay 404 ni excepciones JavaScript. La consola registró cuatro diagnósticos HTTP de recursos esperados: 422 inducido, `/me` 401 antes de login y dos lecturas 401 al terminar la sesión; no se presentan como consola cero ni como defectos del registro.
+
+Validaciones finales: sintaxis de tres JS **0**; pruebas focalizadas **20 aprobadas, 0 fallos/omitidas**, salida **0**; suite completa **121 aprobadas, 0 fallos/omitidas/canceladas/todo**, salida **0**; Vite **106 módulos**, salida **0**, únicamente aviso no bloqueante `PLUGIN_TIMINGS`; render registro/login/landing **0**, IDs/ARIA válidos y **75 entradas** del manifest verificadas.
+
+Se inspeccionaron capturas de Cuenta 1280 px y Revisión/Resultado 375 px, sin overflow horizontal. Se conservan en `storage/app/qa/registration-password/QA-REGISTER-PASSWORD-27de93d24253`, junto con evidencia sanitizada; excluidas de integración. Perfil temporal eliminado, servidor 8840 detenido y `public/hot` ausente. Se conserva intencionalmente el negocio QA 34; el diagnóstico previo no creó datos. Los fixtures anteriores siguen intactos.
+
+### Integración mínima de este microcierre
+
+- Modificado: `resources/js/modules/registration/wizard.js` — sustituir coordinador final.
+- Modificado: `tests/frontend/registration.test.mjs` — regresión de complejidad/Unicode/espacios.
+- Creado: `tests/frontend/registration-password-browser.mjs` — aceptación focalizada reproducible.
+- Modificado: `docs/Frontend_registro_canonico.md` — evidencia y procedimiento.
+- Eliminados en este microcierre: **ninguno**.
+
+Si Azure todavía está sobre el legado comprobado, **copiar solo wizard.js no es suficiente**: Pablo debe publicar mediante su procedimiento el conjunto canónico completo del manifiesto anterior (vistas/layout/componente, entry, contrato/intento, cliente/auth compartidos conciliados y rutas que desconectan legacy), sin deshacer los cambios aprobados posteriores. Conservar las dependencias actuales de los archivos compartidos; no desplegar una mezcla de versiones. No se autoriza ni se hace publicación desde Codex.
+
+En el procedimiento de despliegue aprobado, generar `npm run build`, publicar el manifest y todos los assets que este referencia como una sola versión junto a las fuentes Blade/JS, y reconstruir cachés de vistas/rutas con `php artisan view:cache` y `php artisan route:cache`. Si el procedimiento conserva cachés previas, invalidarlas de manera controlada antes de reconstruirlas. Reabrir en sesión privada y comprobar `/register` 200 con cuatro etapas, que los antiguos enlaces redirigen al canónico y que `/register/step/{step}/store` permanece 410; verificar assets 200, navegación y QA de registro en el entorno autorizado. La redirección HTTP observada también debe revisarse en la configuración HTTPS/proxy del despliegue; no se alteró esa configuración aquí.
+
+**Conclusión:** frontend local corregido y verificado; **Azure sigue mostrando una versión anterior**. No se declara corregido ni actualizado Azure, ya que no hubo publicación. No se tocó Backend-Claude, gintly_app, producción, suscripciones ni MFA; no hubo staging, commit, push, integración o despliegue.

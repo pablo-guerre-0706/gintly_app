@@ -37,6 +37,18 @@ test('validación: política real, límites combinados, email, zona horaria y co
     assert.equal(FIELDS['business.timezone'].step, 2); assert.equal(FIELDS['owner.email'].step, 1);
 });
 
+test('contraseña: Unicode/símbolos/espacios admitidos, sin whitelist legacy ni máximo artificial', () => {
+    for (const password of ['Registro#2026-ABC', 'Registro+2026-ABC', 'Registro2026 ABC', 'Árbol#2026'.repeat(2), 'a1!'.repeat(200)]) {
+        const body = payload(); body.owner.password = body.owner.password_confirmation = password;
+        assert.equal(validateRegistration(body, ['America/Managua'])['owner.password'], undefined);
+        assert.equal(validateRegistration(body, ['America/Managua'])['owner.password_confirmation'], undefined);
+    }
+    const body = payload(); body.owner.password = body.owner.password_confirmation = 'abcdefghijklmnop';
+    const errors = validateRegistration(body, ['America/Managua']);
+    assert.ok(errors['owner.password']);
+    assert.equal(errors['owner.password_confirmation'], undefined);
+});
+
 test('UUID: criptográfico v4, fallback seguro y cierre si no hay fuente segura', () => {
     for (const crypto of [webcrypto, { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) }]) assert.match(secureUuid(crypto), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     assert.throws(() => secureUuid({}));

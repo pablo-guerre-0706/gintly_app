@@ -1,3 +1,4 @@
+import { initPublicPlans } from '../billing/public-plans';
 function initImageFallbacks() {
     document.querySelectorAll('[data-image-fallback]').forEach((image) => {
         const showFallback = () => {
@@ -33,38 +34,6 @@ function initFaq() {
     });
 }
 
-function initBillingSwitch() {
-    const indicator = document.getElementById('switch-indicator');
-    const monthlyButton = document.getElementById('btn-monthly');
-    const annualButton = document.getElementById('btn-annual');
-
-    if (!indicator || !monthlyButton || !annualButton) {
-        return;
-    }
-
-    const priceElements = document.querySelectorAll('.price-main, .price-usd, .price-billing');
-
-    document.querySelectorAll('[data-landing-billing]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const cycle = button.dataset.landingBilling;
-            const isAnnual = cycle === 'annual';
-
-            indicator.style.transform = isAnnual ? 'translateX(100%)' : 'translateX(0%)';
-            monthlyButton.classList.toggle('text-white', !isAnnual);
-            monthlyButton.classList.toggle('text-[#555555]', isAnnual);
-            annualButton.classList.toggle('text-white', isAnnual);
-            annualButton.classList.toggle('text-[#555555]', !isAnnual);
-
-            priceElements.forEach((element) => {
-                const value = element.dataset[cycle];
-
-                if (value !== undefined) {
-                    element.textContent = value;
-                }
-            });
-        });
-    });
-}
 
 function initTestimonials() {
     const track = document.getElementById('testimonials-track');
@@ -132,6 +101,6 @@ function initTestimonials() {
 export default function initLanding() {
     initImageFallbacks();
     initFaq();
-    initBillingSwitch();
+    initPublicPlans();
     initTestimonials();
 }

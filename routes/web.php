@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\EnsureOperableUser;
+use App\Http\Middleware\PresentSubscriptionRestriction;
+use App\Http\Controllers\Web\SubscriptionPageController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================
 // RUTAS PÚBLICAS Y LANDING PAGE
 // ==========================================
-Route::get('/', function () {
-    return view('landing');
-})->name('landing');
+Route::get('/', [SubscriptionPageController::class, 'landing'])->name('landing');
 
-Route::get('/landing', function () {
-    return view('landing');
-});
+Route::get('/landing', [SubscriptionPageController::class, 'landing']);
 
 // Inicio de sesión (Vista)
 Route::get('/login', function () {
@@ -45,7 +43,14 @@ Route::prefix('register')->name('register.')->group(function () {
 // ==========================================
 // PANEL DE ADMINISTRACIÓN (DASHBOARD)
 // ==========================================
-Route::middleware(['auth', EnsureOperableUser::class, 'subscription.active'])->group(function () {
+// Authenticated commercial presentation is deliberately outside subscription.active.
+Route::middleware(['auth', EnsureOperableUser::class])->prefix('billing')->name('web.billing.')->group(function () {
+    Route::get('/', [SubscriptionPageController::class, 'index'])->name('index');
+    Route::get('/access', [SubscriptionPageController::class, 'access'])->name('access');
+    Route::get('/return', [SubscriptionPageController::class, 'returned'])->name('return');
+});
+
+Route::middleware(['auth', EnsureOperableUser::class, PresentSubscriptionRestriction::class, 'subscription.active'])->group(function () {
 
     Route::get('/dashboard', function () {
         return view('dashboard');

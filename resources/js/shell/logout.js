@@ -1,5 +1,6 @@
 import { api, ApiError, initializeCsrf } from '@/core/api-client';
 import { notify } from '@/core/notifications';
+import { clearBillingStorage } from '@/core/billing-storage';
 
 let pendingLogout = null;
 const buttonLabels = new WeakMap();
@@ -23,6 +24,7 @@ function setButtonsLoading(buttons, loading) {
         }
 
         spinner?.classList.toggle('hidden', !loading);
+        if (spinner) spinner.hidden = !loading;
     });
 }
 
@@ -90,7 +92,7 @@ export function initLogout({ loginUrl, beforeLogout = null } = {}) {
         setButtonsLoading(buttons, true);
 
         pendingLogout = submitLogout()
-            .then(() => window.location.assign(loginUrl))
+            .then(() => { clearBillingStorage(); window.location.assign(loginUrl); })
             .catch((error) => {
                 notify({
                     type: 'error',

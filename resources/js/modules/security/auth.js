@@ -102,7 +102,7 @@ export default function initLogin() {
     const form = document.getElementById('loginForm');
     const feedback = document.getElementById('loginFeedback');
     const submitButton = document.getElementById('submitBtn');
-    const dashboardUrl = meta('dashboard-url');
+    const dashboardUrl = meta('post-login-url') || meta('dashboard-url');
 
     if (!form || !feedback || !submitButton || !dashboardUrl) {
         console.error('[Gintly Login] No se encontró la configuración requerida.');

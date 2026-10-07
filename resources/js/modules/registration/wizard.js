@@ -21,6 +21,8 @@ export default function initRegistration() {
     let dirty = false;
     let result = null;
     let waitTimer = null;
+    let displayedErrors = {};
+    let feedbackMessage = '';
 
     function values() {
         return registrationPayload(Object.fromEntries(new FormData(form)));
@@ -41,13 +43,18 @@ export default function initRegistration() {
     }
 
     function clearErrors() {
+        displayedErrors = {};
+        feedbackMessage = '';
         feedback.classList.add('hidden');
         root.querySelector('[data-register-summary]').replaceChildren();
         root.querySelectorAll('[data-register-error]').forEach((element) => { element.textContent = ''; element.classList.add('hidden'); });
         for (const path of Object.keys(FIELDS)) form.elements.namedItem(path)?.removeAttribute('aria-invalid');
     }
 
-    function showErrors(errors, message) {
+    function showErrors(errors, message, focus = true) {
+        clearErrors();
+        displayedErrors = errors;
+        feedbackMessage = message;
         root.querySelector('[data-register-message]').textContent = message;
         feedback.classList.remove('hidden');
         const summary = root.querySelector('[data-register-summary]');
@@ -72,9 +79,34 @@ export default function initRegistration() {
                 summary.append(item);
             }
         }
-        const first = firstErrorField(errors);
-        if (first) { showStep(FIELDS[first].step, false); form.elements.namedItem(first)?.focus(); }
-        else feedback.focus();
+        if (focus) {
+            const first = firstErrorField(errors);
+            if (first) { showStep(FIELDS[first].step, false); form.elements.namedItem(first)?.focus(); }
+            else feedback.focus();
+        }
+    }
+
+    function refreshEditedField(event) {
+        const path = event.target.name;
+        if (machine.state !== 'editing' || !FIELDS[path]) return;
+        dirty = true;
+        const current = validateRegistration(values(), timezones);
+        const updated = { ...displayedErrors };
+        const affected = new Set([path]);
+        // Changing either password recomputes the match. A server-only password
+        // rejection is retained until that password itself is edited or resubmitted.
+        if (path === 'owner.password') affected.add('owner.password_confirmation');
+        if (['owner.first_name', 'owner.last_name'].includes(path)) {
+            affected.add('owner.first_name'); affected.add('owner.last_name');
+        }
+        for (const fieldPath of affected) {
+            const confirmation = fieldPath === 'owner.password_confirmation'
+                && form.elements.namedItem(fieldPath).value !== '';
+            if (current[fieldPath] && (updated[fieldPath] || confirmation)) updated[fieldPath] = current[fieldPath];
+            else delete updated[fieldPath];
+        }
+        if (Object.keys(updated).length) showErrors(updated, feedbackMessage || 'Revisa los campos antes de continuar.', false);
+        else clearErrors();
     }
 
     function review(payload) {
@@ -111,7 +143,8 @@ export default function initRegistration() {
         }
     }
 
-    form.addEventListener('input', () => { dirty = true; });
+    form.addEventListener('input', refreshEditedField);
+    form.addEventListener('change', refreshEditedField);
     back.addEventListener('click', () => { if (machine.state === 'editing') { clearErrors(); showStep(step - 1); } });
     root.querySelectorAll('[data-password-toggle]').forEach((button) => button.addEventListener('click', () => {
         const input = document.getElementById(button.dataset.passwordToggle);

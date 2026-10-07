@@ -6,6 +6,7 @@
   <title>Gintly App - Iniciar Sesión</title>
   <meta name="api-base-url" content="{{ url('/api/v1') }}">
   <meta name="dashboard-url" content="{{ route('dashboard') }}">
+  <meta name="post-login-url" content="{{ route('web.billing.access') }}">
   @vite([
     'resources/css/app.css',
     'resources/js/modules/security/auth.js',

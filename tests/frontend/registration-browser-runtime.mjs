@@ -84,10 +84,10 @@ export async function prepareRuntime(sourceEnv = process.env) {
     return { env, before };
 }
 
-export async function startServer(env) {
+export async function startServer(env, router = null) {
     await assertPortAvailable();
     const child = spawn(env.QA_PHP || 'php', ['-S', '127.0.0.1:8840',
-        resolve(root, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
+        router ? resolve(root, router) : resolve(root, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
     { cwd: resolve(root, 'public'), env, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
     // The direct, single PHP process must announce its own successful bind, not
     // merely answer a health request that an unrelated local process could serve.

@@ -296,7 +296,10 @@ export async function request(
             }
         }
 
-        if (dispatchErrors) {
+        const commercial = normalized.status === 403 && ['SUBSCRIPTION_REQUIRED', 'PLAN_FEATURE_UNAVAILABLE'].includes(normalized.code);
+        if (commercial) window.dispatchEvent(new CustomEvent('gintly:commercial-error', { detail: { code: normalized.code } }));
+
+        if (dispatchErrors && !commercial) {
             dispatchError(normalized);
         }
         throw normalized;

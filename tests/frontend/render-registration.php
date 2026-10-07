@@ -4,7 +4,7 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 foreach (['auth.register', 'auth.login', 'landing'] as $view) {
-    $html = view($view)->render();
+    $html = $view === 'landing' ? app(App\Http\Controllers\Web\SubscriptionPageController::class)->landing(request())->render() : view($view)->render();
     $dom = new DOMDocument();
     libxml_use_internal_errors(true);
     $dom->loadHTML('<?xml encoding="UTF-8">'.$html);

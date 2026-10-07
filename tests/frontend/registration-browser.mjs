@@ -244,7 +244,8 @@ try {
     const me = (await meResponse.json()).data;
     check('Manual login me HTTP 200 ROL-01 and business context', meResponse.status() === 200 && me.role === 'ROL-01'
         && me.business.name === run && Array.isArray(me.capabilities) && me.capabilities.length > 0);
-    await page.locator('[data-account-trigger]').waitFor({ state: 'visible' });
+    // MOD-SUB: newly registered/unpaid owner reaches contracting, not an operational dashboard.
+    await page.locator('[data-billing-page][aria-busy="false"]').waitFor();
     await start('-authenticated');
     const activeRejected = page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/auth/register');
     await submit.click();
@@ -253,7 +254,7 @@ try {
     check('403 does not logout', await page.evaluate(async () => (await fetch('/api/v1/me', { headers: { Accept: 'application/json' } })).status) === 200);
     await screenshot('active-session-403');
     await page.locator('[data-register-dashboard]').click();
-    await page.locator('[data-account-trigger]').click();
+    await page.locator('[data-billing-restricted]').waitFor();
     const logoutReply = page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/auth/logout');
     await page.locator('[data-logout]').click();
     check('UI logout real HTTP 204', (await logoutReply).status() === 204);
