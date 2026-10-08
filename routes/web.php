@@ -6,9 +6,6 @@ use App\Http\Middleware\EnsureOperableUser;
 use App\Http\Middleware\PresentSubscriptionRestriction;
 use App\Http\Controllers\Web\SubscriptionPageController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\facades\artisan;
-
-
 
 // ==========================================
 // RUTAS PÚBLICAS Y LANDING PAGE

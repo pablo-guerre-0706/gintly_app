@@ -70,6 +70,7 @@ final class UserSeeder extends Seeder
 
         $owner = $this->upsertUser('propietario@gintly.test', 'Propietario Demo', $business->id);
         $owner->syncRoles([RoleName::Owner->value]);   // ROL-01
+        $this->linkDemoOwner($business, $owner);
 
         $this->upsertUser('administrador@gintly.test', 'Administrador Demo', $business->id)
             ->syncRoles([RoleName::Admin->value]);    // ROL-02
@@ -90,6 +91,26 @@ final class UserSeeder extends Seeder
         // 7) Restaura el contexto global tras el seeding.
         $registrar->setPermissionsTeamId(null);
         $registrar->forgetCachedPermissions();
+    }
+
+    /** Completa solo el vínculo demo ausente; nunca sustituye un propietario existente. */
+    private function linkDemoOwner(Business $business, User $owner): void
+    {
+        if ($business->slug !== 'gintly-demo'
+            || (int) $owner->business_id !== (int) $business->getKey()
+            || $owner->email !== 'propietario@gintly.test'
+            || ! $owner->is_active
+            || ! $owner->hasRole(RoleName::Owner->value)) {
+            throw new \LogicException('El vínculo demo requiere su usuario propietario activo ROL-01 del mismo negocio.');
+        }
+
+        // La condición SQL también protege frente a otra asignación concurrente.
+        // Si ya existe propietario (incluido este usuario), no modifica el registro.
+        Business::query()
+            ->whereKey($business->getKey())
+            ->where('slug', 'gintly-demo')
+            ->whereNull('owner_user_id')
+            ->update(['owner_user_id' => $owner->getKey()]);
     }
 
     /** Sucursal del negocio demo (idempotente por negocio+nombre). */
