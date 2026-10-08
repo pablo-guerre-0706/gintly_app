@@ -34,34 +34,41 @@ Principios arquitectónicos clave:
 
 ## Stack tecnológico
 
-**Backend:** PHP <8.3.30> · Laravel <12.x> 
-**Base de datos:** MySQL 8 (InnoDB, diseño relacional en 2FN)
-**Autorización:** spatie/laravel-permission (modo *teams*)
-**Entorno local:** Laragon (Apache + MySQL) o equivalente
+**Backend:** PHP 8.3 · Laravel 12.x · Eloquent ORM
+**Base de datos:** MySQL 8 (InnoDB), aislamiento multitenant por `business_id`
+**Autenticación:** Laravel Sanctum con cookies, sesión y protección CSRF
+**Autorización:** spatie/laravel-permission (modo *teams*), Middlewares y Policies
+**Arquitectura:** Monolito modular con Services, FormRequests, Resources y controladores slim
+**Frontend:** Laravel Blade · HTML5 · JavaScript ES6+ nativo y modular
+**Comunicación:** API REST `/api/v1` · Fetch API mediante `api-client.js`
+**Estilos y UI:** Tailwind CSS 4 compilado localmente · Diseño responsive basado en Figma
+**Compilación de assets:** Vite · npm
+**Tipografía:** Plus Jakarta Sans
+**Entorno local:** Laragon o equivalente
+**Despliegue:** Docker · GitHub Actions · Azure Container Registry · Azure App Service
 **Control de versiones:** Git + GitHub
 **Estándar de código:** PSR-12
-**Frontend Base:** HTML5 · JavaScript ES6+ (Vanilla)
-**Estilos y UI:** Tailwind CSS v4.0
-**Tipografía:** Plus Jakarta Sans (vía Google Fonts)
 
 ---
 
 ## Módulos del sistema
 
+## Módulos del sistema
+
 El sistema se organiza en módulos funcionales, ordenados por capas de dependencia de datos (maestros → transaccionales → de control):
 
-01 - Seguridad, Identidad y Auditoría.
-02 - Catálogo y Datos Maestros.
-03 - Inventario y Bodega.
-04 - Compras, Proveedores y Recepción.
-05 – Clientes.
-06 - Gestión de Caja.
-07 - Ventas y Facturación.
-08 - Ventas al Crédito y Cuentas por Cobrar.
-09 - Entregas y Retiros de mercancias.
-10 - Devoluciones, Reingreso y Mermas.
-11 - Conciliación, Alertas y Anomalías: Motor antifraude.
-12 - Reportería, KPIs e Inteligencia de Negocios:
+01 - Seguridad, Identidad y Auditoría: autenticación, roles, permisos y trazabilidad.
+02 - Catálogo y Datos Maestros: productos, unidades y configuración del negocio.
+03 - Inventario y Bodega: existencias, reservas, conteos físicos, traspasos y alertas de mínimos.
+04 - Compras, Proveedores y Recepción: órdenes de compra, recepción y conciliación 3-Way Match.
+05 - Clientes: gestión de clientes y controles asociados a cuentas por cobrar.
+06 - Gestión de Caja: apertura, movimientos, arqueos y cierre con operación NIO/USD.
+07 - Ventas y Facturación: emisión, pagos mixtos, vuelto y tratamiento fiscal.
+08 - Ventas al Crédito y Cuentas por Cobrar: saldos, abonos y seguimiento de cartera.
+09 - Despachos, Entregas y Retiros de Mercancías.
+10 - Devoluciones, Reingresos y Mermas.
+11 - Conciliación, Alertas y Anomalías: detección de descuadres y discrepancias operativas.
+12 - Reportería, KPIs e Inteligencia de Negocios: indicadores, reportes y metas.
 
 Cada módulo se encuentra detallado en la documentación del proyecto.
 
