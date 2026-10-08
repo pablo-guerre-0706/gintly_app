@@ -8,14 +8,7 @@ use App\Http\Controllers\Web\SubscriptionPageController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\facades\artisan;
 
-Route::get('/run-migrations', function () {
-    try{
-    Artisan::call('migrate', ['--force' => true]);
-    return 'Migrations executed successfully.' . artisan::output() . '<br>.';
-} catch (\Exception $e) {
-    return 'Error al ejectutar las migraciones: ' . $e->getMessage();
-}
-});
+
 
 // ==========================================
 // RUTAS PÚBLICAS Y LANDING PAGE
