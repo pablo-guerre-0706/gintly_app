@@ -27,7 +27,7 @@
     <div class="mx-auto w-full max-w-[1440px] px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
 
         <!-- NAVBAR HEADER -->
-        <header class="mb-8 flex items-center justify-between gap-3 pt-2 transition-all duration-500 sm:mb-10 lg:mb-12 lg:gap-4">
+        <header class="mb-4 flex items-center justify-between gap-4 pt-2 transition-all duration-500 lg:mb-12">
             
             <a href="{{ route('landing') }}" class="flex shrink-0 items-center transition-transform duration-300 hover:scale-105" aria-label="Gintly, ir al inicio">
                 <div class="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/4 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.25)] p-2.5 transition-all duration-300 hover:bg-white/8">
@@ -95,19 +95,16 @@
                 </a>
             </nav>
 
-            <div class="flex min-w-0 items-center gap-2 lg:hidden">
-                <a href="{{ route('login') }}" class="inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 bg-white/10 px-4 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/20 sm:px-5 sm:text-sm">
+            <div class="flex min-w-0 shrink-0 items-center lg:hidden">
+                <a href="{{ route('login') }}" class="inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 bg-white/10 px-5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20">
                     Iniciar sesión
-                </a>
-                <a href="{{ route('register.index') }}" class="inline-flex min-h-11 items-center justify-center rounded-full bg-[#146F8A] px-4 text-xs font-semibold text-white shadow-lg transition hover:bg-[#18809f] sm:px-5 sm:text-sm">
-                    Regístrate
                 </a>
             </div>
         </header>
 
         <!-- SECCIÓN HERO -->
         <main>
-            <section id="inicio" class="grid min-w-0 grid-cols-1 items-center gap-10 py-8 sm:py-10 lg:min-h-[696px] lg:grid-cols-12 lg:py-0 lg:pb-16">
+            <section id="inicio" class="grid min-w-0 grid-cols-1 items-center gap-10 pt-4 pb-8 sm:pb-10 lg:min-h-[696px] lg:grid-cols-12 lg:py-0 lg:pb-16">
 
                 <!-- Columna Izquierda: Textos y Botones -->
                 <div class="min-w-0 flex flex-col justify-center space-y-6 sm:space-y-8 lg:col-span-6">
