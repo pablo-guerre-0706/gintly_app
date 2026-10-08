@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureActiveSubscription;
+use App\Http\Middleware\RequiresPlanFeature;
 use App\Http\Middleware\SetPermissionsTeamId;
 use App\Exceptions\CashAuthorizationException;
 use App\Exceptions\CustomerHasReceivablesException;
@@ -48,11 +50,19 @@ return Application::configure(basePath: dirname(__DIR__))
         // Activa el soporte de sesiones/cookies para Sanctum SPA requerido por el AuthController
         $middleware->statefulApi();
 
+        // CSRF excluido ÚNICAMENTE para el webhook del proveedor (recepción externa firmada por HMAC).
+        // No se desactiva la protección CSRF del resto del proyecto.
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/billing/webhook',
+        ]);
+
         $middleware->alias([
             'tenant.permissions' => SetPermissionsTeamId::class,
             'role'               => RoleMiddleware::class,
             'permission'         => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'subscription.active' => EnsureActiveSubscription::class,
+            'plan.feature'        => RequiresPlanFeature::class,
         ]);
     })
 

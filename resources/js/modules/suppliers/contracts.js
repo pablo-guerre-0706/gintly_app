@@ -56,10 +56,25 @@ export function mapRecords(payload) {
 }
 
 export function filteredMap(records, query = '', primaryOnly = false) {
-    const normalize = (value) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
-    const needle = normalize(query.trim());
-    return records.map((record) => ({ ...record, locations: record.locations.filter((item) =>
-        (!primaryOnly || item.is_primary) && (!needle || normalize(`${record.name} ${item.address}`).includes(needle))) })).filter((record) => record.locations.length);
+    const normalize = (value) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .toLocaleLowerCase('es').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const words = normalize(query).split(/\s+/u).filter(Boolean);
+    // All words must match this supplier and this location; never combine
+    // address fragments from different locations to manufacture a match.
+    return records.map((record) => ({ ...record, locations: record.locations.filter((item) => {
+        const searchable = normalize(`${record.name} ${item.address}`);
+        return (!primaryOnly || item.is_primary) && words.every((word) => searchable.includes(word));
+    }) })).filter((record) => record.locations.length);
+}
+
+export function mapCounts(records) {
+    return { suppliers: new Set(records.map((record) => record.id)).size, locations: new Set(records.flatMap((record) => record.locations.map((item) => item.key))).size };
+}
+
+export function supplierFocus(record) {
+    // Only a visible primary or a single visible location can be selected
+    // automatically. Multiple additional locations must be framed together.
+    return record.locations.find((item) => item.is_primary) ?? (record.locations.length === 1 ? record.locations[0] : null);
 }
 
 export function supplierAccess(context) {

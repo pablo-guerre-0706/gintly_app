@@ -74,6 +74,8 @@ final class StockUnitAndThresholdsHttpTest extends MysqlTestCase
         $unit->business_id = $business->id;
         $unit->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branchA', 'whA1', 'owner', 'admin', 'bodA', 'category', 'unit');
     }
 

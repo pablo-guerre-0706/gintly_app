@@ -1,9 +1,11 @@
 import { initNotifications } from './core/notifications';
 import { initLoading } from './core/loading';
 import { initPanelShell } from './shell/panel-shell';
+import { initCommercialRecovery } from './core/commercial-recovery';
 
 const modules = import.meta.glob([
     './modules/catalog/products.js',
+    './modules/billing/index.js',
     './modules/customers/index.js',
     './modules/customers/create.js',
     './modules/dashboard/index.js',
@@ -45,6 +47,7 @@ const modules = import.meta.glob([
 
 initNotifications();
 initLoading();
+initCommercialRecovery();
 
 async function bootPage() {
     const shellReady = await initPanelShell();

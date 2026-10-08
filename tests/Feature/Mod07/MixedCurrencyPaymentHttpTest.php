@@ -94,6 +94,8 @@ final class MixedCurrencyPaymentHttpTest extends MysqlTestCase
             'status' => 'abierta', 'opening_amount' => '0.00', 'opening_amount_usd' => '0.00', 'opened_at' => now(),
         ])->saveQuietly();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'operator', 'branch', 'warehouse', 'category', 'unit', 'customer', 'session');
     }
 

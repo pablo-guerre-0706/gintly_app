@@ -92,6 +92,7 @@ function normalize(payload) {
         profileLabels: Object.freeze(profiles.map((profile) => PROFILE_LABELS[profile] ?? profile)),
         capabilities: Object.freeze(capabilities),
         business: Object.freeze({
+            id: Number.isInteger(data.business?.id) ? data.business.id : null,
             name: typeof data.business?.name === 'string' ? data.business.name.trim() : '',
             timezone: typeof data.business?.timezone === 'string' ? data.business.timezone.trim() : '',
             status: typeof data.business?.status === 'string' ? data.business.status.trim() : '',

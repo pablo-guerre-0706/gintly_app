@@ -108,6 +108,8 @@ final class GoodsReceiptBranchIsolationHttpTest extends MysqlTestCase
         $supplier->status = SupplierStatus::Aprobado;
         $supplier->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'owner', 'admin', 'operator', 'branch1', 'branch2', 'wh1', 'wh2', 'product', 'supplier');
     }
 

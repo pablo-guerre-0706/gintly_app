@@ -64,6 +64,8 @@ final class CashRegisterAssignmentHttpTest extends MysqlTestCase
         $cajeroB = $this->makeUser($business, RoleName::Operator, $branchB, 'cajero');
         $bodeguero = $this->makeUser($business, RoleName::Operator, $branchA, 'bodeguero');
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branchA', 'branchB', 'registerA', 'registerB', 'owner', 'admin', 'cajeroA', 'cajeroA2', 'cajeroB', 'bodeguero');
     }
 

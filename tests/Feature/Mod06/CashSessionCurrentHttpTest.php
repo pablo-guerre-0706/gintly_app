@@ -55,6 +55,8 @@ final class CashSessionCurrentHttpTest extends MysqlTestCase
         $register = new CashRegister();
         $register->forceFill(['business_id' => $business->id, 'branch_id' => $branch->id, 'name' => 'Caja '.self::$seq, 'is_active' => true])->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'register');
     }
 

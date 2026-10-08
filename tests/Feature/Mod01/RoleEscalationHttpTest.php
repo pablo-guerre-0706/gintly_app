@@ -62,6 +62,8 @@ final class RoleEscalationHttpTest extends MysqlTestCase
         $owner = $this->makeUser($business, RoleName::Owner);
         $admin = $this->makeUser($business, RoleName::Admin);
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'owner', 'admin');
     }
 

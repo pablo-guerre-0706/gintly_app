@@ -70,6 +70,8 @@ final class CashSessionDualCurrencyHttpTest extends MysqlTestCase
             'user_id' => $cajero->id, 'assigned_by' => $admin->id, 'assigned_at' => now(),
         ])->save();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branch', 'register', 'admin', 'cajero');
     }
 

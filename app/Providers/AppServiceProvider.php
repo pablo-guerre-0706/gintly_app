@@ -88,6 +88,7 @@ use App\Policies\WarehouseAssignmentPolicy;
 use App\Policies\WarehousePolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -100,6 +101,16 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->registerGeocoder();
+        $this->registerSubscriptionGateway();
+    }
+
+    /**
+     * Puerto de suscripción → implementación REST única de Lemon Squeezy (sin SDK, sin multiproveedor). En
+     * pruebas se sustituye por un doble limpio vía $this->app->instance().
+     */
+    private function registerSubscriptionGateway(): void
+    {
+        $this->app->singleton(\App\Contracts\SubscriptionGateway::class, \App\Services\Billing\LemonSqueezyGateway::class);
     }
 
     /**
@@ -129,6 +140,19 @@ final class AppServiceProvider extends ServiceProvider
         $this->registerAuthorizationPolicies();
         $this->registerRateLimiters();
         $this->registerObservers();
+        $this->registerRequestNormalizationExceptions();
+    }
+
+    /**
+     * El alta pública preserva EXACTAMENTE la contraseña (espacios incluidos). TrimStrings recorta por ruta
+     * de clave con comodín, y su allowlist por defecto ('password', ...) NO cubre la clave ANIDADA
+     * 'owner.password'. Se omite TrimStrings SOLO en esta ruta: RegisterRequest normaliza explícitamente
+     * nombres/email de forma segura y deja las contraseñas intactas. Alcance mínimo (una ruta), sin tocar la
+     * normalización del resto del proyecto.
+     */
+    private function registerRequestNormalizationExceptions(): void
+    {
+        TrimStrings::skipWhen(static fn (Request $request): bool => $request->is('api/v1/auth/register'));
     }
 
     // Desacopla el identificador persistido del nombre de la clase PHP.
@@ -228,6 +252,23 @@ final class AppServiceProvider extends ServiceProvider
                     ?? $request->ip()
                     ?? 'unknown'
             );
+        });
+
+        // Alta pública canónica: 5/min por IP+email normalizado y 20/hora por IP (parametrizable). Tolera
+        // email ausente o de tipo incorrecto sin 500. Prefijos propios para no colisionar con 'login'.
+        RateLimiter::for('register', function (Request $request): array {
+            $ip = $request->ip() ?? 'unknown';
+
+            $emailRaw = $request->input('owner.email');
+            $email = is_string($emailRaw) ? mb_strtolower(trim($emailRaw)) : '';
+
+            $perMinute = max(1, (int) config('gintly.registration.max_per_minute', 5));
+            $perHour   = max(1, (int) config('gintly.registration.max_per_hour', 20));
+
+            return [
+                Limit::perMinute($perMinute)->by('reg:m:'.$ip.'|'.$email),
+                Limit::perHour($perHour)->by('reg:h:'.$ip),
+            ];
         });
 
         RateLimiter::for('login', function (Request $request): Limit {

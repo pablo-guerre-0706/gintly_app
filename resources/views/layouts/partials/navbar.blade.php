@@ -207,6 +207,7 @@
                     </div>
                 </dl>
                 <div class="border-t border-slate-200 p-2">
+                    <a href="{{ route('web.billing.index') }}" class="mb-2 flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-gintly-brand">Suscripción del negocio</a>
                     <button type="button" class="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" data-logout>
                         <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
                         <span data-logout-label>Cerrar sesión</span>

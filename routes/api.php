@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\V1\ApplyPhysicalCountController;
 use App\Http\Controllers\Api\V1\ApproveSupplierController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BillingController;
+use App\Http\Controllers\Api\V1\BillingWebhookController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\BusinessController;
@@ -58,6 +60,7 @@ use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReceivablePaymentsController;
 use App\Http\Controllers\Api\V1\RecipeController;
 use App\Http\Controllers\Api\V1\ReconciliationRunController;
+use App\Http\Controllers\Api\V1\RegisterController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportDefinitionController;
 use App\Http\Controllers\Api\V1\ResolveGoodsReceiptController;
@@ -98,12 +101,33 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
 
+    // Alta pública canónica. Público (fuera de auth:sanctum y de compuertas de tenant); conserva la
+    // infraestructura stateful/CSRF del SPA. Idempotency-Key obligatorio (header). No autentica al propietario.
+    Route::post('/auth/register', RegisterController::class)
+        ->middleware('throttle:register');
+
+    // Webhook del proveedor de suscripción (Lemon Squeezy). PÚBLICO (sin sesión), firma HMAC verificada en el
+    // controlador, CSRF excluido SOLO para esta ruta (ver bootstrap/app.php). Fuera de la compuerta comercial.
+    Route::post('/billing/webhook', BillingWebhookController::class)->name('billing.webhook');
+
     Route::middleware(['auth:sanctum', EnsureOperableUser::class])->group(function (): void {
 
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         // Controlador invocable (__invoke): se referencia por clase, no por método.
         Route::put('/me/password', UpdatePasswordController::class);
+
+        // MOD-SUB · Contratación de planes. UNGATED (identidad/situación/contratación accesibles sin pago):
+        // catálogo, situación comercial y creación de checkout. El checkout exige propietario real ROL-01.
+        Route::get('/billing/plans', [BillingController::class, 'plans'])->name('billing.plans');
+        Route::get('/billing/subscription', [BillingController::class, 'subscription'])->name('billing.subscription');
+        Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+        // Gestión de la MISMA suscripción (propietario real ROL-01). No abre una segunda contratación.
+        Route::post('/billing/subscription/change', [BillingController::class, 'change'])->name('billing.change');
+        Route::post('/billing/subscription/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
+
+        // === Compuerta comercial: TODO lo operativo exige suscripción pagada vigente (ROL-01 incluido). ===
+        Route::middleware('subscription.active')->group(function (): void {
         // Route::get('/pos', [POSController::class, 'index'])->name('pos.index');
         // Route::get('/finance/cash-closing', [FinanceController::class, 'cashClosing'])
         // ->name('finance.cash-closing');
@@ -163,9 +187,12 @@ Route::prefix('v1')->group(function (): void {
         Route::post('physical-counts/{physicalCount}/justify', JustifyPhysicalCountController::class)->name('physical-counts.justify');
 
         // Stock transfers: index/store/show + acciones complete/cancel (invocables).
-        Route::apiResource('stock-transfers', StockTransferController::class)->only(['index', 'store', 'show']);
-        Route::post('stock-transfers/{stockTransfer}/complete', CompleteStockTransferController::class)->name('stock-transfers.complete');
-        Route::post('stock-transfers/{stockTransfer}/cancel', CancelStockTransferController::class)->name('stock-transfers.cancel');
+        // Capacidad PLAN: traspasos entre bodegas (warehouse_transfers) → Plan Cadena.
+        Route::middleware('plan.feature:warehouse_transfers')->group(function (): void {
+            Route::apiResource('stock-transfers', StockTransferController::class)->only(['index', 'store', 'show']);
+            Route::post('stock-transfers/{stockTransfer}/complete', CompleteStockTransferController::class)->name('stock-transfers.complete');
+            Route::post('stock-transfers/{stockTransfer}/cancel', CancelStockTransferController::class)->name('stock-transfers.cancel');
+        });
 
         // Adjustments: index/store (merma/sobrante). Movements: kardex solo index.
         Route::apiResource('inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'store']);
@@ -194,7 +221,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('suppliers/{supplier}/locations/{location}/confirm', [SupplierLocationController::class, 'confirm'])->scopeBindings()->name('suppliers.locations.confirm');
 
         // MOD-04 · Mapa de proveedores: solo aprobados, activos y con ubicación confirmada (tenant de sesión).
-        Route::get('map/suppliers', [MapSupplierController::class, 'index'])->name('map.suppliers');
+        Route::get('map/suppliers', [MapSupplierController::class, 'index'])
+            ->middleware('plan.feature:supplier_map')->name('map.suppliers');
 
         // Órdenes: index/store/show/update + emitir/cancelar (sin destroy: cancelar es la terminación real).
         Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show', 'update']);
@@ -285,16 +313,18 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('tax-rules/{taxRule}', [TaxRuleController::class, 'update']);
         Route::delete('tax-rules/{taxRule}', [TaxRuleController::class, 'destroy']);
 
-        // MOD-08 · Cuentas por Cobrar
-        Route::get('accounts-receivable', [AccountReceivableController::class, 'index']);
-        // 'collectible' ANTES del binding {accountReceivable} para que no se interprete como id.
-        Route::get('accounts-receivable/collectible', [AccountReceivableController::class, 'collectible'])->name('accounts-receivable.collectible');
-        Route::get('accounts-receivable/{accountReceivable}', [AccountReceivableController::class, 'show']);
-        Route::get('accounts-receivable/{accountReceivable}/payments', ReceivablePaymentsController::class);
-        Route::post('accounts-receivable/{accountReceivable}/payments', StoreReceivablePaymentController::class);
+        // MOD-08 · Cuentas por Cobrar — Capacidad PLAN: receivables → Plan Comercio+ (acumulativa).
+        Route::middleware('plan.feature:receivables')->group(function (): void {
+            Route::get('accounts-receivable', [AccountReceivableController::class, 'index']);
+            // 'collectible' ANTES del binding {accountReceivable} para que no se interprete como id.
+            Route::get('accounts-receivable/collectible', [AccountReceivableController::class, 'collectible'])->name('accounts-receivable.collectible');
+            Route::get('accounts-receivable/{accountReceivable}', [AccountReceivableController::class, 'show']);
+            Route::get('accounts-receivable/{accountReceivable}/payments', ReceivablePaymentsController::class);
+            Route::post('accounts-receivable/{accountReceivable}/payments', StoreReceivablePaymentController::class);
 
-        Route::get('customers/{customer}/credit-status', CustomerCreditStatusController::class);
-        Route::post('customers/{customer}/credit-check', CustomerCreditCheckController::class);
+            Route::get('customers/{customer}/credit-status', CustomerCreditStatusController::class);
+            Route::post('customers/{customer}/credit-check', CustomerCreditCheckController::class);
+        });
 
         // MOD-09 · Entregas y Retiros de Mercancía
         Route::get('dispatches', [DispatchController::class, 'index'])->name('dispatches.index');
@@ -325,21 +355,26 @@ Route::prefix('v1')->group(function (): void {
         Route::get('customers/{customer}/credit-balance', CustomerCreditBalanceController::class)
             ->name('customers.credit-balance');
 
-        // MOD-11 · Reglas de anomalía (catálogo cerrado; parametrización ROL-01)
-        Route::get('anomaly-rules', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
-        Route::put('anomaly-rules/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
+        // MOD-11 · Anomalías y conciliación — Capacidad PLAN: anomalies → Plan Comercio+ (acumulativa).
+        // Las comprobaciones INTERNAS (detectores, 3-Way Match) siguen activas en todos los planes; aquí solo se
+        // gatea el ACCESO HTTP a la gestión de anomalías/conciliación.
+        Route::middleware('plan.feature:anomalies')->group(function (): void {
+            // Reglas de anomalía (catálogo cerrado; parametrización ROL-01)
+            Route::get('anomaly-rules', [AnomalyRuleController::class, 'index'])->name('anomaly-rules.index');
+            Route::put('anomaly-rules/{anomalyRule}', [AnomalyRuleController::class, 'update'])->name('anomaly-rules.update');
 
-        // MOD-11 · Anomalías (máquina de estados + bitácora append-only)
-        Route::get('anomalies', [AnomalyController::class, 'index'])->name('anomalies.index');
-        Route::get('anomalies/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
-        Route::get('anomalies/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
-        Route::post('anomalies/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
-        Route::post('anomalies/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
+            // Anomalías (máquina de estados + bitácora append-only)
+            Route::get('anomalies', [AnomalyController::class, 'index'])->name('anomalies.index');
+            Route::get('anomalies/{anomaly}', [AnomalyController::class, 'show'])->name('anomalies.show');
+            Route::get('anomalies/{anomaly}/events', [AnomalyController::class, 'events'])->name('anomalies.events');
+            Route::post('anomalies/{anomaly}/justify', [AnomalyController::class, 'justify'])->name('anomalies.justify');
+            Route::post('anomalies/{anomaly}/resolve', [AnomalyController::class, 'resolve'])->name('anomalies.resolve');
 
-        // MOD-11 · Corridas de conciliación (manual ROL-02+; programada vía comando)
-        Route::get('reconciliation-runs', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
-        Route::post('reconciliation-runs', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
-        Route::get('reconciliation-runs/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
+            // Corridas de conciliación (manual ROL-02+; programada vía comando)
+            Route::get('reconciliation-runs', [ReconciliationRunController::class, 'index'])->name('reconciliation-runs.index');
+            Route::post('reconciliation-runs', [ReconciliationRunController::class, 'store'])->name('reconciliation-runs.store');
+            Route::get('reconciliation-runs/{reconciliationRun}', [ReconciliationRunController::class, 'show'])->name('reconciliation-runs.show');
+        });
 
         // MOD-12 · Metas de negocio (CUD solo ROL-01; lectura ROL-01/ROL-02)
         Route::prefix('business-goals')->group(function (): void {
@@ -359,14 +394,18 @@ Route::prefix('v1')->group(function (): void {
         Route::get('dashboard/admin', [DashboardController::class, 'admin'])->name('dashboard.admin');
         Route::get('dashboard/operative', [DashboardController::class, 'operative'])->name('dashboard.operative');
 
-        // MOD-12 · Reportería consolidada (solo lectura) y definiciones reutilizables
-        Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
-        Route::prefix('report-definitions')->group(function (): void {
-            Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
-            Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
-            Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
-            Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
+        // MOD-12 · Reportería consolidada (solo lectura) y definiciones reutilizables.
+        // Capacidad PLAN: advanced_reports → Plan Cadena.
+        Route::middleware('plan.feature:advanced_reports')->group(function (): void {
+            Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
+            Route::prefix('report-definitions')->group(function (): void {
+                Route::get('/', [ReportDefinitionController::class, 'index'])->name('report-definitions.index');
+                Route::post('/', [ReportDefinitionController::class, 'store'])->name('report-definitions.store');
+                Route::put('/{reportDefinition}', [ReportDefinitionController::class, 'update'])->name('report-definitions.update');
+                Route::delete('/{reportDefinition}', [ReportDefinitionController::class, 'destroy'])->name('report-definitions.destroy');
+            });
         });
+        }); // cierre de la compuerta comercial (subscription.active)
     });
 });
 

@@ -6,6 +6,7 @@
   <title>Gintly App - Iniciar Sesión</title>
   <meta name="api-base-url" content="{{ url('/api/v1') }}">
   <meta name="dashboard-url" content="{{ route('dashboard') }}">
+  <meta name="post-login-url" content="{{ route('web.billing.access') }}">
   @vite([
     'resources/css/app.css',
     'resources/js/modules/security/auth.js',
@@ -112,7 +113,7 @@
 
           <div class="flex flex-col gap-1">
             <div class="flex justify-between items-center">
-              <label class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Contraseña</label>
+              <label for="password" class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Contraseña</label>
               <span class="text-[11px] font-medium text-slate-400">Recuperación no disponible</span>
             </div>
             <input

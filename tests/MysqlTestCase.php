@@ -109,4 +109,28 @@ abstract class MysqlTestCase extends TestCase
     {
         return filter_var(env('GINTLY_MYSQL_TESTS', false), FILTER_VALIDATE_BOOL);
     }
+
+    /**
+     * Colaborador de prueba EXPLÍCITO (no es un hook global ni un bypass del middleware): representa un pago
+     * VERIFICADO sembrando una suscripción comercial ACTIVA con vigencia futura para un negocio de prueba,
+     * de modo que la compuerta comercial (EnsureActiveSubscription) permita operar el ERP. Por defecto
+     * 'cadena' (todas las capacidades y límites altos) para no interferir con los flujos operativos de cada
+     * módulo. Las pruebas que necesitan un negocio SIN pago simplemente NO lo llaman. Revertido por la
+     * transacción envolvente del test.
+     */
+    protected function activateBusinessSubscription(int $businessId, string $plan = 'cadena', string $period = 'annual'): void
+    {
+        $sub = new \App\Models\PlanSubscription();
+        $sub->forceFill([
+            'business_id'          => $businessId,
+            'plan_key'             => $plan,
+            'period'               => $period,
+            'status'               => 'active',
+            'provider'             => 'lemon_squeezy',
+            'provider_mode'        => (string) config('billing.provider_mode', 'test'),
+            'store_id'             => (string) config('billing.store_id'),
+            'current_period_start' => now(),
+            'paid_until'           => now()->addYear(),
+        ])->save();
+    }
 }

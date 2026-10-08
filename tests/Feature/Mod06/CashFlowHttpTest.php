@@ -93,6 +93,8 @@ final class CashFlowHttpTest extends MysqlTestCase
         $this->assignCajero($operator, $register);
         $this->assignCajero($operator2, $register2);
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact(
             'business', 'owner', 'admin', 'operator', 'operator2',
             'branch', 'branch2', 'register', 'register2',

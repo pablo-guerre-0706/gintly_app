@@ -38,9 +38,14 @@ use App\Models\ProductRecipe;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\ReceivablePayment;
+use App\Models\BillingWebhookEvent;
+use App\Models\CheckoutIntent;
+use App\Models\PlanSubscription;
 use App\Models\ReconciliationRun;
 use App\Models\RegisterWizard;
+use App\Models\RegistrationRequest;
 use App\Models\ReportDefinition;
+use App\Models\SubscriptionPayment;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalesReturn;
@@ -167,6 +172,17 @@ $morphMap = [
     // la tabla `register_wizards`. Al derivarse auditable_types de array_keys(morph_map),
     // queda disponible en la lista blanca de auditoría (sin forzar auditoría automática).
     'register_wizard' => RegisterWizard::class,
+
+    // Registro público canónico (pre-tenant): infraestructura de idempotencia del alta.
+    // RegistrationRequest NO usa BelongsToBusiness (se consulta antes de existir tenant),
+    // pero la invariante del proyecto exige alias de morphMap para TODO app/Models.
+    'registration_request' => RegistrationRequest::class,
+
+    // Suscripción SaaS de Gintly (cobro de Gintly al negocio; separado del ERP). Sin BelongsToBusiness.
+    'plan_subscription'     => PlanSubscription::class,
+    'checkout_intent'       => CheckoutIntent::class,
+    'billing_webhook_event' => BillingWebhookEvent::class,
+    'subscription_payment'  => SubscriptionPayment::class,
 ];
 
 return [
@@ -181,6 +197,20 @@ return [
     'auth' => [
         'max_attempts' => 5,     // Umbral parametrizable del rate-limit
         'decay_seconds' => 60,
+    ],
+
+    // Registro público canónico (POST /api/v1/auth/register). Todo parametrizable.
+    'registration' => [
+        'max_per_minute'   => 5,   // por IP + email normalizado
+        'max_per_hour'     => 20,  // por IP
+        'slug_retries'     => 5,   // reintentos de slug ante colisión real del índice
+        'deadlock_retries' => 3,   // reintentos acotados ante deadlock/espera de lock
+        'lock_timeout_seconds' => 10, // espera máxima del lock con nombre por Idempotency-Key (serializa duplicados)
+        // Secreto ESTABLE del HMAC del fingerprint de idempotencia. Si no se define,
+        // el servicio recae en APP_KEY (estable y gestionada por backend). El fingerprint
+        // depende de que este secreto no rote entre la solicitud original y sus repeticiones.
+        'fingerprint_secret'  => env('REGISTRATION_FINGERPRINT_SECRET'),
+        'fingerprint_version' => 'v1', // versiona la representación canónica del payload.
     ],
 
     // Bitácora de auditoría

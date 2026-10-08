@@ -6,8 +6,34 @@
 .gintly-map-pin span { display: block; width: 30px; height: 30px; margin: 7px; border: 3px solid white; border-radius: 50% 50% 50% 0; background: #146f8a; box-shadow: 0 2px 8px #082c3755; transform: rotate(-45deg); }
 .gintly-map-pin.is-selected span { background: #082c37; box-shadow: 0 0 0 4px #a9d5e2; }
 .gintly-map-pin:focus-visible { outline: 3px solid #082c37; outline-offset: 4px; border-radius: 8px; }
-@media (max-width: 767px) {
+/* Only this page opts into the shell's viewport-height workspace. Header and
+   footer keep their actual intrinsic heights; other screens retain page scroll. */
+html[data-page="suppliers/explore"]:has([data-supplier-explorer]) body { height: 100dvh; min-height: 0; overflow: hidden; }
+html[data-page="suppliers/explore"]:has([data-supplier-explorer]) .shell-layout { height: 100%; min-height: 0; }
+html[data-page="suppliers/explore"]:has([data-supplier-explorer]) [data-shell-surface] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; min-height: 0; }
+html[data-page="suppliers/explore"]:has([data-supplier-explorer]) #main-content { min-height: 0; overflow: hidden; }
+html[data-page="suppliers/explore"]:has([data-supplier-explorer]) #main-content > div { height: 100%; max-width: none; padding: 0; }
+.supplier-map-workspace { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; overflow: hidden; }
+.supplier-map-view-switch { display: flex; gap: 0.5rem; border-bottom: 1px solid #e2e8f0; background: white; padding: 0.5rem 1rem; }
+.supplier-map-view-switch [aria-pressed="true"] { background: #082c37; color: white; }
+.supplier-map-panel { grid-row: 2; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem; border-inline-end: 1px solid #e2e8f0; }
+.supplier-map-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; }
+.supplier-map-column { position: relative; grid-row: 2; min-width: 0; min-height: 0; overflow: hidden; background: #f2f2f2; }
+.supplier-map-column .supplier-map-canvas { height: 100%; border-radius: 0; }
+.supplier-map-column .leaflet-bottom.leaflet-right { bottom: 1.75rem; right: 0.5rem; }
+.supplier-map-column .leaflet-bottom.leaflet-left { max-width: calc(100% - 4.5rem); }
+.supplier-map-column .leaflet-control-attribution { max-width: 100%; }
+.supplier-map-return { position: absolute; inset-block-start: 1rem; inset-inline-end: 1rem; z-index: 10; }
+.supplier-map-tile-notice { position: absolute; inset-block-start: 1rem; inset-inline-start: 1rem; width: min(26rem, calc(100% - 5.5rem)); max-height: calc(100% - 7rem); overflow-y: auto; z-index: 10; }
+.supplier-map-card[data-selected="true"] { border-color: #146f8a; box-shadow: inset 3px 0 #146f8a; }
+@media (width < 1024px) {
     [data-supplier-explorer][data-mobile-view="list"] [data-map-column],
     [data-supplier-explorer][data-mobile-view="map"] [data-list-column] { display: none; }
+}
+@media (min-width: 1024px) {
+    .supplier-map-workspace { grid-template-columns: clamp(320px, 30%, 400px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    .supplier-map-view-switch { display: none; }
+    .supplier-map-panel { grid-column: 1; grid-row: 1; }
+    .supplier-map-column { grid-column: 2; grid-row: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .supplier-map-canvas * { scroll-behavior: auto; } }

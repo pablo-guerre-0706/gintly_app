@@ -26,7 +26,7 @@ const defaultMessage = (status) => ({
 }[status] ?? 'No fue posible completar la solicitud.');
 
 export class ApiError extends Error {
-    constructor({ status, code = null, message, errors = {}, payload = null }) {
+    constructor({ status, code = null, message, errors = {}, payload = null, retryAfter = null }) {
         super(message);
 
         this.name = 'ApiError';
@@ -35,6 +35,7 @@ export class ApiError extends Error {
         this.kind = kindFromStatus(status);
         this.errors = errors;
         this.payload = payload;
+        this.retryAfter = retryAfter;
     }
 
     is(status, code = null) {
@@ -131,6 +132,7 @@ function normalizeResponseError(response, payload) {
         message: data.message ?? defaultMessage(response.status),
         errors: data.errors ?? {},
         payload,
+        retryAfter: response.headers.get('Retry-After'),
     });
 }
 
@@ -294,7 +296,10 @@ export async function request(
             }
         }
 
-        if (dispatchErrors) {
+        const commercial = normalized.status === 403 && ['SUBSCRIPTION_REQUIRED', 'PLAN_FEATURE_UNAVAILABLE'].includes(normalized.code);
+        if (commercial) window.dispatchEvent(new CustomEvent('gintly:commercial-error', { detail: { code: normalized.code } }));
+
+        if (dispatchErrors && !commercial) {
             dispatchError(normalized);
         }
         throw normalized;

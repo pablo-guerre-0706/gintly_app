@@ -109,7 +109,22 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | metodo_pago | enum | NULL | — | `tarjeta` / `transferencia`. |
 | created_at / updated_at | timestamp | NULL | — | Auditoría. |
 
-**Nota:** borrador del asistente de registro (rutas web `register/*` + `RegisterWizardController`); NO forma parte del núcleo transaccional multi-tenant. El aprovisionamiento atómico definitivo del negocio (propietario, roles, cliente genérico, bodega/caja predeterminada, secuencias, reglas de anomalía) lo ejecuta el flujo de provisioning, no esta tabla.
+**Nota:** borrador del asistente de registro (rutas web `register/*` + `RegisterWizardController`); NO forma parte del núcleo transaccional multi-tenant. El alta canónica definitiva es `POST /api/v1/auth/register` (RegistrationService): crea el Business y su evento dispara `BusinessObserver`, cuyo aprovisionamiento REAL es cliente genérico, secuencias de documentos, reglas de anomalía, configuración fiscal estándar y la matriz de roles del negocio. El alta **NO** crea sucursales, bodegas ni cajas (se administran después). **LEGADO** pendiente de retiro (ver nota de riesgo en Contratos/entrega): sus rutas incluyen escrituras por GET.
+
+### `registration_requests` · idempotencia del alta pública canónica *(añadida en registro público)*
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| id | bigint | PK | — | Identificador. |
+| uuid | char(36) | NN | **UQ** `uniq_registration_request_uuid` | Idempotency-Key canónica. El índice UNIQUE es el ÁRBITRO de concurrencia: dos solicitudes con la misma clave compiten aquí; el perdedor hace rollback integral. |
+| fingerprint | char(64) | NN | — | HMAC-SHA256 (hex) de la representación canónica y versionada del payload normalizado (incluye la contraseña EXACTA, que NO se persiste). Distingue payloads bajo la misma clave; se compara en tiempo constante. |
+| business_id | bigint | NN, FK CASC | — | Negocio creado por este registro (se fija dentro de la transacción de alta). |
+| business_slug | string(160) | NN | — | Resultado público persistido (parte del cuerpo del endpoint). |
+| owner_email | string(180) | NN | — | Resultado público persistido (correo del propietario). |
+| created_at / updated_at | timestamp | NULL | — | Auditoría. |
+
+**Notas:** INFRAESTRUCTURA pre-tenant: el modelo `RegistrationRequest` **NO** usa `BelongsToBusiness`/BusinessScope (se consulta antes de existir sesión). La fila se escribe dentro de la MISMA transacción de creación (Business + Observer + propietario + ROL-01). El resultado persistido se conserva aunque luego se muten datos del negocio o del propietario. Alias de morphMap: `registration_request` (invariante del proyecto).
+
+**Concurrencia (distinción explícita):** el **lock con nombre** de MySQL (`GET_LOCK('gintly_reg_'+uuid)`, espera finita [1,60]s) SERIALIZA las solicitudes que comparten Idempotency-Key; bajo el flujo actual la solicitud que llega segunda ESPERA y, al liberarse el lock, encuentra al ganador por lectura nueva y resuelve (mismo 201 o 409) **sin ejecutar el aprovisionamiento** (no provisiona-y-revierte en el caso normal). El índice **UNIQUE** `uniq_registration_request_uuid` es una garantía de INTEGRIDAD independiente (árbitro/backstop): si por timeout no se obtuvo el lock y se continuara, el UNIQUE seguiría impidiendo duplicados; la ruta de colisión en transacción + rollback + relectura existe solo como respaldo. Un timeout/error del lock degrada a 500 sanitizado (no a 409).
 
 ---
 
@@ -968,6 +983,62 @@ Toda tabla incluye `business_id` (aislamiento multi-tenant, fuera de asignación
 | margen | Margen bruto | porcentaje | Sí | comercial | Fase 2 |
 | ticket_promedio | Ticket promedio | monto | Sí | comercial | `vw_kpi_ventas` |
 | rotacion_inventario | Rotación de inventario | ratio | Sí | operativo | Fase 2 |
+
+---
+
+## MOD-SUB — Suscripción SaaS de Gintly *(añadido; cobro de Gintly al negocio, SEPARADO del ERP)*
+
+Subsistema de cobro de la plataforma a cada negocio (Lemon Squeezy, checkout alojado). ESTRICTAMENTE separado de `invoice_payments`/`receivable_payments` (que son el cobro del negocio a SUS clientes). Ninguno de estos modelos usa `BelongsToBusiness`: se consultan desde la compuerta (por `business_id` explícito de la sesión) y desde el webhook (sin sesión). Alias morphMap: `plan_subscription`, `checkout_intent`, `billing_webhook_event`, `subscription_payment`.
+
+### `plan_subscriptions` · estado comercial vigente (uno por negocio)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | **UQ** `uniq_plan_subscription_business` | Una suscripción comercial por negocio (se reutiliza; sin paralelas). |
+| plan_key | string(20) | NN | — | `basic` / `comercio` / `cadena`. |
+| period | string(10) | NN | — | `monthly` / `annual`. |
+| status | string(20) | NN | IDX(status,paid_until) | `pending_payment`/`incomplete`/`active`/`past_due`/`canceled`/`expired`. |
+| provider / provider_mode | string | NN | IDX(provider,provider_mode) | `lemon_squeezy` / `test`\|`live`. |
+| store_id / provider_subscription_id / provider_variant_id | string | NULL | — | Referencias del proveedor para conciliar renovaciones. |
+| current_period_start / paid_until | timestamp | NULL | — | **paid_until = vigencia EFECTIVAMENTE pagada** (gobierna el acceso y el vencimiento). |
+| renews_at | timestamp | NULL | — | Informativo; NO demuestra pago (no se copia a paid_until). |
+| canceled_at | timestamp | NULL | — | Cancelación de renovaciones (conserva acceso hasta paid_until). |
+| pending_plan_key / pending_period / pending_variant_id / pending_effective_at | — | NULL | — | Cambio de plan PENDIENTE: plan/periodicidad/variante destino y fecha efectiva (NULL en ascenso ⇒ "al confirmarse el pago"; = paid_until en descenso ⇒ al cierre del período). pending_variant_id es la variante DESTINO esperada: el cambio se confirma SOLO cuando la variante ACTUAL de la suscripción en el proveedor (consulta oficial getSubscription, NO un campo de la subscription-invoice, que no trae variant_id) coincide con ella, y entonces se fija provider_variant_id coherente con lo cobrado. |
+
+**Acceso operativo** = estado que concede acceso (active/canceled/past_due) **Y** `paid_until` futuro. El estado por sí solo nunca basta.
+
+### `checkout_intents` · correlación de contratación (idempotencia propia)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id | bigint | NN, FK CASC | IDX | Negocio contratante. |
+| idempotency_key | char(36) | NN | **UQ** `uniq_checkout_intent_key` | Idempotencia del checkout (independiente de registration_requests). |
+| plan_key / period | string | NN | — | Selección del catálogo. |
+| provider / provider_mode / store_id / provider_variant_id | string | — | — | Resueltos por backend (nunca por el cliente). |
+| status | string(20) | NN | — | `pending`/`created`/`uncertain`/`failed`/`completed`. `uncertain` = red falló tras enviarse (se RESUELVE consultando al proveedor por intent_key antes de recrear). `failed` = el proveedor confirmó que NO lo creó (resuelto; permite recrear). Un checkout abierto no se "reemplaza": otra selección mientras sigue pagable se bloquea (CHECKOUT_IN_PROGRESS). |
+| provider_checkout_id / checkout_url | — | NULL | IDX(provider_checkout_id) | Resultado del proveedor. |
+| expires_at | timestamp | NULL | — | Vencimiento FINITO de la URL (también enviado al proveedor): una URL vencida no es utilizable ni bloquea un intento nuevo. |
+| fingerprint | string(64) | NULL | — | plan+periodicidad normalizados (anti doble envío/conflicto y reutilización del checkout abierto por selección). |
+
+### `billing_webhook_events` · deduplicación de eventos
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| provider / provider_mode | string | NN | **UQ**(provider,provider_mode,event_identity) | Dedup por identidad persistente. |
+| event_identity | string(190) | NN | (UQ) | Identidad que distingue versiones/reenvíos (hash del payload inspeccionado). |
+| event_name | string(80) | NULL | — | Nombre del evento. |
+| payload | longtext | NULL | — | Cuerpo ORIGINAL del evento, guardado para reproducir eventos propios aparcados en la reconciliación (sin volver a pedirlos). |
+| business_id | bigint | NULL, FK SETNULL | — | Correlación (nunca por email ni por business_id del payload sin respaldo); se anota al correlacionar. |
+| received_at / processed_at | timestamp | NN/NULL | idx(parked_at,processed_at) | processed_at NULL ⇒ recibido, no procesado (recuperable); nunca procesado si la actualización falló. |
+| parked_at | timestamp | NULL | (idx) | ≠NULL con processed_at NULL ⇒ evento PROPIO aparcado por falta de correlación temporal (fuera de orden); recuperable, distinto de ajeno. |
+| attempts | uint | NN, def 0 | — | Reintentos de reconciliación de un evento aparcado; abandono acotado tras el máximo. |
+
+### `subscription_payments` · evidencia de períodos pagados (no es pago del ERP)
+| Campo | Tipo | Atributos | Llave/Índice | Propósito |
+| --- | --- | --- | --- | --- |
+| business_id / plan_subscription_id | bigint | NN, FK CASC | IDX(business_id) | Pertenencia. |
+| provider / provider_mode / provider_payment_id | string | NN | **UQ**(provider,provider_mode,provider_payment_id) | Anti doble conteo (dedup del pago; extender vigencia SOLO al insertar uno NUEVO). |
+| status | string(20) | NN | — | `paid` / `refunded` / `partial_refund`. |
+| amount_minor / currency | — | NN | — | Importe/moneda COBRADOS por el proveedor (p. ej. USD). |
+| catalog_amount_minor / catalog_currency | — | NULL/def NIO | — | Importe ANUNCIADO del catálogo (centavos NIO), de referencia. |
+| period_start / period_end | timestamp | NULL | — | Período cubierto por el pago. |
 
 ---
 

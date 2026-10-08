@@ -93,6 +93,8 @@ final class SalesAvailabilityHttpTest extends MysqlTestCase
             'status' => 'abierta', 'opening_amount' => '0.00', 'opened_at' => now(),
         ])->saveQuietly();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact('business', 'branchA', 'branchB', 'whA1', 'whB1', 'owner', 'admin', 'facturadorA', 'cajeroA', 'category', 'unit', 'customer', 'session');
     }
 

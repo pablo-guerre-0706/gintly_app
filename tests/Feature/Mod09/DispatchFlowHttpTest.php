@@ -130,6 +130,8 @@ final class DispatchFlowHttpTest extends MysqlTestCase
             'opened_at'        => now(),
         ])->saveQuietly();
 
+        $this->activateBusinessSubscription($business->id);
+
         return (object) compact(
             'business', 'owner', 'admin', 'operator', 'operator2',
             'branch', 'branch2', 'warehouse', 'warehouse2', 'category', 'unit', 'customer', 'session',

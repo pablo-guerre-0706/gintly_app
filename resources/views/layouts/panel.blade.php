@@ -14,6 +14,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="api-base-url" content="{{ url('/api/v1') }}">
     <meta name="login-url" content="{{ route('login') }}">
+    <meta name="billing-url" content="{{ route('web.billing.index') }}">
     <title>{{ $documentTitle }} · Gintly</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')

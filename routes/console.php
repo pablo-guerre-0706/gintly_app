@@ -17,3 +17,8 @@ Schedule::command('reconciliation:run --scope=integral')->dailyAt('01:00');
 // período se pisen si una tarda de más. Exactamente dos entradas, sin duplicados.
 Schedule::command('kpi:snapshot --period=diario')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('kpi:snapshot --period=mensual')->monthlyOn(1, '02:30')->withoutOverlapping();
+
+// MOD-SUB · Reconciliación de suscripciones (RF-SUB). Horaria: vence vigencias, aplica descensos programados,
+// reproduce webhooks propios aparcados y recupera pagos cuyo webhook se perdió (consulta oficial al proveedor).
+// Reutiliza el scheduler existente; sin colas nuevas. withoutOverlapping evita solaparse si una corrida tarda.
+Schedule::command('billing:reconcile')->hourly()->withoutOverlapping();
