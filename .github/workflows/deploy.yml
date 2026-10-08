@@ -1,0 +1,29 @@
+name: Build and Deploy to Azure App Service
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: gintlyregistry.azurecr.io
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t gintlyregistry.azurecr.io/gintly-app:latest .
+          docker push gintlyregistry.azurecr.io/gintly-app:latest
+
+      - name: Restart Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'gintly-app-web'
