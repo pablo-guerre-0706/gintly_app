@@ -23,8 +23,10 @@ jobs:
           docker build -t gintlyregistry.azurecr.io/gintly-app:latest .
           docker push gintlyregistry.azurecr.io/gintly-app:latest
 
-      - name: Restart Azure App Service container
-        uses: azure/CLI@v1
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
         with:
-          inlineScript: |
-            az webapp restart --name gintly-app-web --resource-group gintly-rg
+          app-name: 'gintly-app-web'
+          images: 'gintlyregistry.azurecr.io/gintly-app:latest'
+          # Usamos las credenciales de ACR para autenticar el despliegue del contenedor
+          publish-profile: ''
