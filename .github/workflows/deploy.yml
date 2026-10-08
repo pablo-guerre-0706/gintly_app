@@ -23,9 +23,8 @@ jobs:
           docker build -t gintlyregistry.azurecr.io/gintly-app:latest .
           docker push gintlyregistry.azurecr.io/gintly-app:latest
 
-      - name: Azure WebApp Logout and Restart
-        uses: azure/webapps-deploy@v2
+      - name: Restart Azure App Service container
+        uses: azure/CLI@v1
         with:
-          app-name: 'gintly-app-web'
-          images: 'gintlyregistry.azurecr.io/gintly-app:latest'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          inlineScript: |
+            az webapp restart --name gintly-app-web --resource-group gintly-rg
