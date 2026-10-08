@@ -1,11 +1,11 @@
-name: Build and Deploy to Azure App Service
+name: Build and Push to ACR
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,11 +22,3 @@ jobs:
         run: |
           docker build -t gintlyregistry.azurecr.io/gintly-app:latest .
           docker push gintlyregistry.azurecr.io/gintly-app:latest
-
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'gintly-app-web'
-          images: 'gintlyregistry.azurecr.io/gintly-app:latest'
-          # Usamos las credenciales de ACR para autenticar el despliegue del contenedor
-          publish-profile: ''
