@@ -22,7 +22,7 @@ export function createRegistrationAttempt({ post, csrf, uuid = secureUuid, now =
         if (state === 'editing') {
             if (!payload) return outcome({ ignored: true });
             const snapshot = Object.freeze({ business: Object.freeze({ ...payload.business }), owner: Object.freeze({ ...payload.owner }) });
-            attempt = { key: uuid(), snapshot };
+            attempt = { key: uuid(), snapshot, hasSent: false };
         }
         // Síncrono, antes del primer await: impide doble clic y Enter repetido.
         state = 'submitting';
@@ -41,6 +41,13 @@ export function createRegistrationAttempt({ post, csrf, uuid = secureUuid, now =
             state = 'success';
             return outcome({ result });
         } catch (error) {
+            if (!attempt.hasSent) {
+                // The first handshake failed before any POST. It cannot have created
+                // this business. Never reset an attempt after a possibly committed POST.
+                attempt = null;
+                state = 'editing';
+                return outcome({ message: 'No se envió el registro porque no pudimos preparar la sesión de seguridad. Comprueba la conexión y vuelve a intentarlo.' });
+            }
             if (error.status === 422) {
                 attempt = null;
                 state = 'editing';
@@ -61,6 +68,10 @@ export function createRegistrationAttempt({ post, csrf, uuid = secureUuid, now =
                 state = 'recoverable';
                 return outcome({ message: 'Se alcanzó el límite de registros. Espera el plazo indicado y reintenta el mismo registro.' });
             }
+            if ([404, 405].includes(error.status)) {
+                state = 'recoverable';
+                return outcome({ message: `La ruta de registro respondió HTTP ${error.status} y no confirmó el alta. Conserva este intento y solicita revisar la versión publicada; no se generará otra clave automáticamente.` });
+            }
             state = [409, 419, 401].includes(error.status) ? 'recoverable' : 'uncertain';
             const message = error.status === 409 && error.code === 'BUSINESS_SLUG_CONFLICT'
                 ? 'El servidor no pudo asignar un identificador único. Reintenta este mismo registro sin cambiar sus datos.'
@@ -68,12 +79,16 @@ export function createRegistrationAttempt({ post, csrf, uuid = secureUuid, now =
                     ? 'No se pudo renovar la seguridad de la sesión. Reintenta el mismo registro; no cambies sus datos.'
                     : error.status === 401
                         ? 'El servidor no aceptó esta solicitud pública. Reintenta el mismo registro o solicita revisión.'
-                        : 'No pudimos confirmar el resultado. El negocio podría haberse creado. Reintenta con la misma clave y los mismos datos para recuperar el resultado sin duplicarlo.';
+                        : (error.status >= 500 ? `El servidor respondió HTTP ${error.status}. `
+                            : error.code === 'unexpected_status' || error.message === 'registration_response_invalid'
+                                ? 'El servidor no devolvió la confirmación 201 con el formato esperado. ' : '')
+                            + 'No pudimos confirmar el resultado. El negocio podría haberse creado. Reintenta con la misma clave y los mismos datos para recuperar el resultado sin duplicarlo.';
             return outcome({ message });
         }
     }
 
     function send() {
+        attempt.hasSent = true;
         return post('/auth/register', attempt.snapshot, {
             headers: { 'Idempotency-Key': attempt.key }, expectedStatus: 201,
             redirectOn401: false, dispatchErrors: false,

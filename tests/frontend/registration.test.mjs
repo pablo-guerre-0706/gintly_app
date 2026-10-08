@@ -67,6 +67,38 @@ test('submit: bloqueo síncrono incluso antes del handshake, una escritura', asy
     assert.deepEqual(Object.keys(result), ['state', 'retryAt', 'result']);
 });
 
+test('handshake inicial fallido: no POST, no afirmación de posible alta; permite corregir', async () => {
+    let handshakes = 0; let writes = 0;
+    const machine = createRegistrationAttempt({ uuid, csrf: async () => { if (++handshakes === 1) throw failure(0); },
+        post: async () => { writes++; return success(); } });
+    const rejected = await machine.submit(payload());
+    assert.equal(rejected.state, 'editing'); assert.equal(writes, 0);
+    assert.match(rejected.message, /No se envió/); assert.doesNotMatch(rejected.message, /podría haberse creado/);
+    assert.equal((await machine.submit(payload())).state, 'success'); assert.equal(writes, 1);
+});
+
+test('handshake fallido después de un POST incierto nunca libera el snapshot ni rota la clave', async () => {
+    let handshakes = 0; const calls = [];
+    const machine = createRegistrationAttempt({ uuid, csrf: async () => { if (++handshakes === 2) throw failure(0); },
+        post: async (...args) => { calls.push(args); if (calls.length === 1) throw failure(0); return success(); } });
+    assert.equal((await machine.submit(payload())).state, 'uncertain');
+    assert.equal((await machine.submit()).state, 'uncertain'); assert.equal(calls.length, 1);
+    assert.equal((await machine.submit()).state, 'success');
+    assert.strictEqual(calls[0][1], calls[1][1]); assert.equal(calls[0][2].headers['Idempotency-Key'], calls[1][2].headers['Idempotency-Key']);
+});
+
+test('404/405: diagnóstico de ruta, sin éxito, sin nueva clave automática', async () => {
+    for (const status of [404, 405]) {
+        const calls = [];
+        const machine = createRegistrationAttempt({ uuid, csrf: async () => {}, post: async (...args) => { calls.push(args); throw failure(status); } });
+        const rejected = await machine.submit(payload());
+        assert.equal(rejected.state, 'recoverable'); assert.match(rejected.message, new RegExp('HTTP ' + status));
+        assert.doesNotMatch(rejected.message, /podría haberse creado/);
+        await machine.submit(); assert.strictEqual(calls[0][1], calls[1][1]);
+        assert.equal(calls[0][2].headers['Idempotency-Key'], calls[1][2].headers['Idempotency-Key']);
+    }
+});
+
 for (const error of [failure(0), failure(500), failure(503), failure(0, { code: 'request_aborted' })]) {
     test(`incertidumbre ${error.status}/${error.code ?? 'default'}: mismo snapshot y clave; sin edición silenciosa`, async () => {
         const calls = []; let count = 0;

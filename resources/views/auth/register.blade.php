@@ -13,11 +13,11 @@
         <p data-register-message></p>
         <ul data-register-summary class="mt-2 space-y-1"></ul>
         <p data-register-wait class="mt-2"></p>
-        <a data-register-dashboard hidden href="{{ route('dashboard') }}" class="registration-link mt-3 inline-flex min-h-11 items-center font-semibold">Ir a mi panel</a>
+        <a data-register-dashboard hidden href="{{ route('dashboard', [], false) }}" class="registration-link mt-3 inline-flex min-h-11 items-center font-semibold">Ir a mi panel</a>
     </div>
     <p data-register-status role="status" aria-live="polite" class="mb-3 text-sm text-slate-600"></p>
     <noscript><p class="rounded-xl bg-amber-50 p-4 text-amber-900">Este registro requiere JavaScript para enviar los datos de forma segura. Actívalo y recarga; no se ha enviado ningún dato.</p></noscript>
-    <form data-register-form method="POST" action="{{ url('/api/v1/auth/register') }}" novalidate hidden>
+    <form data-register-form method="POST" action="{{ parse_url(url('/api/v1/auth/register'), PHP_URL_PATH) }}" novalidate hidden>
         <fieldset data-register-stage="1" class="space-y-4">
             <legend data-register-heading tabindex="-1" class="mb-4 text-lg font-semibold">Cuenta propietaria</legend>
             <p class="text-sm leading-relaxed text-slate-600">Esta será la cuenta del propietario. Los demás usuarios se administran después de iniciar sesión.</p>
@@ -60,7 +60,7 @@
     </form>
     <section data-register-result hidden aria-labelledby="registration-result-title">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-2xl text-emerald-700" aria-hidden="true">✓</div>
-        <h3 id="registration-result-title" tabindex="-1" class="text-2xl font-semibold text-slate-900">Tu negocio fue registrado</h3>
+        <h3 id="registration-result-title" tabindex="-1" class="text-2xl font-semibold text-slate-900">Negocio y cuenta propietaria creados</h3>
         <p class="mt-3 text-sm leading-relaxed text-slate-600">Conserva este identificador público: lo necesitarás junto con tu correo y contraseña para iniciar sesión. No es un ID numérico ni el nombre comercial.</p>
         <dl class="my-5 space-y-4 rounded-2xl border border-slate-200 p-5">
             <div><dt class="text-sm text-slate-500">Identificador del negocio</dt><dd data-register-slug class="mt-1 break-all text-lg font-semibold text-gintly-brand"></dd></div>
@@ -68,7 +68,7 @@
         </dl>
         <div class="flex flex-wrap gap-3">
             <button data-register-copy type="button" class="registration-secondary px-5">Copiar identificador</button>
-            <a href="{{ route('login') }}" class="registration-primary inline-flex min-h-11 flex-1 items-center justify-center px-5">Iniciar sesión</a>
+            <a href="{{ route('login', [], false) }}" class="registration-primary inline-flex min-h-11 flex-1 items-center justify-center px-5">Iniciar sesión</a>
         </div>
         <p class="mt-4 text-sm text-slate-500">El registro no inicia sesión automáticamente. Introduce tu contraseña en el login.</p>
     </section>

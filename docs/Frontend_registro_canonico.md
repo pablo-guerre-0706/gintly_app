@@ -69,7 +69,11 @@ query string. El usuario copia/conserva el slug y escribe su contraseña en logi
   secretos liberados. 409 BUSINESS_SLUG_CONFLICT: replay explícito del mismo intento.
 - 419: una renovación CSRF y como máximo un replay automático con igual clave/body.
 - 429: respeta Retry-After (segundos o fecha); sin bucles de solicitud.
-- 500/503/red/timeout/201 ilegible/HTTP inesperado: mensaje sanitizado e incertidumbre;
+- Fallo del primer handshake, antes de cualquier POST: vuelve a editing y explica
+  que no se envió el registro. Un fallo de handshake después de un POST incierto
+  nunca libera su snapshot ni genera otra clave.
+- 404/405 de registro: diagnóstico de ruta/publicación, conservando el intento.
+- 500/503/red/timeout/201 ilegible/HTTP inesperado después del POST: mensaje sanitizado e incertidumbre;
   nunca se supone éxito ni se crea otra clave silenciosamente.
 - success: no segunda creación; se liberan snapshot, contraseña y confirmación y se
   muestran solo el resultado público. No hay persistencia de secretos ni telemetría.
@@ -416,7 +420,7 @@ suscripciones, planes, pagos ni contratación.
 
 ## Manifiesto mínimo
 
-Fuentes creadas (14):
+Fuentes creadas (15):
 
 - resources/js/modules/registration/contract.js
 - resources/js/modules/registration/attempt.js
@@ -431,6 +435,7 @@ Fuentes creadas (14):
 - tests/frontend/registration-browser-db.php (nuevo en tests; helper CLI permanente que debe integrarse)
 - tests/frontend/registration-browser-guards.test.mjs (nuevo en verificación de entrega; regresión)
 - tests/frontend/registration-password-browser.mjs (nuevo en microcierre de contraseña; aceptación focalizada)
+- tests/frontend/registration-result-browser.mjs (nuevo en microcierre de resultado; aceptación focalizada)
 - docs/Frontend_registro_canonico.md
 
 Fuentes modificadas o compartidas (6), reemplazar por su versión final:
@@ -552,3 +557,219 @@ Si Azure todavía está sobre el legado comprobado, **copiar solo wizard.js no e
 En el procedimiento de despliegue aprobado, generar `npm run build`, publicar el manifest y todos los assets que este referencia como una sola versión junto a las fuentes Blade/JS, y reconstruir cachés de vistas/rutas con `php artisan view:cache` y `php artisan route:cache`. Si el procedimiento conserva cachés previas, invalidarlas de manera controlada antes de reconstruirlas. Reabrir en sesión privada y comprobar `/register` 200 con cuatro etapas, que los antiguos enlaces redirigen al canónico y que `/register/step/{step}/store` permanece 410; verificar assets 200, navegación y QA de registro en el entorno autorizado. La redirección HTTP observada también debe revisarse en la configuración HTTPS/proxy del despliegue; no se alteró esa configuración aquí.
 
 **Conclusión:** frontend local corregido y verificado; **Azure sigue mostrando una versión anterior**. No se declara corregido ni actualizado Azure, ya que no hubo publicación. No se tocó Backend-Claude, gintly_app, producción, suscripciones ni MFA; no hubo staging, commit, push, integración o despliegue.
+
+## Microcierre del resultado de registro — 2026-10-07
+
+### Causa comprobada y diferencia con la observación anterior
+
+La conclusión anterior describe el despliegue observado durante el microcierre de
+contraseña. **No describe el Azure actual**. En esta nueva revisión, GET HTTPS
+`https://gintly-app-web.azurewebsites.net/register` respondió **200 text/html** y
+mostró Cuenta → Negocio → Revisión → Resultado. Ya no redirigió al asistente antiguo.
+
+Sin embargo, ese HTML incluyó:
+
+- `api-base-url = http://gintly-app-web.azurewebsites.net/api/v1`.
+- Acción del formulario `http://gintly-app-web.azurewebsites.net/api/v1/auth/register`.
+- Login `http://gintly-app-web.azurewebsites.net/login`.
+
+Chrome **154.0.8037.93** reprodujo en esa página el bloqueo **Mixed Content** y
+`TypeError: Failed to fetch` mediante un **GET de diagnóstico**, sin cuerpo ni
+credenciales, a la URL de registro construida por el cliente. No hubo respuesta
+HTTP ni Content-Type para la petición bloqueada. Todos los métodos distintos de
+GET/HEAD estaban bloqueados en el contexto de inspección pública. **No se envió
+un POST a Azure** y no se consultó su base de producción.
+
+El recorrido causal es: HTML HTTPS → meta API HTTP → api-client construye URL HTTP
+→ navegador bloquea contenido mixto → ApiError de transporte con status 0 →
+attempt.js conserva el intento en uncertain → mensaje reportado. El fallo de
+configuración de esquema sí está demostrado; no se puede atribuir un registro
+concreto de producción a ese fallo ni confirmar su persistencia sin su Network y
+una consulta de lectura autorizada en ese entorno.
+
+No se encontró doble extracción de `data`: api-client retorna el JSON completo y
+registrationResult extrae `data` una sola vez. El cliente publicado coincidió por
+SHA-256 con el local: `B7F780149469EF8244F2CC127A5360E43DD1C07A4ED7EBC6D4C144484F17B16E`.
+El entry publicado antes del parche, `wizard-m3a8Shij.js`, también coincidió con
+el baseline local: `CF95B319F8DF299E0CABBEF7F26A50C6B3FAD2038FAAA30CC7355DC52010C183`.
+El módulo de intento publicado contiene el contrato canónico y el mensaje de
+incertidumbre. No hubo evidencia de un asistente antiguo, import roto o doble
+unwrap como causa del problema actual.
+
+GET HTTPS `/login` publicado también respondió 200, pero sus metas API/dashboard/
+post-login utilizaron HTTP. Se informó esa configuración; **no se cambió auth.js,
+login.blade.php ni suscripción** en este microcierre.
+
+### Correcciones delimitadas
+
+- Layout de registro: API y navegación del registro usan rutas relativas al origen
+  actual. Se obtiene la ruta API del URL generado por Laravel, sin hardcodear un
+  dominio ni forzar HTTPS en el entorno HTTP local. Se preserva cualquier prefijo
+  de ruta generado. No se altera el cliente central ni el Backend/proxy.
+- Vista de registro: action, panel y login permanecen en el origen de la página.
+  Tras el 201 validado, el resultado muestra **«Negocio y cuenta propietaria creados»**,
+  slug/correo reales y login manual; nunca contraseña en URL ni auto-login.
+- Máquina de intento: diferencia un fallo inicial de CSRF sin POST de un resultado
+  posiblemente persistido. El primero conserva los campos y permite corregir;
+  el segundo retiene UUID/snapshot. Explica 404/405 y el HTTP 500/503 recibido sin
+  mostrar respuestas HTML, detalles SQL o trazas. Se mantiene un solo replay 419.
+- No cambia el número de etapas, payload, política de contraseña, Resources,
+  transacciones, autenticación, catálogo o compuerta comercial.
+
+### Aceptación real y fallos inducidos
+
+Base **gintly_frontend_qa_rol03**, MySQL local, Laravel/PDO efectivos verificados por
+los helpers entregados; servidor propio `http://127.0.0.1:8840`. Cookies, Sanctum y
+CSRF reales. Los secretos solo existieron en memoria de la prueba.
+
+Run final **QA-REGISTER-RESULT-15ea190654ec**, Chrome **154.0.8037.93**:
+**34 comprobaciones, salida 0**.
+
+| Escenario | Evidencia |
+| --- | --- |
+| Handshake | GET /sanctum/csrf-cookie 204 real |
+| Alta y resultado | POST /api/v1/auth/register 201 application/json; envelope exacto data{business_slug,owner_email}; un POST inicial pese a submits repetidos |
+| Seguridad del resultado | Contraseñas borradas, foco en título, slug/correo reales, login accesible; GET /me 401 antes del login |
+| Validación | Request QA interceptado para cambiar únicamente email a un valor inválido; Backend real devuelve 422; error owner.email, foco y valores conservados; BD sin alta para el intento rechazado |
+| Corrección | Corrección desde UI, UUID nuevo tras el 422, POST real 201 |
+| Respuesta perdida | Backend real procesó 201; la interceptación descartó únicamente la respuesta; lectura PDO confirmó un negocio antes del replay |
+| Recuperación | Reintento explícito real 201, mismo UUID y body byte por byte, mismo resultado; un negocio/propietario/fila idempotente para ese intento |
+| Login manual | POST /auth/login 200 con contraseña exacta y espacios; /me 200, ROL-01, negocio y capacidades correctos |
+| Sesión humana activa | Registro real 403; enlace al panel, sin logout automático |
+| Salida | Logout UI 204 real |
+| Primer CSRF fallido | GET abortado de forma inducida; cero POST; «No se envió el registro», sin falsa afirmación de posible alta |
+| Presentación | Capturas 375/1280 y recuperación 375 inspeccionadas; sin overflow horizontal, resultado y login legibles, foco útil |
+
+Consola final: **0 excepciones JavaScript, 0 warnings, 0 respuestas 404**. Los errores
+de recurso corresponden al /me 401 esperado, 422/403 reales y abortos inducidos.
+Chrome también notificó ERR_ABORTED al terminar algunas respuestas 204 sin cuerpo;
+el cliente las recibió y el recorrido continuó. No se contabilizan como fallos de
+dominio ni se afirma una consola sin los rechazos esperados.
+
+Hay dos correcciones del ejecutable QA, no de la aplicación: una espera inicial
+de 15s expiró antes de recibir la respuesta del verificador Backend instalado;
+se amplió a 65s, sin modificar el timeout del cliente ni su política. Otro run llegó
+a login/403 pero esperaba el hook de contratación al volver al panel restringido;
+se corrigió al hook existente de estado restringido. Esos runs terminaron con
+salida 1 y no se presentan como aceptación completa.
+
+Fixtures conservados intencionalmente en la misma base QA, sin limpieza general:
+
+- QA-REGISTER-RESULT-2d2b00017287: negocio **35**, baseline real; salida 0, 14 checks.
+- QA-REGISTER-RESULT-0bb4c8b54710: negocio **36**; run incompleto por espera corta;
+  lectura posterior confirmó un propietario y una fila idempotente.
+- QA-REGISTER-RESULT-e9e1d1e61aef: negocios **37,38,39**, 29 checks, salida 0.
+- QA-REGISTER-RESULT-02238dd63944: negocios **40,41,42**; 31 checks previos al fallo
+  del selector QA, salida 1; no se reutilizaron credenciales ni se borraron documentos.
+- QA-REGISTER-RESULT-15ea190654ec: negocios **43,44,45**, aceptación final. Cada
+  uno tiene exactamente un propietario y una fila idempotente, incluso tras replay.
+- Los fixtures anteriores identificados en este documento permanecen intactos.
+
+Capturas/evidence.json de esta fase están bajo `storage/app/qa/registration-result/`;
+no se integran. Se eliminaron los perfiles temporales propios y se detuvo el
+servidor de aceptación. No se guardaron contraseñas, cookies, trazas ni HAR.
+
+### Comandos reproducibles y resultados finales
+
+Usar la preparación completa de Node/PHP/Chrome/Playwright y guardas QA documentada
+arriba; no existe ningún helper fuente nuevo bajo storage/app/qa. El ejecutable
+nuevo importa únicamente el runtime/helper permanente de `tests/frontend`.
+
+```powershell
+$env:QA_REGISTER_REPRO_ONLY = '0'
+$env:QA_REGISTER_PUBLIC_READONLY = '0'
+# Mantener QA_REGISTRATION_BROWSER=1, APP_ENV local/testing, APP_URL=8840,
+# DB_HOST=127.0.0.1, DB_DATABASE=gintly_frontend_qa_rol03 y demás guardas anteriores.
+node tests/frontend/registration-result-browser.mjs
+```
+
+Opcional: `QA_REGISTER_REPRO_ONLY=1` ejecuta la comparación baseline (sí crea un
+fixture QA); `QA_REGISTER_PUBLIC_READONLY=1` añade inspección de Azure con solo
+GET/HEAD antes de la prueba local y necesita acceso de red. Nunca hace escrituras
+externas. No se necesitan esas opciones para la aceptación local final.
+
+| Comando | Resultado final / código |
+| --- | --- |
+| node --check sobre attempt.js, registration-result-browser.mjs, registration.test.mjs y api-client-registration.test.mjs | 4 archivos, 0 errores, salida 0 |
+| node --test tests/frontend/registration.test.mjs tests/frontend/api-client-registration.test.mjs | 24 pass, 0 fail/skip, salida 0 |
+| Añadiendo tests/frontend/registration-browser-guards.test.mjs a ese comando | 38 pass, 0 fail/skip, salida 0 |
+| node --test tests/frontend/*.test.mjs | 125 pass, 0 fail/skip, salida 0 |
+| npm run build | Vite 8.2.1, 106 módulos, salida 0; aviso PLUGIN_TIMINGS de rendimiento, no error de compilación |
+| php -l tests/frontend/render-registration.php | Sin errores, salida 0 |
+| php artisan view:cache | Aprobado, salida 0 |
+| php artisan route:cache | Aprobado, salida 0 |
+| php artisan route:list --path=register | 13 coincidencias, incluye /register y API canónica; salida 0; no se modificaron rutas |
+| php tests/frontend/render-registration.php | Registro/login/landing renderizados; 19/11/9 IDs únicos, ARIA válido; 75 entradas de manifest válidas; salida 0 |
+
+En este equipo npm no estaba en PATH: se ejecutó el mismo script build mediante
+`node C:/laragon/bin/nodejs/node-v22/node_modules/npm/bin/npm-cli.js run build`.
+Esa ruta es una particularidad del entorno QA, no una dependencia de la aplicación.
+El test de HTTPS usa Fetch simulado con el cliente real y meta relativa; no se
+confunde con un POST exitoso real a Azure.
+
+### Manifiesto exacto de este parche
+
+Aplicación — reemplazar versiones anteriores:
+
+- resources/views/layouts/registration.blade.php.
+- resources/views/auth/register.blade.php.
+- resources/js/modules/registration/attempt.js.
+
+Pruebas/documentación — reemplazar:
+
+- tests/frontend/registration.test.mjs.
+- tests/frontend/api-client-registration.test.mjs.
+- tests/frontend/render-registration.php.
+- docs/Frontend_registro_canonico.md.
+
+Prueba nueva — crear:
+
+- tests/frontend/registration-result-browser.mjs.
+
+**7 modificados, 1 creado, 0 eliminados.** El manifiesto acumulado previo conserva
+sus archivos y las siete bajas legacy; se suma únicamente el ejecutable nuevo.
+No se modificaron wizard.js, api-client.js, auth.js, login, rutas, paquetes, Vite,
+.env o Backend en este parche. Excluir todas las evidencias/perfiles/herramientas
+de storage/app/qa y public/build; no copiar vendor/node_modules ni cachés.
+
+### Integración/publicación manual por Roberto y aceptación externa pendiente
+
+1. Conciliar los tres archivos de aplicación de este parche sobre el canónico ya
+   integrado; conservar el resto de funcionalidades aprobadas. Integrar pruebas
+   y documento, con sus helpers previamente entregados, para reproducir QA.
+2. En su proceso de publicación, revisar la configuración **efectiva** HTTPS de
+   Azure/Laravel: URL pública HTTPS, terminación TLS y proxies/forwarded headers
+   de confianza según la infraestructura real. No confiar indiscriminadamente en
+   proxies ni desactivar CSRF. Verificar dominio de sesión y Sanctum sin publicar
+   secretos. Este parche protege el origen de registro, pero no arregla por sí
+   solo las metas HTTP observadas en login y otras pantallas.
+3. Desde el proyecto de destino preparado, generar `npm run build`. Publicar las
+   fuentes Blade/JS, manifest y todos sus assets referenciados como una versión
+   coherente, sin hardcodear nombres con hash ni reutilizar un public/hot.
+4. Invalidar/reconstruir las vistas mediante el procedimiento autorizado:
+
+   ```powershell
+   php artisan view:clear
+   php artisan view:cache
+   ```
+
+   No cambiaron rutas en este parche. Si el proceso reconstruye también su caché,
+   usar `php artisan route:cache`, conservando la desconexión legacy existente.
+5. Abrir una sesión privada y verificar que /register HTTPS genera meta relativa
+   `/api/v1`, action relativo y login relativo; assets 200 y ninguna llamada HTTP
+   desde una página HTTPS. Comprobar también las metas de /login tras la revisión
+   de proxy/configuración. Capturar solo Network sanitizado, sin cuerpos con claves.
+6. Completar el POST de aceptación **en un entorno QA autorizado del despliegue**:
+   CSRF real, POST 201 application/json con data{business_slug,owner_email},
+   confirmación, /me 401 previo, login manual y /me correcto. No crear pruebas en
+   una base real. Consultar en lectura negocio/propietario/idempotencia si vuelve
+   a existir un resultado incierto; conservar el UUID del intento, no refrescar
+   para eludirlo.
+
+Sin publicación ni acceso de escritura a un QA desplegado, **la aceptación externa
+permanece pendiente**. Azure no se declara corregido. Para un incidente distinto,
+la evidencia mínima es URL/método, HTTP, Content-Type, nombres de claves de respuesta
+sanitizada, excepción de consola, identificador del intento y lectura autorizada
+de persistencia por el responsable. Nunca compartir contraseña, cookies o cuerpos
+completos del request. No hubo staging, commit, push, copias, despliegue, cambios de
+Backend-Claude/gintly_app/Figma ni trabajo de suscripción/contratación.

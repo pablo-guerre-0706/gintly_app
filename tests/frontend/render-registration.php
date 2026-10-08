@@ -26,6 +26,14 @@ foreach (['auth.register', 'auth.login', 'landing'] as $view) {
         if ($xpath->query('//main')->length !== 1) throw new RuntimeException('Registro: main no único');
         if ($xpath->query('//input[@name]')->length !== 6 || $xpath->query('//select[@name]')->length !== 1) throw new RuntimeException('Registro: campos fuera del contrato');
         if (str_contains($html, 'register/step') || str_contains($html, 'name="_token"')) throw new RuntimeException('Registro legacy activo');
+        foreach (['api-base-url', 'login-url'] as $name) {
+            $url = $xpath->query('//meta[@name="'.$name.'"]')->item(0)->getAttribute('content');
+            if (!str_starts_with($url, '/') || str_starts_with($url, '//')) throw new RuntimeException('Registro: URL debe conservar origen');
+        }
+        foreach ($xpath->query('//a[@href] | //form[@action]') as $element) {
+            $url = $element->getAttribute($element->tagName === 'form' ? 'action' : 'href');
+            if (!str_starts_with($url, '/') || str_starts_with($url, '//')) throw new RuntimeException('Registro: navegación insegura entre esquemas');
+        }
     }
     echo $view.': render OK, '.count($ids).' IDs únicos, ARIA válido'.PHP_EOL;
 }

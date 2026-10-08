@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="api-base-url" content="{{ url('/api/v1') }}">
-    <meta name="login-url" content="{{ route('login') }}">
+    {{-- Keep registration on the page origin even when a reverse proxy reports HTTP to Laravel. --}}
+    <meta name="api-base-url" content="{{ parse_url(url('/api/v1'), PHP_URL_PATH) }}">
+    <meta name="login-url" content="{{ route('login', [], false) }}">
     <title>Registrar negocio · Gintly</title>
     @vite(['resources/css/app.css', 'resources/js/modules/registration/wizard.js'])
 </head>
@@ -23,8 +24,8 @@
         </aside>
         <div class="min-w-0 p-5 sm:p-8 lg:p-10">
             <header class="mb-6 flex items-center justify-between gap-4">
-                <a href="{{ route('landing') }}" class="registration-link inline-flex min-h-11 items-center gap-2 text-sm font-medium text-gintly-brand"><span aria-hidden="true">←</span> Volver al inicio</a>
-                <a href="{{ route('login') }}" class="registration-link inline-flex min-h-11 items-center text-sm font-semibold text-gintly-brand">Iniciar sesión</a>
+                <a href="{{ route('landing', [], false) }}" class="registration-link inline-flex min-h-11 items-center gap-2 text-sm font-medium text-gintly-brand"><span aria-hidden="true">←</span> Volver al inicio</a>
+                <a href="{{ route('login', [], false) }}" class="registration-link inline-flex min-h-11 items-center text-sm font-semibold text-gintly-brand">Iniciar sesión</a>
             </header>
             @yield('content')
         </div>

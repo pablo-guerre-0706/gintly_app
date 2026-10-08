@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { api, ApiError, initializeCsrf } from '../../resources/js/core/api-client.js';
+import { createRegistrationAttempt } from '../../resources/js/modules/registration/attempt.js';
 
-async function environment(run) {
+async function environment(run, { origin = 'http://localhost:8840', apiBase = 'http://localhost:8840/api/v1' } = {}) {
     const original = { window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch };
     const calls = []; const redirects = []; const events = [];
-    globalThis.window = { location: { origin: 'http://localhost:8840', assign: (url) => redirects.push(url) }, setTimeout, clearTimeout };
+    globalThis.window = { location: { origin, assign: (url) => redirects.push(url) }, setTimeout, clearTimeout };
     globalThis.document = { cookie: 'XSRF-TOKEN=qa%3Dcsrf', querySelector: (selector) => {
-        if (selector.includes('api-base-url')) return { content: 'http://localhost:8840/api/v1' };
+        if (selector.includes('api-base-url')) return { content: apiBase };
         if (selector.includes('login-url')) return { content: '/login' };
         return null;
     }, dispatchEvent: (event) => events.push(event) };
@@ -22,13 +23,32 @@ test('cliente real con Fetch mock: handshake, JSON exacto, cookies, CSRF y UUID 
     };
     await initializeCsrf({ dispatchErrors: false });
     const body = { business: { name: 'QA', timezone: 'UTC' }, owner: { first_name: 'QA', last_name: 'Owner', email: 'qa@example.test', password: ' preserved !12 ', password_confirmation: ' preserved !12 ' } };
-    await api.post('/auth/register', body, { headers: { 'Idempotency-Key': '12345678-1234-4234-8234-123456789012' }, expectedStatus: 201, dispatchErrors: false, redirectOn401: false });
+    const result = await api.post('/auth/register', body, { headers: { 'Idempotency-Key': '12345678-1234-4234-8234-123456789012' }, expectedStatus: 201, dispatchErrors: false, redirectOn401: false });
+    assert.deepEqual(result, { data: { business_slug: 'qa', owner_email: 'qa@example.test' } }); // No unwrapping in the client.
     assert.equal(calls[0].url, 'http://localhost:8840/sanctum/csrf-cookie'); assert.equal(calls[1].url, 'http://localhost:8840/api/v1/auth/register');
     const { options } = calls[1]; assert.equal(options.method, 'POST'); assert.equal(options.credentials, 'same-origin');
     assert.equal(options.headers.get('Accept'), 'application/json'); assert.equal(options.headers.get('Content-Type'), 'application/json');
     assert.equal(options.headers.get('X-XSRF-TOKEN'), 'qa=csrf'); assert.match(options.headers.get('Idempotency-Key'), /^12345678-/);
     assert.deepEqual(JSON.parse(options.body), body); assert.equal(options.headers.get('Authorization'), null);
 }));
+
+test('HTTPS: base relativa conserva origen, cookies, CSRF y envelope sin doble extracción', () => environment(async ({ calls }) => {
+    globalThis.fetch = async (url, options) => {
+        calls.push({ url: String(url), options });
+        return options.method === 'POST'
+            ? new Response(JSON.stringify({ data: { business_slug: 'qa', owner_email: 'qa@example.test' } }), { status: 201 })
+            : new Response(null, { status: 204 });
+    };
+    const machine = createRegistrationAttempt({ post: api.post, csrf: () => initializeCsrf({ dispatchErrors: false }),
+        uuid: () => '12345678-1234-4234-8234-123456789012' });
+    const result = await machine.submit({ business: { name: 'QA', timezone: 'UTC' }, owner: {} });
+    assert.equal(result.state, 'success');
+    assert.deepEqual(result.result, { business_slug: 'qa', owner_email: 'qa@example.test' });
+    assert.equal(calls[0].url, 'https://registration.example.test/sanctum/csrf-cookie');
+    assert.equal(calls[1].url, 'https://registration.example.test/api/v1/auth/register');
+    assert.equal(calls[1].options.credentials, 'same-origin');
+    assert.equal(calls[1].options.headers.get('X-XSRF-TOKEN'), 'qa=csrf');
+}, { origin: 'https://registration.example.test', apiBase: '/api/v1' }));
 
 test('cliente: Retry-After preservado; 401 público no redirige y 204 no parsea JSON', () => environment(async ({ redirects }) => {
     globalThis.fetch = async () => new Response('{"message":"wait"}', { status: 429, headers: { 'Retry-After': '17' } });
