@@ -5,6 +5,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { origin, root, prepareRuntime, startServer, readDatabaseEvidence } from './registration-browser-runtime.mjs';
+import { inspectRegistrationShell, waitForRegistrationShell } from './registration-shell.mjs';
 
 const run = 'QA-REGISTER-RESULT-' + randomBytes(6).toString('hex');
 const output = resolve(root, 'storage/app/qa/registration-result', run);
@@ -31,18 +32,27 @@ async function screenshot(name) {
 
 async function review(suffix) {
     await page.goto(origin + '/register');
-    await page.locator('[data-register-form]').waitFor({ state: 'visible' });
+    await waitForRegistrationShell(page);
+    if (suffix === '-success') {
+        check('Production assets initialize the visible account form / four steps');
+        const scripts = await page.evaluate(() => [...document.scripts].map(node => node.src).filter(Boolean));
+        check('Built wizard selected; no Vite development client', scripts.some(url => /\/build\/assets\/wizard-[^/]+\.js$/.test(url))
+            && scripts.every(url => !url.includes('@vite/client') && !url.includes(':5173')));
+        await screenshot('account-1280');
+    }
     await field('owner.first_name').fill('QA Registro');
     await field('owner.last_name').fill('Resultado');
     await field('owner.email').fill(run.toLowerCase() + '@example.test');
     await field('owner.password').fill(password);
     await field('owner.password_confirmation').fill(password);
     await submit().click();
+    if (suffix === '-success') await screenshot('business-1280');
     await field('business.name').fill(run + suffix);
     await field('business.timezone').selectOption('America/Managua');
     await submit().click();
     check('Review contains no password: ' + suffix, await page.locator('[data-register-stage="3"]').isVisible()
         && !(await page.locator('[data-register-stage="3"]').textContent()).includes(password));
+    if (suffix === '-success') await screenshot('review-1280');
 }
 
 function exact(request) {
@@ -64,7 +74,7 @@ async function publicReadOnly(chromium) {
         await readonly.route('**/*', route => ['GET', 'HEAD'].includes(route.request().method()) ? route.continue() : route.abort('blockedbyclient'));
         const tab = await readonly.newPage();
         const consoleMessages = [];
-        tab.on('console', message => { if (message.text().includes('Mixed Content')) consoleMessages.push(message.text()); });
+        tab.on('console', message => { if (['error', 'warning'].includes(message.type())) consoleMessages.push(message.text()); });
         const reply = await tab.goto('https://gintly-app-web.azurewebsites.net/register', { waitUntil: 'networkidle' });
         evidence.published = { url: tab.url(), status: reply.status(), contentType: reply.headers()['content-type'],
             ...(await tab.evaluate(() => ({ title: document.title, apiBase: document.querySelector('meta[name="api-base-url"]')?.content,
@@ -74,14 +84,22 @@ async function publicReadOnly(chromium) {
         // Read-only GET to the same URL the wizard constructs. No registration body or secrets.
         evidence.published.readOnlyProbe = await tab.evaluate(async () => {
             const base = document.querySelector('meta[name="api-base-url"]').content;
-            const url = new URL('auth/register', base.endsWith('/') ? base : base + '/').href;
+            const apiBase = new URL(base.endsWith('/') ? base : base + '/', location.origin);
+            const url = new URL('auth/register', apiBase).href;
             try {
                 const response = await fetch(url, { method: 'GET', credentials: 'omit', headers: { Accept: 'application/json' } });
-                return { method: 'GET', url, status: response.status(), contentType: response.headers.get('content-type') };
+                return { method: 'GET', url, status: response.status, contentType: response.headers.get('content-type') };
             } catch (error) { return { method: 'GET', url, status: null, name: error.name, error: error.message }; }
         });
-        evidence.published.mixedContent = consoleMessages;
+        evidence.published.console = consoleMessages;
+        evidence.published.shell = await tab.evaluate(inspectRegistrationShell);
+        try {
+            await waitForRegistrationShell(tab);
+            evidence.published.visibleFormAccepted = true;
+        } catch { evidence.published.visibleFormAccepted = false; }
+        await tab.screenshot({ path: resolve(output, 'published-shell.png'), fullPage: true });
         console.log('PUBLISHED READ ONLY ' + JSON.stringify(evidence.published));
+        assert(evidence.published.visibleFormAccepted, 'Published registration shell loaded without a visible, initialized account form');
         await readonly.close();
     } finally { await published.close(); }
 }
@@ -120,6 +138,17 @@ try {
         status: null, failure: request.failure()?.errorText }));
     page.on('console', message => { if (['error', 'warning'].includes(message.type())) evidence.console.push({ scenario, kind: message.type(), resourceFailure: /Failed to load resource|net::ERR_/.test(message.text()) }); });
     password = '  QA!' + randomBytes(18).toString('hex') + '9  ';
+
+    phase = 'missing-entrypoint-regression';
+    scenario = 'induced-missing-entrypoint';
+    const missingEntry = '**/build/assets/wizard-*.js';
+    await page.route(missingEntry, route => route.abort('blockedbyclient'));
+    await page.goto(origin + '/register');
+    await assert.rejects(() => waitForRegistrationShell(page, 500), /shell loaded without a visible/);
+    check('Missing wizard: shell renders, acceptance rejects its hidden form, no POST',
+        (await page.evaluate(inspectRegistrationShell)).shellPresent && requests.length === 0);
+    await page.unroute(missingEntry);
+    scenario = 'real';
 
     // Baseline: the current local contract must be observed before changing it.
     phase = 'real-success';

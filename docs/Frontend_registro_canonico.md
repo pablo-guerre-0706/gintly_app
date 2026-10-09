@@ -773,3 +773,181 @@ sanitizada, excepción de consola, identificador del intento y lectura autorizad
 de persistencia por el responsable. Nunca compartir contraseña, cookies o cuerpos
 completos del request. No hubo staging, commit, push, copias, despliegue, cambios de
 Backend-Claude/gintly_app/Figma ni trabajo de suscripción/contratación.
+
+## Incidente Azure: shell sin formulario — 2026-10-09
+
+Esta intervención está autorizada directamente en `C:/laragon/www/gintly_app`.
+No integra MFA ni cambia registro, autenticación, contratos o reglas comerciales.
+El HEAD encontrado era `442a073`; el código del registro, sus entradas Vite y
+package/lock siguen idénticos a `a062172`. README y cambios ajenos se preservan.
+
+### Causa comprobada en navegador, no una inferencia por cero campos
+
+Chrome **154.0.8037.93**, contexto aislado, únicamente GET/HEAD a Azure:
+
+- `/register`: **200 text/html**, cuatro indicadores, formulario `hidden`, sin
+  `data-initialized`, sin etapa activa y **cero inputs visibles**.
+- El HTML solicita `http://[::1]:5173/@vite/client`, el módulo fuente
+  `http://[::1]:5173/resources/js/modules/registration/wizard.js` y app.css al
+  mismo servidor local. Console registra bloqueo CORS/loopback y `net::ERR_FAILED`.
+- `/hot`: **200**, contenido `http://[::1]:5173`. Laravel Vite considera ese
+  archivo prueba de servidor HMR y omite el manifest; el navegador del visitante
+  no puede acceder al servidor de desarrollo del despliegue.
+- `/build/manifest.json`: **200**, 75 entradas. Wizard, api-client y attempt
+  compilados: **200 text/javascript**, idénticos por SHA-256 al build local del
+  código de registro de `a062172`:
+
+| Asset | SHA-256 |
+| --- | --- |
+| wizard-6-6kRHr6.js | 3892470e5c39c3c5335658c8125f915b1ebe854b2a7f0e3289f34438a980d077 |
+| api-client-7BJXOQN-.js | b7f780149469ef8244f2cc127a5360e43dd1c07a4ed7ebc6d4c144484f17b16e |
+| attempt-DlyvlX6X.js | 5e655e24e13492cef4abe0e15bdea21584ab689cda4545e1f66a47efdc7e54ce |
+
+Esto descarta un wizard ausente o esos imports rotos, no demuestra el SHA de la
+imagen ejecutada. El CSS tiene hash distinto entre builds; no se afirma paridad
+completa de todos los assets ni se atribuye la causa a esa diferencia.
+`.dockerignore` ya excluye public/hot y Dockerfile ya exige su ausencia y un
+manifest compilado. No hay evidencia para modificar esos archivos: falta saber
+si App Service ejecuta otra imagen o si el marcador fue incorporado en ejecución
+o mediante un montaje. No se realizó ninguna escritura remota.
+
+### Corrección y protección de regresión
+
+`EnvironmentAwareVite`, registrado en AppServiceProvider, admite HMR **solo con
+APP_ENV local**. En production/staging/testing usa el manifest, aunque exista un
+marcador residual. No elimina archivos, modifica requests ni oculta el fallo con
+un formulario sin inicializar. El public/hot del desarrollador permanece intacto.
+Azure debe tener APP_ENV efectivo production; no se presume esa configuración.
+
+`registration-shell.mjs` comprueba inicialización, cuatro etapas, primera etapa
+activa, formulario y cinco campos de Cuenta realmente visibles. El ejecutable
+existente lo utiliza al iniciar cada recorrido. La prueba negativa bloquea solo
+el módulo compilado: el shell renderiza, pero la aceptación falla sin enviar POST.
+La inspección opcional de Azure también falla si únicamente aparece el shell.
+Se corrigieron además dos defectos del helper QA público: su sonda GET construía
+una URL sin resolver la meta relativa `/api/v1` contra el origen, y utilizaba
+`response.status()` en un Response Fetch nativo, cuya propiedad es `status`.
+No eran defectos del cliente de la aplicación ni la causa del incidente desplegado.
+
+### Aceptación local con build de producción
+
+Run `QA-REGISTER-RESULT-b6d5e8fac00c`: **40 comprobaciones, salida 0**, Chrome
+154.0.8037.93, servidor propio `http://127.0.0.1:8840`, Laravel/PDO efectivos en
+`gintly_frontend_qa_rol03`. Se ejecutan módulos compilados, no Vite dev.
+
+- Cuenta → Negocio (zona horaria) → Revisión → Resultado visibles.
+- Handshake real 204; alta real 201 con envelope exacto y un POST pese al doble
+  submit; contraseña con espacios preservada y borrada tras éxito; /me previo 401.
+- Validación real 422 y corrección 201 con UUID nuevo; respuesta perdida después
+  de un 201 real, replay real 201 con la misma clave y snapshot, sin duplicación.
+- Login manual 200, /me 200 con propietario/negocio correctos, registro con sesión
+  humana 403 y logout 204. Sin auto-login ni cambios en la compuerta comercial.
+- Cero excepciones JS, warnings y 404. Los errores de recurso esperados son los
+  rechazos 401/422/403 y abortos inducidos; no se presenta una consola sin ellos.
+- Capturas inspeccionadas de Cuenta/Negocio/Revisión/Resultado en escritorio y
+  Resultado móvil, sin overflow. No se repite ni certifica toda la auditoría
+  responsive/zoom/accesibilidad previa, fuera de este microcierre.
+
+Fixtures retenidos intencionalmente: negocios QA **535,536,537**, prefijo del run
+anterior; exactamente un propietario y una fila idempotente por negocio. No se
+limpiaron datos históricos ni se alteró la demo. Servidor detenido y perfil propio
+eliminado. Evidencias bajo `storage/app/qa/registration-result/<run>/` y diagnóstico
+Azure previo bajo `storage/app/qa/registration-production/azure-before/`; excluidos.
+
+| Validación | Resultado / salida |
+| --- | --- |
+| php -l de guard Vite, provider y test | 3 archivos, sin errores / 0 |
+| php vendor/phpunit/phpunit/phpunit tests/Unit/Frontend/EnvironmentAwareViteTest.php | 5 tests, 28 aserciones / 0 |
+| php vendor/phpunit/phpunit/phpunit --testsuite Unit | 61 tests, 487 aserciones, sin omitidos / 0 |
+| node --check de registration-shell.mjs, su .test y registration-result-browser.mjs | 3 archivos, sin errores / 0 |
+| node --test tests/frontend/*.test.mjs | 140 pass, 0 fail/skip/cancelled/TODO / 0 |
+| npm run build | Vite 8.2.1, 106 módulos; PLUGIN_TIMINGS de rendimiento, no error / 0 |
+| php tests/frontend/render-registration.php con APP_ENV=production | Registro/login/landing; 19/11/9 IDs únicos, ARIA, manifest 75 entradas / 0 |
+| php artisan view:cache; php artisan route:cache | Ambas aprobadas / 0 |
+| php artisan route:list --path=register --json | 13 coincidencias, rutas canónicas y compatibilidad intactas / 0 |
+
+Node/PHP no estaban en PATH. Se usaron sus ejecutables instalados; build mediante
+`node node_modules/vite/bin/vite.js build`, equivalente exacto al script npm.
+Las comprobaciones CLI de render/cachés usan conexión QA, no la base de gintly_app.
+No se ejecutaron migraciones ni se instaló ninguna dependencia.
+
+### Comandos de navegador reproducibles
+
+Node 22.12+, PHP compatible con composer.lock, Chrome instalado y módulo Playwright
+QA fuera del proyecto. Los helpers permanentes están todos bajo tests. Ajustar
+solo las rutas de herramientas del equipo, sin introducirlas en fuentes:
+
+```powershell
+$env:QA_PHP = (Get-Command php).Source
+$env:QA_CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+$env:QA_PLAYWRIGHT_MODULE = '<ruta absoluta externa a playwright/index.mjs>'
+$env:QA_REGISTRATION_BROWSER = '1'
+$env:QA_SUBSCRIPTION_BROWSER = '1'
+$env:QA_CANONICAL_BUILT_ASSETS = '1'
+$env:QA_HEADLESS = '1'
+$env:APP_ENV = 'local'
+$env:APP_DEBUG = 'false'
+$env:APP_URL = 'http://127.0.0.1:8840'
+$env:DB_CONNECTION = 'mysql'
+$env:DB_HOST = '127.0.0.1'
+$env:DB_DATABASE = 'gintly_frontend_qa_rol03'
+$env:DB_URL = ''
+$env:DB_SOCKET = ''
+$env:QA_REGISTER_REPRO_ONLY = '0'
+$env:QA_REGISTER_PUBLIC_READONLY = '0'
+npm run build
+node tests/frontend/registration-result-browser.mjs
+```
+
+Exige guardas Laravel/PDO antes de escribir. El recorrido local crea tres fixtures
+QA; no ejecutar sobre otra base. Para validar primero la publicación, establecer
+`QA_REGISTER_PUBLIC_READONLY=1`: solo GET/HEAD a Azure, y una página sin formulario
+provoca salida 1 **antes de iniciar el servidor local o enviar registros**.
+Si Azure pasa, el ejecutable continúa la aceptación local anterior. El primer
+intento público de este microcierre (91b3e9b5a7fb) salió 1 por el defecto de URL
+relativa del helper, no se cuenta como prueba positiva; no creó fixtures.
+
+La segunda sonda (4495db0d999d) detectó correctamente el shell oculto, pero aún
+mostraba el error de `status()` del helper. Tras corregirlo, la sonda definitiva
+`QA-REGISTER-RESULT-958dae8aa452` observó HTML 200 y GET de registro 405 JSON
+(método GET rechazado correctamente); cuatro indicadores, inicialización falsa
+y cero campos visibles. Terminó con **salida 1 esperada**, por el incidente aún
+desplegado, antes de cualquier servidor/POST local. No creó registros ni realizó
+escrituras Azure; su perfil temporal se eliminó. Captura y evidence.json quedan
+bajo storage/app/qa y no se integran. Este resultado no se cuenta como aprobación
+de Azure, aunque sí demuestra que la nueva comprobación detecta el problema.
+
+### Manifiesto exacto y aceptación externa pendiente
+
+Creados (4):
+
+- app/Support/EnvironmentAwareVite.php — adaptación de presentación Vite.
+- tests/Unit/Frontend/EnvironmentAwareViteTest.php — build incluso con hot residual.
+- tests/frontend/registration-shell.mjs — detector reutilizable, sin secretos.
+- tests/frontend/registration-shell.test.mjs — siete casos de aceptación del detector.
+
+Modificados (3):
+
+- app/Providers/AppServiceProvider.php — binding compartido; conciliar al publicar.
+- tests/frontend/registration-result-browser.mjs — detección, captura y sonda GET.
+- docs/Frontend_registro_canonico.md — este cierre.
+
+Eliminados: **ninguno**. Se suman a las fuentes anteriores del registro, no se
+reintegran cambios ajenos. Excluir public/build, public/hot, cachés, capturas,
+perfiles, .env, vendor/node_modules y herramientas temporales. El build es salida
+regenerable de la imagen, no una fuente para staging.
+
+Para cerrar Azure, Roberto debe publicar este lote como una versión coherente
+mediante el proceso autorizado, comprobar APP_ENV efectivo production y ejecutar
+en App Service la etiqueta SHA/digest resultante. El workflow actual construye y
+publica en ACR: **eso no cambia por sí solo la imagen ejecutada por App Service**.
+No se realizó commit/push, actualización de imagen, restart ni limpieza remota.
+Se requiere la etiqueta/digest ejecutada, log de arranque y comprobar el archivo
+hot/montajes para determinar cómo llegó ese artefacto a la instancia actual.
+
+Tras publicación, `/register` debe solicitar únicamente `/build/assets/...`, sin
+@vite/client ni direcciones :5173, y mostrar Cuenta propietaria y su etapa activa.
+Ejecutar la sonda pública anterior y verificar Console/Network sin los bloqueos
+observados. **Corrección y aceptación local aprobadas; Azure no se declara
+corregido hasta esa publicación y comprobación.** No es un fallo de política de
+contraseña, idempotencia o registro, ni se corrige integrando MFA.

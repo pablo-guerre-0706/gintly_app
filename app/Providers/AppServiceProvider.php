@@ -100,6 +100,7 @@ final class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(\Illuminate\Foundation\Vite::class, \App\Support\EnvironmentAwareVite::class);
         $this->registerGeocoder();
         $this->registerSubscriptionGateway();
     }
