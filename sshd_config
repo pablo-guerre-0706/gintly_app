@@ -1,0 +1,18 @@
+# Azure App Service WebSSH only; do not publish this port to the Internet.
+Port 2222
+ListenAddress 0.0.0.0
+LoginGraceTime 180
+PermitRootLogin yes
+AllowUsers root
+PasswordAuthentication yes
+PermitEmptyPasswords no
+UsePAM yes
+StrictModes yes
+X11Forwarding no
+AllowTcpForwarding no
+LogLevel ERROR
+Subsystem sftp internal-sftp
+
+# Keep OpenSSH's modern defaults, adding only Azure WebSSH's required fallback.
+Ciphers +aes128-cbc
+MACs +hmac-sha1

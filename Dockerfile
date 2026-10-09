@@ -60,6 +60,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     unzip \
     git \
+    openssh-server \
     && docker-php-ext-configure gd \
         --with-freetype \
         --with-jpeg \
@@ -72,6 +73,10 @@ RUN apt-get update && apt-get install -y \
         bcmath \
         exif \
     && rm -rf /var/lib/apt/lists/*
+
+# App Service's authenticated WebSSH tunnel requires this platform credential.
+# Port 2222 is internal; never publish it as an application/Internet port.
+RUN printf '%s\n' 'root:Docker!' | chpasswd
 
 # Activar mod_rewrite
 RUN a2enmod rewrite
@@ -94,6 +99,19 @@ RUN rm -f bootstrap/cache/*.php
 # Copiar archivos compilados de Vite
 COPY --from=frontend /app/public/build /var/www/html/public/build
 
+COPY sshd_config /etc/ssh/sshd_config
+COPY entrypoint.sh /usr/local/bin/gintly-entrypoint
+
+# Windows checkouts may use CRLF. Validate SSH with disposable build-time keys;
+# each running container generates its own keys, never inheriting image keys.
+RUN sed -i 's/\r$//' /etc/ssh/sshd_config /usr/local/bin/gintly-entrypoint \
+    && chmod 755 /usr/local/bin/gintly-entrypoint \
+    && bash -n /usr/local/bin/gintly-entrypoint \
+    && mkdir -p /run/sshd \
+    && ssh-keygen -A \
+    && /usr/sbin/sshd -t \
+    && rm -f /etc/ssh/ssh_host_*
+
 # Remove development pointers from the final image, never from the local workspace.
 RUN rm -f public/hot public/hot.*
 
@@ -111,7 +129,8 @@ RUN chown -R www-data:www-data /var/www/html/storage \
 RUN chmod -R 775 /var/www/html/storage \
     /var/www/html/bootstrap/cache
 
-# Puerto HTTP
-EXPOSE 80
+# HTTP and App Service's internal SSH tunnel. HTTP routing remains on port 80.
+EXPOSE 80 2222
 
+ENTRYPOINT ["/usr/local/bin/gintly-entrypoint"]
 CMD ["apache2-foreground"]
