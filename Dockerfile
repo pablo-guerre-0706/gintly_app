@@ -94,6 +94,9 @@ RUN rm -f bootstrap/cache/*.php
 # Copiar archivos compilados de Vite
 COPY --from=frontend /app/public/build /var/www/html/public/build
 
+# Remove development pointers from the final image, never from the local workspace.
+RUN rm -f public/hot public/hot.*
+
 # Fail the build before publishing a broken PHP application or a local Vite pointer.
 # This does not boot Laravel, access a database or run migrations.
 RUN find app bootstrap config routes -type f -name '*.php' -print0 \

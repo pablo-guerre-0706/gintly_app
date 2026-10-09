@@ -951,3 +951,163 @@ Ejecutar la sonda pública anterior y verificar Console/Network sin los bloqueos
 observados. **Corrección y aceptación local aprobadas; Azure no se declara
 corregido hasta esa publicación y comprobación.** No es un fallo de política de
 contraseña, idempotencia o registro, ni se corrige integrando MFA.
+
+## Seguimiento urgente de la publicación — 2026-10-09
+
+### Evidencia nueva, sin escrituras en Azure
+
+- HEAD, referencia local origin/main y `git ls-remote origin refs/heads/main`
+  coinciden en **9a76b820ded4a60dd3d00eeeb0fdeb6bacb24784**. El guard
+  `app/Support/EnvironmentAwareVite.php` y su binding en AppServiceProvider están
+  presentes en ese commit remoto, no solo en el filesystem local.
+- [Actions 37894382745](https://github.com/pablo-guerre-0706/gintly_app/actions/runs/37894382745)
+  terminó `success` para ese SHA. Job 113702264446 y build/push aprobados.
+  El workflow etiqueta `gintlyregistry.azurecr.io/gintly-app:<SHA>` y `:latest`;
+  no contiene actualización de App Service. **Publicar en ACR no demuestra que
+  App Service esté ejecutando la nueva imagen.**
+- GitHub REST público permitió consultar run/job (200). Descargar logs requiere
+  autenticación (403). No existe sesión Azure/CLI ni credencial GitHub utilizable
+  aquí. El digest ACR y la imagen efectivamente arrancada siguen sin comprobar;
+  no se deducen de la etiqueta ni del éxito de Actions.
+- Chrome **154.0.8037.93**, perfil efímero nuevo, GET `/register` **200 HTML**.
+  CSS y dos scripts siguen apuntando a **http://[::1]:5173**. Tres peticiones
+  fallan `net::ERR_FAILED`; Console registra bloqueo CORS al espacio loopback.
+  Cuatro indicadores, asistente no inicializado, cero inputs visibles. La captura
+  inspeccionada muestra el shell sin estilos ni formulario. Cuenta → Negocio →
+  Revisión **no es navegable en Azure**.
+- GET `/hot` responde **200**, contenido `http://[::1]:5173`. GET
+  `/build/manifest.json` responde **200**, 75 entradas, wizard
+  `assets/wizard-6-6kRHr6.js`. Tener el build publicado no sirve si el HTML no lo
+  selecciona. No se envió POST de registro/login ni ninguna escritura remota.
+- Evidencia actual: `storage/app/qa/registration-production/azure-9a76b82/`
+  (`evidence.json`, `account-or-shell.png`), excluida de integración.
+
+**Causa inmediata demostrada:** el HTML desplegado selecciona el servidor Vite
+de desarrollo y el navegador no puede cargarlo. **Causa operacional pendiente:**
+imagen anterior, APP_ENV efectivo local u otro artefacto/montaje/configuración
+de la instancia. No afirmar cuál es sin la comprobación de abajo.
+
+### Parche local acotado, todavía no publicado
+
+La `.dockerignore` actual ya excluye `public/hot` y `public/hot.*`. Se añade
+al Dockerfile, después de las copias del runtime:
+
+```dockerfile
+RUN rm -f public/hot public/hot.*
+```
+
+Se conserva la comprobación `test ! -e public/hot`, la validación PHP y el
+manifest obligatorio. La eliminación ocurre dentro de la imagen, **no en el
+workspace local**. `public/hot` local se mantiene intacto. Nueva prueba comprueba
+que la eliminación sigue a todas las copias finales y precede al test de ausencia.
+No se cambia registro, login, middleware, MFA, billing, .env ni workflow remoto.
+
+Fuentes modificadas en esta intervención (ningún archivo nuevo/eliminado):
+
+- `Dockerfile` — eliminación explícita del puntero en la imagen final.
+- `tests/frontend/canonical-deployment.test.mjs` — regresión del orden de limpieza.
+- `docs/Frontend_registro_canonico.md` — evidencia y procedimiento operativo.
+
+README.md y storage/framework/cache ya tenían cambios/artefactos al comenzar;
+se preservaron y no pertenecen a este parche. No hubo staging, commit o push.
+
+### Roberto: comprobación inmediata, solo lectura
+
+Ejecutar en Azure Cloud Shell **PowerShell**, en la suscripción correcta y con su
+sesión existente. No pegar claves ni salidas completas de appsettings:
+
+```powershell
+$sha = '9a76b820ded4a60dd3d00eeeb0fdeb6bacb24784'
+$app = 'gintly-app-web'
+$rg = az webapp list --query "[?name=='gintly-app-web'].resourceGroup | [0]" -o tsv
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($rg)) {
+    throw 'No se encontró App Service; comprobar la suscripción seleccionada.'
+}
+az webapp config show -g $rg -n $app --query '{image:linuxFxVersion}' -o json
+az webapp config appsettings list -g $rg -n $app --query "[?name=='APP_ENV' || name=='WEBSITES_ENABLE_APP_SERVICE_STORAGE'].{name:name,value:value}" -o json
+az acr repository show -n gintlyregistry --image "gintly-app:$sha" --query '{digest:digest,tags:tags}' -o json
+```
+
+La imagen configurada **no prueba la arrancada**. En los logs de arranque del
+contenedor de App Service, extraer solo las líneas de inicio/pull, etiqueta,
+digest, resultado y fecha. No compartir logs completos ni credenciales. Si la
+app usa otra modalidad de contenedor, no cambiar su configuración a ciegas.
+
+Si hay consola de la aplicación disponible, ejecutar desde `/var/www/html`:
+
+```sh
+php -l bootstrap/app.php
+sha256sum app/Support/EnvironmentAwareVite.php app/Providers/AppServiceProvider.php
+test ! -e public/hot && echo HOT_ABSENT || echo HOT_PRESENT
+php -r 'require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); $v=$a->make(Illuminate\Foundation\Vite::class); echo "APP_ENV_EFFECTIVE=".$a->environment().PHP_EOL; echo "VITE_CLASS=".get_class($v).PHP_EOL; echo $v->isRunningHot() ? "VITE_MODE=hot\n" : "VITE_MODE=manifest\n";'
+```
+
+Esperado: APP_ENV_EFFECTIVE=production, App\Support\EnvironmentAwareVite,
+VITE_MODE=manifest y HOT_ABSENT. El valor APP_ENV en el portal por sí solo no
+certifica la configuración Laravel efectiva si existe configuración cacheada.
+Estos comandos no modifican archivos ni datos. Si SSH sigue negro, facilitar
+primero imagen/configuración y log de arranque; no existe aquí acceso alternativo
+autenticado para ejecutar PHP remotamente.
+
+### Acción remota propuesta — requiere aprobación, no ejecutada
+
+Si el digest de la etiqueta anterior existe y el runtime no la ejecuta, corregir
+la selección de imagen; si APP_ENV difiere, corregirlo a production. No usar
+`latest` como evidencia de versión. Antes de ejecutar, revisar la configuración
+leída y obtener autorización. Mantener la autenticación ACR ya configurada.
+
+```powershell
+# Solo después de aprobar el cambio de imagen/entorno/reinicio.
+$digest = az acr repository show -n gintlyregistry --image "gintly-app:$sha" --query digest -o tsv
+if ($LASTEXITCODE -ne 0 -or $digest -notmatch '^sha256:[0-9a-f]{64}$') {
+    throw 'Digest no confirmado; no actualizar App Service.'
+}
+$image = "gintlyregistry.azurecr.io/gintly-app@$digest"
+az webapp config container set -g $rg -n $app --container-image-name $image --container-registry-url https://gintlyregistry.azurecr.io --output none
+if ($LASTEXITCODE -ne 0) { throw 'Actualización de imagen fallida; detener.' }
+# Ejecutar esta línea únicamente si el entorno leído no era production.
+az webapp config appsettings set -g $rg -n $app --settings APP_ENV=production --output none
+if ($LASTEXITCODE -ne 0) { throw 'Actualización de entorno fallida; detener.' }
+az webapp restart -g $rg -n $app
+```
+
+Referencias oficiales: [configuración de contenedor](https://learn.microsoft.com/en-us/cli/azure/webapp/config/container?view=azure-cli-latest)
+y [digest en ACR](https://learn.microsoft.com/en-us/cli/azure/acr/repository?view=azure-cli-latest).
+El digest no está inventado: el bloque lo obtiene de ACR. Este bloque utiliza el
+SHA ya publicado; **no incluye aún el pequeño parche Docker pendiente local**.
+Si se aprueba publicar también ese parche, revisar solo las tres fuentes arriba,
+crear/publicar el commit mediante el proceso humano y sustituir $sha por el nuevo
+SHA después de Actions. No se aprueba ni ejecuta commit/push con este documento.
+
+### Validación local de este seguimiento
+
+| Comprobación | Resultado / código |
+| --- | --- |
+| node --check tests/frontend/canonical-deployment.test.mjs | Sin errores / 0 |
+| node --test tests/frontend/*.test.mjs | 141 pass, 0 fail/skip/cancelled/TODO / 0 |
+| php vendor/phpunit/phpunit/phpunit tests/Unit/Frontend/EnvironmentAwareViteTest.php | 5 tests, 28 aserciones / 0 |
+| node node_modules/vite/bin/vite.js build (script npm build equivalente) | Vite 8.2.1, 106 módulos, 8.40 s / 0 |
+| Render con APP_ENV=production y destino PDO QA comprobado | Registro/login/landing 19/11/9 IDs únicos y ARIA; manifest 75 entradas / 0 |
+
+El build informó PLUGIN_TIMINGS de rendimiento, no un fallo. Docker no está
+instalado aquí; no se cuenta el build de Vite como build de contenedor. Actions
+anterior sí construyó/publicó 9a76b82, no el parche Docker todavía sin commit.
+
+Aceptación local visual del build con Chrome 154.0.8037.93 y los helpers
+guardados existentes: Cuenta → Negocio → Revisión visibles, assets /build,
+sin errores/warnings ni solicitudes fallidas o POST. Se verificó el destino
+Laravel/PDO `gintly_frontend_qa_rol03` antes de arrancar el servidor propio.
+Capturas y evidence.json en `storage/app/qa/registration-production/local-9a76b82-final/`,
+excluidos. Un primer script temporal alcanzó las tres vistas pero terminó 1 al
+intentar limpiar con fill un campo ya oculto; es un fallo de limpieza del script,
+no de la aplicación. La repetición con cierre del contexto terminó 0. Servidores
+y navegador propios detenidos; ningún negocio nuevo en esta intervención.
+
+**Azure permanece pendiente.** Tras corregir la instancia, repetir navegador
+real: assets locales 200, Cuenta → Negocio → Revisión visibles y consola sin los
+bloqueos anteriores. Antes de un POST QA allí, confirmar explícitamente destino
+de datos autorizado y estado previo; no escribir sobre producción por suponer
+que un prefijo QA basta. Entonces ejecutar un único intento lógico canónico,
+201 con data.business_slug/owner_email, sin auto-login, login manual y /me.
+Ante respuesta incierta, conservar UUID/payload y verificar estado antes de
+reintentar. No se presume que estos pasos remotos aprobaron con evidencia local.

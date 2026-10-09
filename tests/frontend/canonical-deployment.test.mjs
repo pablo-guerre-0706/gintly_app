@@ -21,6 +21,14 @@ test('Image checks PHP syntax without booting the application or migrating', asy
     assert.doesNotMatch(docker, /artisan\s+(?:migrate|db:seed)|key:generate/);
 });
 
+test('Final image removes hot pointers after copying assets and still verifies their absence', async () => {
+    const docker = await source('Dockerfile');
+    const runtime = docker.slice(docker.indexOf('FROM php:8.3-apache'));
+    const cleanup = runtime.indexOf('RUN rm -f public/hot public/hot.*');
+    assert(cleanup > runtime.lastIndexOf('COPY '), 'Cleanup must follow every final-stage copy');
+    assert(cleanup < runtime.indexOf('test ! -e public/hot'), 'Absence check must run after cleanup');
+});
+
 test('Published image has an immutable source tag and revision label', async () => {
     const [docker, workflow] = await Promise.all([source('Dockerfile'), source('.github/workflows/deploy.yml')]);
     assert.match(docker, /ARG GIT_SHA=unknown/);
