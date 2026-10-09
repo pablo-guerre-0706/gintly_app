@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  * El acceso por suscripción exige, ADEMÁS de una vigencia pagada, COHERENCIA de despliegue (propósito/modo) y CORRESPONDENCIA de
  * la suscripción con el proveedor, modo y tienda CONFIGURADOS: una suscripción TEST no habilita un despliegue
  * commercial/live (ni al revés), ni una de otra tienda. Alternativamente, una concesión explícita, temporal y
- * revocable permite evaluar SOLO el negocio configurado en demo/test; nunca representa pago ni suscripción.
+ * revocable permite evaluar negocios explícitamente concedidos en demo/test; nunca representa pago ni suscripción.
  */
 final class CommercialAccess
 {
@@ -55,21 +55,32 @@ final class CommercialAccess
         return $this->demoGrantFor($businessId, $now)?->plan_key;
     }
 
-    /** CLI-only evaluation entitlement; missing storage/configuration, expiry or revocation fails closed. */
+    /** Selection guard shared by administrative grants and registration enrollment. */
+    public function canGrantDemoTo(Business $business): bool
+    {
+        if (config('billing.demo_access.enabled') !== true || ! $business->status?->canOperate()
+            || (config('billing.demo_access.multiple_businesses') !== true
+                && ((string) config('billing.demo_access.business_slug', '') === ''
+                    || $business->slug !== (string) config('billing.demo_access.business_slug')))) {
+            return false;
+        }
+        try {
+            return $this->mode->isDemo() && $this->mode->activeMode()->value === 'test';
+        } catch (\App\Exceptions\BillingUnavailableException) {
+            return false;
+        }
+    }
+
+    /** Explicit per-business entitlement; enrollment closing never extends or revokes existing grants. */
     public function demoGrantFor(int $businessId, ?Carbon $now = null): ?DemoAccessGrant
     {
-        if (config('billing.demo_access.enabled') !== true
-            || (string) config('billing.demo_access.business_slug', '') === '') {
+        if (config('billing.demo_access.enabled') !== true) {
             return null;
         }
 
         try {
-            if (! $this->mode->isDemo() || $this->mode->activeMode()->value !== 'test') {
-                return null;
-            }
-            $business = Business::query()->whereKey($businessId)
-                ->where('slug', (string) config('billing.demo_access.business_slug'))->first();
-            if ($business === null || ! $business->status?->canOperate()) {
+            $business = Business::query()->whereKey($businessId)->first();
+            if ($business === null || ! $this->canGrantDemoTo($business)) {
                 return null;
             }
             $grant = DemoAccessGrant::query()->where('business_id', $businessId)->first();

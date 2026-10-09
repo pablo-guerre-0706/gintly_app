@@ -28,11 +28,21 @@ return [
     'provider_mode'      => env('BILLING_PROVIDER_MODE', 'test'),        // live | test
 
     // Explicit, expiring evaluation access; never enables other tenants or simulates a paid subscription.
-    // Requires demo/test AND this opt-in AND the selected business slug AND a CLI-created grant.
+    // Requires demo/test AND this opt-in AND an explicit per-business grant.
     'demo_access' => [
         'enabled' => env('BILLING_DEMO_ACCESS_ENABLED', false),
         'business_slug' => env('BILLING_DEMO_BUSINESS_SLUG', ''),
+        // Opt-in for several individually granted businesses; never grants access by itself.
+        'multiple_businesses' => env('BILLING_DEMO_MULTIPLE_BUSINESSES', false),
         'max_days' => 30,
+        // Enrollment window, not a paid subscription. UTC/explicit-offset RFC3339 timestamps.
+        'registration' => [
+            'enabled' => env('BILLING_EVALUATION_REGISTRATION_ENABLED', false),
+            'starts_at' => env('BILLING_EVALUATION_STARTS_AT'),
+            'ends_at' => env('BILLING_EVALUATION_ENDS_AT'),
+            'days' => env('BILLING_EVALUATION_DAYS', 7),
+            'plan' => env('BILLING_EVALUATION_PLAN', 'cadena'),
+        ],
     ],
 
     // Credenciales del proveedor (nunca en código; placeholders en .env.example).

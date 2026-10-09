@@ -12,6 +12,7 @@ use App\Exceptions\RegistrationLockUnavailableException;
 use App\Models\Business;
 use App\Models\RegistrationRequest;
 use App\Models\User;
+use App\Services\Billing\RegistrationEvaluationGrant;
 use App\Support\RegistrationFailureReporter;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Orquestación transaccional del alta pública canónica. TODO-O-NADA: Business + aprovisionamiento del
  * Observer + propietario + owner_user_id + ROL-01 (team Spatie) + fila de idempotencia ocurren dentro de
- * UNA sola transacción exterior en la misma conexión. Cualquier fallo revierte TODO; no hay commits
+ * UNA sola transacción exterior en la misma conexión, incluida la evaluación opcional. Cualquier fallo revierte TODO; no hay commits
  * intermedios. El alta NO autentica (no hay Auth::login ni tokens).
  */
 final class RegistrationService
@@ -32,6 +33,7 @@ final class RegistrationService
 
     public function __construct(
         private readonly PermissionRegistrar $permissions,
+        private readonly RegistrationEvaluationGrant $evaluation,
     ) {
     }
 
@@ -176,6 +178,10 @@ final class RegistrationService
                 $this->permissions->setPermissionsTeamId($business->id);
                 $this->permissions->forgetCachedPermissions();
                 $owner->syncRoles([RoleName::Owner->value]);
+
+                // Optional server-configured evaluation, atomic with owner and idempotency.
+                // Replays return resolveExisting() and never issue or extend this grant.
+                $this->evaluation->grantToNewBusiness($business);
 
                 // 9. Idempotencia persistente: uuid (UNIQUE) dentro de la MISMA transacción. Resultado público.
                 RegistrationRequest::query()->create([

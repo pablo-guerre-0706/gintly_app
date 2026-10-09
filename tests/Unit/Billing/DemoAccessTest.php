@@ -12,6 +12,7 @@ use App\Models\PlanSubscription;
 use App\Models\User;
 use App\Services\Billing\BillingCatalog;
 use App\Services\Billing\CommercialAccess;
+use App\Services\Billing\RegistrationEvaluationGrant;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -31,6 +32,7 @@ final class DemoAccessTest extends TestCase
         $this->assertSame(':memory:', DB::connection()->getDatabaseName());
         $this->assertSame('sqlite', DB::connection()->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME));
         config(['billing.demo_access.enabled' => true, 'billing.demo_access.business_slug' => 'gintly-demo',
+            'billing.demo_access.multiple_businesses' => false, 'billing.demo_access.registration.enabled' => false,
             'billing.deployment_purpose' => 'demo', 'billing.provider_mode' => 'test', 'billing.store_id' => 'qa-test']);
         Carbon::setTestNow(Carbon::parse('2026-10-08 12:00:00', 'UTC'));
         Schema::create('businesses', function (Blueprint $table): void {
@@ -208,5 +210,132 @@ final class DemoAccessTest extends TestCase
         $request->setUserResolver(fn () => (new User)->forceFill(['business_id' => 2]));
         $this->expectException(SubscriptionRequiredException::class);
         $gate->handle($request, fn () => response('must never execute'));
+    }
+
+    private function enrollment(array $overrides = []): void
+    {
+        config(array_merge([
+            'billing.demo_access.multiple_businesses' => true,
+            'billing.demo_access.registration.enabled' => true,
+            'billing.demo_access.registration.starts_at' => '2026-10-08T12:00:00Z',
+            'billing.demo_access.registration.ends_at' => '2026-10-09T12:00:00Z',
+            'billing.demo_access.registration.days' => 7,
+            'billing.demo_access.registration.plan' => 'comercio',
+        ], $overrides));
+    }
+
+    public function test_multiple_mode_still_requires_each_explicit_grant_and_preserves_demo(): void
+    {
+        $this->command();
+        config(['billing.demo_access.multiple_businesses' => true]);
+        $this->assertTrue(app(CommercialAccess::class)->grantsAccess(1));
+        $this->assertFalse(app(CommercialAccess::class)->grantsAccess(2));
+        $this->command('grant', ['business' => 'not-selected', '--business-id' => '2']);
+        $this->assertTrue(app(CommercialAccess::class)->grantsAccess(2));
+        $this->assertSame(2, DemoAccessGrant::count());
+        $this->assertSame(0, PlanSubscription::count());
+    }
+
+    public function test_atomic_administrative_batch_grants_and_revokes_each_business(): void
+    {
+        config(['billing.demo_access.multiple_businesses' => true]);
+        $this->command('grant', ['--target' => ['not-selected:2']]);
+        $this->assertSame(2, DemoAccessGrant::count());
+        $this->command('revoke', ['--target' => ['not-selected:2']]);
+        $this->assertFalse(app(CommercialAccess::class)->grantsAccess(1));
+        $this->assertFalse(app(CommercialAccess::class)->grantsAccess(2));
+        $this->assertSame(2, DemoAccessGrant::whereNotNull('revoked_at')->count());
+    }
+
+    public function test_invalid_or_suspended_batch_target_leaves_all_grants_untouched(): void
+    {
+        config(['billing.demo_access.multiple_businesses' => true]);
+        foreach ([['not-selected:999'], ['gintly-demo:1'], ['not-selected:2', 'not-selected:2'], ['bad']] as $targets) {
+            $this->command('grant', ['--target' => $targets], 1);
+            $this->assertSame(0, DemoAccessGrant::count());
+        }
+        DB::table('businesses')->where('id', 2)->update(['status' => 'suspended']);
+        $this->command('grant', ['--target' => ['not-selected:2']], 1);
+        $this->assertSame(0, DemoAccessGrant::count());
+    }
+
+    public function test_enrollment_closes_without_revoking_or_extending_individual_expiry(): void
+    {
+        $this->enrollment();
+        $issuer = app(RegistrationEvaluationGrant::class);
+        $first = $issuer->grantToNewBusiness(\App\Models\Business::findOrFail(1));
+        $this->assertSame('comercio', $first->plan_key);
+        $this->assertSame('2026-10-15 12:00:00', $first->expires_at->format('Y-m-d H:i:s'));
+        Carbon::setTestNow(Carbon::parse('2026-10-09 12:00:00', 'UTC'));
+        $this->assertNull($issuer->grantToNewBusiness(\App\Models\Business::findOrFail(2)));
+        $this->assertTrue(app(CommercialAccess::class)->grantsAccess(1));
+        $this->assertFalse(app(CommercialAccess::class)->grantsAccess(2));
+        config(['billing.demo_access.registration.enabled' => false]);
+        $this->assertTrue(app(CommercialAccess::class)->grantsAccess(1));
+        Carbon::setTestNow($first->expires_at);
+        $this->assertFalse(app(CommercialAccess::class)->grantsAccess(1));
+    }
+
+    public function test_enrollment_before_start_and_when_disabled_uses_normal_contracting(): void
+    {
+        $this->enrollment(['billing.demo_access.registration.starts_at' => '2026-10-08T12:00:01Z']);
+        $issuer = app(RegistrationEvaluationGrant::class);
+        $this->assertNull($issuer->grantToNewBusiness(\App\Models\Business::findOrFail(1)));
+        config(['billing.demo_access.registration.enabled' => false]);
+        $this->assertNull($issuer->grantToNewBusiness(\App\Models\Business::findOrFail(2)));
+        $this->assertSame(0, DemoAccessGrant::count());
+    }
+
+    public static function invalidEnrollment(): array
+    {
+        return [
+            'master off' => [['billing.demo_access.enabled' => false]],
+            'multi off' => [['billing.demo_access.multiple_businesses' => false]],
+            'live mode' => [['billing.provider_mode' => 'live']],
+            'no timezone' => [['billing.demo_access.registration.starts_at' => '2026-10-08 12:00:00']],
+            'invalid date' => [['billing.demo_access.registration.starts_at' => '2026-02-30T12:00:00Z']],
+            'inverted window' => [['billing.demo_access.registration.ends_at' => '2026-10-08T12:00:00Z']],
+            'zero days' => [['billing.demo_access.registration.days' => 0]],
+            'too long' => [['billing.demo_access.registration.days' => 31]],
+            'fractional' => [['billing.demo_access.registration.days' => '1.5']],
+            'no plan' => [['billing.demo_access.registration.plan' => 'invented']],
+        ];
+    }
+
+    #[DataProvider('invalidEnrollment')]
+    public function test_invalid_enabled_enrollment_fails_closed_without_grant(array $config): void
+    {
+        $this->enrollment($config);
+        try {
+            app(RegistrationEvaluationGrant::class)->grantToNewBusiness(\App\Models\Business::findOrFail(1));
+            $this->fail('Invalid enrollment must not succeed silently');
+        } catch (\LogicException) {
+            $this->assertSame(0, DemoAccessGrant::count());
+        }
+    }
+
+    public function test_registration_rollback_removes_grant_and_duplicate_does_not_renew(): void
+    {
+        $this->enrollment();
+        $business = \App\Models\Business::findOrFail(1);
+        try {
+            DB::transaction(function () use ($business): void {
+                app(RegistrationEvaluationGrant::class)->grantToNewBusiness($business);
+                throw new \RuntimeException('Simulate a later registration failure');
+            });
+        } catch (\RuntimeException) {
+            $this->assertSame(0, DemoAccessGrant::count());
+        }
+        $grant = app(RegistrationEvaluationGrant::class)->grantToNewBusiness($business);
+        $before = $grant->getAttributes();
+        try {
+            app(RegistrationEvaluationGrant::class)->grantToNewBusiness($business);
+            $this->fail('Unique per-business entitlement must not duplicate');
+        } catch (\Illuminate\Database\QueryException) {
+            $after = $grant->fresh()->getAttributes();
+            ksort($before);
+            ksort($after);
+            $this->assertSame($before, $after);
+        }
     }
 }
