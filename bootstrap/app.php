@@ -30,10 +30,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-        ->withMiddleware(function (Middleware $middleware): void {
-
+    ->withMiddleware(function (Middleware $middleware): void {
         // Forzar a Laravel a confiar en los balanceadores de carga de Azure
-        $middleware->trustProxies(at: '*'); 
+        $middleware->trustProxies(at: '*');
 
         // Activa el contexto del tenant para las peticiones Web
         $middleware->web(append: [
@@ -48,32 +47,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi();
         $middleware->statefulApi();
 
-        $middleware->validateCsrfTokens(except: [
-            'api/v1/billing/webhook',
-        ]);
-
-        $middleware->alias([
-            'tenant.permissions' => SetPermissionsTeamId::class,
-            'role'               => RoleMiddleware::class,
-            'permission'         => PermissionMiddleware::class,
-            'role_or_permission' => RoleOrPermissionMiddleware::class,
-            'subscription.active' => EnsureActiveSubscription::class,
-            'plan.feature'        => RequiresPlanFeature::class,
-        ]);
-    });
-
-        $middleware->web(append: [
-            SetPermissionsTeamId::class,
-        ]);
-
-        $middleware->api(append: [
-            SetPermissionsTeamId::class,
-        ]);
-
-        $middleware->throttleApi();
-        $middleware->statefulApi();
-
-        // Excepción CSRF exclusiva para el webhook firmado del proveedor.
         $middleware->validateCsrfTokens(except: [
             'api/v1/billing/webhook',
         ]);
@@ -156,5 +129,4 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => $e->getMessage(),
             ], $status);
         });
-    })
-    ->create();
+    })->create();
