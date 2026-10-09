@@ -9,6 +9,7 @@ import { createCheckoutAttempt } from './attempt';
 import { SubscriptionPoller } from './poller';
 import { confirmation } from './confirmation';
 import { billingView } from './view';
+import { billingSelectionState } from './selection-state';
 export default async function initBilling() {
     initLogout({ loginUrl: document.querySelector('meta[name="login-url"]')?.content });
     const root = document.querySelector('[data-billing-page]');
@@ -25,13 +26,14 @@ export default async function initBilling() {
         onExhausted: () => ui.notice('Confirmación pendiente. Se completaron las 12 consultas de este ciclo; puedes actualizar el estado sin volver a contratar.') });
     const value = () => selection({ plan: form.elements.plan.value, period: form.elements.period.value }, plans);
     function buttons() {
-        const locked = demoActive() || busy || !attempt || attempt.state !== 'editing';
         if (form) {
-            form.setAttribute('aria-busy', String(busy)); ui.find('billing-fields').disabled = locked;
+            const choice = billingSelectionState({ attempt, busy, demo: demoActive(), mutationUnknown });
+            form.setAttribute('aria-busy', String(busy)); ui.find('billing-fields').disabled = choice.disabled;
+            const help = ui.find('billing-selection-help'); help.textContent = choice.message; help.hidden = !choice.message;
             ui.find('billing-submit').disabled = demoActive() || busy || !state || reading || mutationUnknown || Date.now() < cooldown || (attempt && attempt.state !== 'editing');
             ui.find('billing-submit').textContent = busy ? 'Procesando…' : state?.grants_access ? 'Solicitar cambio de plan' : 'Continuar al checkout alojado';
-            const recovering = attempt && attempt.state !== 'editing';
-            ui.find('billing-recovery').hidden = !recovering;
+            ui.find('billing-recovery').hidden = !choice.recovering;
+            ui.find('checkout-recovery-message').textContent = choice.recoveryMessage;
             ui.find('checkout-retry').disabled = busy || Date.now() < (attempt?.retryAt ?? 0) || ['blocked', 'expired', 'checkout'].includes(attempt?.state);
             ui.find('checkout-new').hidden = attempt?.state !== 'expired'; ui.find('checkout-new').disabled = busy;
             ui.find('cancel-renewal').hidden = demoActive() || !state?.grants_access || state.status === 'canceled'; ui.find('cancel-renewal').disabled = demoActive() || busy || reading || mutationUnknown || Date.now() < cooldown;
@@ -105,7 +107,7 @@ export default async function initBilling() {
     form?.addEventListener('change', () => { if (attempt?.state !== 'editing') return; savePreference(value()); render(); });
     form?.addEventListener('submit', event => { event.preventDefault(); if (demoActive() || busy || reading || !state || mutationUnknown || Date.now() < cooldown) return; if (state.grants_access) { let payload; try { payload = value(); } catch (error) { errorNotice(error); return; } void management('change', payload, ui.find('billing-submit')); } else void checkoutSubmit(); });
     ui.find('checkout-retry')?.addEventListener('click', checkoutSubmit);
-    ui.find('checkout-new')?.addEventListener('click', () => { if (attempt.newAfterExpiry()) { ui.notice('Intento vencido descartado. Revisa la selección antes de enviar uno nuevo.'); render(); } });
+    ui.find('checkout-new')?.addEventListener('click', () => { if (attempt.newAfterExpiry()) { ui.notice('Intento vencido descartado. Revisa la selección antes de enviar uno nuevo.'); render(); form.elements.plan.focus(); } });
     ui.find('cancel-renewal')?.addEventListener('click', event => { void management('cancel', null, event.currentTarget); });
     document.addEventListener('visibilitychange', () => poller.resume());
     window.addEventListener('pagehide', () => { controller.abort(); poller.stop(); clearTimeout(retryTimer); dialog.destroy(); }, { once: true });

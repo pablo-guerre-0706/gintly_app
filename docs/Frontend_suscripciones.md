@@ -224,3 +224,88 @@ Los comandos de migración QA anteriores no son instrucciones para ejecutar cont
 Credenciales Lemon Squeezy TEST, seis variantes oficiales (tres planes × dos periodicidades), tienda, webhook HTTPS firmado y URLs de retorno configuradas por Backend. Después: validar pago, evento y vigencia con el proveedor TEST real. LIVE requiere decisión/configuración externa coherente y su propia aceptación. No solicitar secretos por chat ni sustituir estas verificaciones por una fixture local.
 
 No se hizo integración, staging, commit, push, cambios en Backend-Claude/gintly_app/Figma ni avance hacia MFA/2FA u otros módulos.
+
+## Microcierre de selectores — 2026-10-09
+
+Este ajuste se realizó directamente en `gintly_app` con autorización expresa. No se hicieron staging, commits, push, despliegues, cambios de entorno, de Backend, del proveedor ni integración de MFA. El cambio previo de `README.md` y los archivos de caché ajenos a esta intervención se conservaron.
+
+### Causa reproducida y recuperación
+
+Con un propietario QA nuevo, el catálogo real devuelve tres planes y dos periodicidades; los selectores nativos funcionan con clic y teclado en las seis combinaciones. No hay un elemento superpuesto que los bloquee. El build carga e inicializa el módulo de billing.
+
+Después de un resultado incierto de checkout, el intento conserva UUID y selección. Su estado `recoverable` deshabilita el `fieldset`, también después de recargar. Esa protección es correcta, pero el aviso y las acciones de recuperación estaban debajo del formulario y el catálogo; no había una explicación junto a los campos y su aspecto no evidenciaba el bloqueo.
+
+Ahora hay un mensaje accesible junto a los selectores, estilos de deshabilitado y la recuperación antes de los campos. «Recuperar el mismo intento» conserva UUID y payload. No libera los campos ni crea otra clave. Solo `CHECKOUT_KEY_EXPIRED`, confirmado por el servidor, permite «Iniciar un nuevo intento» explícitamente y restaura el foco en Plan. Un 422 permite corregir y crear el siguiente intento lógico; un conflicto de idempotencia no se evade. Los metadatos públicos del fallo (`status` y `code`) se mantienen solo en memoria; no cambió el formato de almacenamiento por negocio.
+
+`public/hot` local se conservó. La aceptación usó los assets compilados mediante el router QA existente y su guarda; no dependió de un servidor Vite ni borró el indicador local. La prueba de `EnvironmentAwareVite` confirma que producción ignora ese indicador, mientras local conserva el comportamiento de desarrollo. Esta comprobación no afirma que Azure haya sido publicado ni corregido.
+
+### Evidencia final
+
+- Chrome 154.0.8037.93, URL aislada `http://127.0.0.1:8840`, base efectiva Laravel/PDO `gintly_frontend_qa_rol03`.
+- Aceptación final: **68 comprobaciones**, código 0. Registro 201, login 200, `/me`, catálogo y estado 200; logout 204. El acceso HTML al dashboard sigue dando 403 y su API `403 SUBSCRIPTION_REQUIRED` para el propietario sin suscripción.
+- Selección nativa mediante clic, Home, flechas y Enter de Inicial/Comercio/Cadena × mensual/anual; resúmenes cotejados con precios del catálogo real. Tab y Shift+Tab correctos.
+- Fallos de checkout **inducidos mediante interceptación**: dos 503 `BILLING_UNAVAILABLE`, 409 `CHECKOUT_RESULT_UNKNOWN`, 409 `CHECKOUT_KEY_EXPIRED`, 422 y 409 `CHECKOUT_IDEMPOTENCY_CONFLICT`. No son respuestas de Lemon Squeezy. Se acreditó conservación de UUID/snapshot, recarga, recuperación explícita y foco después de liberar por vencimiento.
+- 375, 768, 1024, 1280 y 1512 px: sin overflow horizontal; capturas del bloqueo y recuperación. Cero 404 inesperados, excepciones JavaScript o warnings. Se observaron seis mensajes de error de recurso HTTP esperados por los fallos inducidos; no se contabilizan como una consola enteramente vacía.
+- Cero checkout o pagos persistidos; el proveedor no fue contactado. El negocio demo y los fixtures anteriores no se alteraron.
+- Fixtures exclusivos de este microcierre: `QA-REGISTER-MODSUB-732abdccc80b` (negocio 538, diagnóstico), `QA-REGISTER-MODSUB-fc50bb1adebc` (539) y `QA-REGISTER-MODSUB-140225ca5413` (540, cierre final). La limpieza CLI acotada confirmó la eliminación de cada fixture propio en la QA autorizada. Evidencia retenida intencionalmente en `storage/app/qa/billing-selectors/<token>/`; no integrable. Servidores y contextos de navegador propios detenidos.
+
+### Comandos y resultados
+
+Todos terminaron con código 0:
+
+```powershell
+node --check resources/js/modules/billing/index.js
+node --check resources/js/modules/billing/attempt.js
+node --check resources/js/modules/billing/selection-state.js
+node --check tests/frontend/billing.test.mjs
+node --check tests/frontend/billing-selectors-browser.mjs
+node --test tests/frontend/billing.test.mjs tests/frontend/billing-demo.test.mjs tests/frontend/api-client-billing.test.mjs
+node --test tests/frontend/*.test.mjs
+node node_modules/vite/bin/vite.js build
+php tests/frontend/render-billing.php
+php tests/frontend/render-registration.php
+php artisan route:list --path=billing
+php vendor/phpunit/phpunit/phpunit tests/Unit/Frontend/EnvironmentAwareViteTest.php
+git diff --check
+```
+
+Resultados: sintaxis de cinco archivos sin errores; suite enfocada 30/30 y completa 148/148, sin fallos ni omitidas. Build Vite 8.2.1: 107 módulos y manifest de 75 entradas válidas; un aviso informativo `PLUGIN_TIMINGS`, no fallo de compilación. Render billing: seis variantes, IDs/ARIA/landmarks válidos. Render registro/login/landing: aprobado. Nueve rutas billing conservadas. Guarda de assets: cinco pruebas, 28 aserciones. Los renders usan un entorno de proceso de producción, sin cambios a `.env`; la prueba unitaria de assets usa SQLite en memoria y no escribe datos del negocio.
+
+Para reproducir exclusivamente la aceptación de selectores, usar PHP 8.3 con las extensiones del proyecto, Node 22.12+ y Chrome/Chromium con Playwright externo instalado; no son dependencias del bundle. Mantener las credenciales QA únicamente en la configuración local ya autorizada, sin pegarlas en la documentación o logs. Desde la raíz del proyecto, tras compilar:
+
+```powershell
+$env:QA_REGISTRATION_BROWSER = '1'
+$env:QA_SUBSCRIPTION_BROWSER = '1'
+$env:QA_CANONICAL_BUILT_ASSETS = '1'
+$env:APP_ENV = 'local'
+$env:APP_DEBUG = 'false'
+$env:APP_URL = 'http://127.0.0.1:8840'
+$env:DB_CONNECTION = 'mysql'
+$env:DB_HOST = '127.0.0.1'
+$env:DB_DATABASE = 'gintly_frontend_qa_rol03'
+$env:DB_URL = ''
+$env:DB_SOCKET = ''
+$env:QA_PHP = '<ruta al ejecutable php.exe>'
+$env:QA_CHROME = '<ruta al ejecutable chrome.exe o Chromium>'
+$env:QA_PLAYWRIGHT_MODULE = '<ruta al index.mjs de Playwright externo>'
+node tests/frontend/billing-selectors-browser.mjs
+```
+
+El ejecutable requiere el puerto 8840 libre y las guardas y helpers ya entregados: `registration-browser-runtime.mjs`, `registration-browser-db.php`, `registration-shell.mjs`, `canonical-browser-router.php`, `subscription-browser-db.php` y `subscription-qa-guard.php`. Verifica el destino efectivo antes de crear el único fixture QA propio; no debe ejecutarse contra una base real. No depende de helpers fuente omitidos en `storage/app/qa`. El comando genera capturas y evidencia, pero no llama al proveedor. `--diagnose` es una opción para acreditar el bloqueo original sin exigir los nuevos avisos.
+
+### Manifiesto exclusivo de este parche
+
+Nuevos:
+
+- `resources/js/modules/billing/selection-state.js` — presentación pura del bloqueo y recuperación.
+- `tests/frontend/billing-selectors-browser.mjs` — regresión autenticada acotada, con fallos comerciales inducidos.
+
+Modificados, reemplazan sus versiones anteriores:
+
+- `resources/js/modules/billing/attempt.js` — estado público del fallo solo en memoria.
+- `resources/js/modules/billing/index.js` — aviso, recuperación y foco; mantiene el bloqueo.
+- `resources/views/billing/index.blade.php` — recuperación visible, descripción accesible y aspecto disabled.
+- `tests/frontend/billing.test.mjs` — siete pruebas adicionales del bloqueo y recuperación.
+- `docs/Frontend_suscripciones.md` — este cierre y comandos de reproducción.
+
+Eliminados: ninguno. No cambiaron paquetes, lockfiles, Vite, rutas, autenticación, demo o compuerta comercial. Excluir herramientas y resultados bajo `storage/app/qa`, capturas, cachés, perfiles, `.env`, dependencias instaladas y `public/build`. El bundle se regenera con `npm run build`; no es una fuente para copiar. Los requisitos externos de Lemon Squeezy y la aceptación del proveedor no forman parte de esta corrección de selectores.

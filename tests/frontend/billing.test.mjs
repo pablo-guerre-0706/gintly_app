@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { catalog, selection, subscription, checkout, billingError, priceText } from '../../resources/js/modules/billing/contracts.js';
 import { createCheckoutAttempt } from '../../resources/js/modules/billing/attempt.js';
+import { billingSelectionState } from '../../resources/js/modules/billing/selection-state.js';
 import { SubscriptionPoller } from '../../resources/js/modules/billing/poller.js';
 import { savePreference, readPreference, saveCheckout, readCheckout, clearBillingStorage } from '../../resources/js/core/billing-storage.js';
 import { readFile } from 'node:fs/promises';
@@ -60,6 +61,73 @@ test('429 respects Retry-After and no automatic submission', async () => {
 });
 test('Illegible response does not imply success or discard key', async () => {
     const h = harness(async () => '<html>error</html>'); assert.equal((await h.submit(payload)).state, 'recoverable'); assert.deepEqual(h.snapshot, payload);
+});
+
+test('Fresh billing selectors unlock; initialization and in-flight submission stay closed', () => {
+    const editing = harness(async () => response);
+    assert.deepEqual(billingSelectionState({ attempt: editing }), { disabled: false, recovering: false, message: '', recoveryMessage: '' });
+    const loading = billingSelectionState({ attempt: null });
+    assert(loading.disabled); assert.match(loading.message, /Actualizar estado/);
+    const busy = billingSelectionState({ attempt: editing, busy: true });
+    assert(busy.disabled); assert.match(busy.message, /recibir la respuesta/);
+});
+
+test('Restored UUID locks selectors with a nearby explanation and safe same-attempt recovery', async () => {
+    const calls = [];
+    const h = harness(async (_, body, options) => { calls.push({ body, key: options.headers['Idempotency-Key'] }); throw { status: 503, code: 'BILLING_UNAVAILABLE' }; }, { restore: { key, payload } });
+    let choice = billingSelectionState({ attempt: h });
+    assert(choice.disabled && choice.recovering); assert.match(choice.message, /bloqueados.*intento/); assert.match(choice.recoveryMessage, /mismo intento/);
+    await h.submit({ plan: 'fake', period: 'annual' });
+    choice = billingSelectionState({ attempt: h });
+    assert(choice.disabled); assert.match(choice.recoveryMessage, /configuración o el proveedor/);
+    await h.submit(); assert.deepEqual(calls[0], calls[1]); assert.deepEqual(calls[0], { body: payload, key });
+});
+
+test('Only server-confirmed expiry enables an explicit new selection; focus has a usable target', async () => {
+    const h = harness(async () => { throw { status: 409, code: 'CHECKOUT_KEY_EXPIRED' }; });
+    await h.submit(payload);
+    assert.match(billingSelectionState({ attempt: h }).message, /servidor confirmó/);
+    assert(h.newAfterExpiry()); assert.equal(billingSelectionState({ attempt: h }).disabled, false);
+    assert.equal(h.failure, null);
+    const source = await readFile(new URL('../../resources/js/modules/billing/index.js', import.meta.url), 'utf8');
+    assert.match(source, /attempt\.newAfterExpiry\(\).*render\(\); form\.elements\.plan\.focus\(\)/);
+});
+
+test('Blocked authorization/idempotency conflicts explain review and never release the attempt', async () => {
+    for (const error of [{ status: 403 }, { status: 409, code: 'CHECKOUT_IDEMPOTENCY_CONFLICT' }]) {
+        const h = harness(async () => { throw error; });
+        await h.submit(payload);
+        const choice = billingSelectionState({ attempt: h });
+        assert(choice.disabled); assert.match(choice.recoveryMessage, /revisión/);
+        assert.equal(h.newAfterExpiry(), false); assert.deepEqual(h.snapshot, payload);
+    }
+});
+
+test('Diagnostic failure keeps only public identifiers in memory, never changing stored UUID/payload', async () => {
+    const persisted = [];
+    const h = harness(async () => { throw { status: 503, code: 'BILLING_UNAVAILABLE', payload: { private: 'never store' }, message: 'provider details' }; }, { persist: value => persisted.push(value) });
+    await h.submit(payload);
+    assert.deepEqual(h.failure, { status: 503, code: 'BILLING_UNAVAILABLE' });
+    assert(Object.isFrozen(h.failure)); assert.deepEqual(persisted, [{ key, snapshot: payload }]);
+});
+
+test('Demo and uncertain management never imply payment or unlock a checkout', () => {
+    const h = harness(async () => response);
+    const demo = billingSelectionState({ attempt: h, demo: true });
+    assert(demo.disabled); assert.match(demo.message, /demostración/);
+    assert.match(billingSelectionState({ attempt: h, mutationUnknown: true }).message, /Actualizar estado/);
+});
+
+test('Recovery is beside the selectors, outside the locked fieldset, with ARIA and non-submit controls', async () => {
+    const blade = await readFile(new URL('../../resources/views/billing/index.blade.php', import.meta.url), 'utf8');
+    assert(blade.indexOf('data-billing-recovery') < blade.indexOf('<fieldset data-billing-fields'));
+    assert.equal((blade.match(/data-billing-recovery\b/g) || []).length, 1);
+    assert.equal((blade.match(/data-checkout-retry\b/g) || []).length, 1);
+    assert.match(blade, /id="billing-selection-help"[^>]*role="status"/);
+    assert.match(blade, /name="plan"[^>]*aria-describedby="billing-selection-help billing-plan-error"/);
+    assert.match(blade, /name="period"[^>]*aria-describedby="billing-selection-help billing-period-help billing-period-error"/);
+    assert.match(blade, /type="button" data-checkout-retry/);
+    assert.match(blade, /type="button" data-checkout-new/);
 });
 test('All domain codes have distinct curated messages and general403 is not billing', () => {
     for (const code of ['SUBSCRIPTION_REQUIRED', 'PLAN_FEATURE_UNAVAILABLE', 'CHECKOUT_IN_PROGRESS', 'CHECKOUT_KEY_EXPIRED', 'CHECKOUT_RESULT_UNKNOWN', 'CHECKOUT_IDEMPOTENCY_CONFLICT', 'SUBSCRIPTION_ALREADY_ACTIVE', 'NO_ACTIVE_SUBSCRIPTION', 'PLAN_CHANGE_INVALID', 'PLAN_LIMIT_EXCEEDED', 'BILLING_UNAVAILABLE', 'LIMIT_CHECK_UNAVAILABLE']) assert(billingError({ code }).length > 30);

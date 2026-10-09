@@ -4,7 +4,7 @@ import { selection, checkout, billingError } from './contracts.js';
 
 export function createCheckoutAttempt({ plans, post, csrf, restore = null, persist = () => {}, uuid = secureUuid, now = Date.now }) {
     let attempt = restore ? Object.freeze({ key: restore.key, snapshot: selection(restore.payload, plans) }) : null;
-    let state = attempt ? 'recoverable' : 'editing', retryAt = 0;
+    let state = attempt ? 'recoverable' : 'editing', retryAt = 0, failure = null;
     const result = (extra = {}) => ({ state, retryAt, ...extra });
     async function submit(value = null) {
         if (['submitting', 'blocked', 'expired', 'checkout'].includes(state) || now() < retryAt) return result({ ignored: true });
@@ -19,8 +19,10 @@ export function createCheckoutAttempt({ plans, post, csrf, restore = null, persi
             try { response = await send(); }
             catch (error) { if (error.status !== 419) throw error; await csrf(); response = await send(); }
             const value = checkout(response, attempt.snapshot);
-            state = 'checkout'; return result({ checkout: value });
+            state = 'checkout'; failure = null; return result({ checkout: value });
         } catch (error) {
+            // Only public diagnostic identifiers, not response bodies, URLs or provider data.
+            failure = Object.freeze({ status: error.status ?? 0, code: error.code ?? null });
             if (error.status === 422) { attempt = null; persist(null); state = 'editing'; }
             else if (error.code === 'CHECKOUT_KEY_EXPIRED') state = 'expired';
             else if (error.status === 403 || error.code === 'CHECKOUT_IDEMPOTENCY_CONFLICT') state = 'blocked';
@@ -29,7 +31,7 @@ export function createCheckoutAttempt({ plans, post, csrf, restore = null, persi
             return result({ error, message: billingError(error), errors: error.errors ?? {}, alreadyActive: error.code === 'SUBSCRIPTION_ALREADY_ACTIVE' });
         }
     }
-    function newAfterExpiry() { if (state !== 'expired') return false; attempt = null; persist(null); state = 'editing'; retryAt = 0; return true; }
-    function completed() { attempt = null; persist(null); state = 'editing'; }
-    return Object.freeze({ submit, newAfterExpiry, completed, get state() { return state; }, get retryAt() { return retryAt; }, get snapshot() { return attempt?.snapshot ?? null; } });
+    function newAfterExpiry() { if (state !== 'expired') return false; attempt = null; persist(null); state = 'editing'; retryAt = 0; failure = null; return true; }
+    function completed() { attempt = null; persist(null); state = 'editing'; failure = null; }
+    return Object.freeze({ submit, newAfterExpiry, completed, get state() { return state; }, get retryAt() { return retryAt; }, get snapshot() { return attempt?.snapshot ?? null; }, get failure() { return failure; } });
 }
