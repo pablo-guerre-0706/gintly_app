@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Billing;
 
+use App\Models\Business;
+use App\Models\DemoAccessGrant;
 use App\Models\PlanSubscription;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -12,9 +14,10 @@ use Illuminate\Support\Carbon;
  * Lectura del estado comercial para la compuerta de acceso, las capacidades y los límites. Separa suscripción
  * comercial de la suspensión administrativa del negocio y de la autorización por rol/perfil/sucursal.
  *
- * El acceso exige, ADEMÁS de una vigencia pagada, COHERENCIA de despliegue (propósito/modo) y CORRESPONDENCIA de
+ * El acceso por suscripción exige, ADEMÁS de una vigencia pagada, COHERENCIA de despliegue (propósito/modo) y CORRESPONDENCIA de
  * la suscripción con el proveedor, modo y tienda CONFIGURADOS: una suscripción TEST no habilita un despliegue
- * commercial/live (ni al revés), ni una de otra tienda.
+ * commercial/live (ni al revés), ni una de otra tienda. Alternativamente, una concesión explícita, temporal y
+ * revocable permite evaluar SOLO el negocio configurado en demo/test; nunca representa pago ni suscripción.
  */
 final class CommercialAccess
 {
@@ -34,12 +37,10 @@ final class CommercialAccess
         }
     }
 
-    /** ¿El negocio puede operar los módulos del ERP ahora? Vigencia + coherencia de modo + correspondencia del proveedor. */
+    /** Paid access OR an explicit, current evaluation grant; role/branch/tenant checks remain independent. */
     public function grantsAccess(int $businessId, ?Carbon $now = null): bool
     {
-        $sub = $this->subscriptionFor($businessId);
-
-        return $sub !== null && $this->matchesConfiguredProvider($sub) && $sub->grantsAccessNow($now);
+        return $this->activePlanKey($businessId, $now) !== null;
     }
 
     /** Plan vigente que gobierna capacidades/límites, o null si no hay acceso (incluida la incoherencia de modo/tienda). */
@@ -47,9 +48,49 @@ final class CommercialAccess
     {
         $sub = $this->subscriptionFor($businessId);
 
-        return ($sub !== null && $this->matchesConfiguredProvider($sub) && $sub->grantsAccessNow($now))
-            ? (string) $sub->plan_key
-            : null;
+        if ($sub !== null && $this->matchesConfiguredProvider($sub) && $sub->grantsAccessNow($now)) {
+            return (string) $sub->plan_key;
+        }
+
+        return $this->demoGrantFor($businessId, $now)?->plan_key;
+    }
+
+    /** CLI-only evaluation entitlement; missing storage/configuration, expiry or revocation fails closed. */
+    public function demoGrantFor(int $businessId, ?Carbon $now = null): ?DemoAccessGrant
+    {
+        if (config('billing.demo_access.enabled') !== true
+            || (string) config('billing.demo_access.business_slug', '') === '') {
+            return null;
+        }
+
+        try {
+            if (! $this->mode->isDemo() || $this->mode->activeMode()->value !== 'test') {
+                return null;
+            }
+            $business = Business::query()->whereKey($businessId)
+                ->where('slug', (string) config('billing.demo_access.business_slug'))->first();
+            if ($business === null || ! $business->status?->canOperate()) {
+                return null;
+            }
+            $grant = DemoAccessGrant::query()->where('business_id', $businessId)->first();
+
+            return $grant !== null && $grant->isCurrent($now)
+                && array_key_exists($grant->plan_key, (array) config('billing.catalog', [])) ? $grant : null;
+        } catch (QueryException $error) {
+            report($error);
+
+            return null;
+        } catch (\App\Exceptions\BillingUnavailableException) {
+            return null;
+        }
+    }
+
+    /** A real paid subscription always takes precedence over a demonstration. */
+    public function hasPaidAccess(int $businessId, ?Carbon $now = null): bool
+    {
+        $sub = $this->subscriptionFor($businessId);
+
+        return $sub !== null && $this->matchesConfiguredProvider($sub) && $sub->grantsAccessNow($now);
     }
 
     /**

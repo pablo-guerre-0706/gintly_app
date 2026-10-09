@@ -269,7 +269,15 @@ try {
     evidence.phase = phase;
     evidence.failure = failure instanceof assert.AssertionError ? failure.message : 'Browser step failed; inspect sanitized phase/source';
     evidence.failureLocation = failure.stack?.split('\n').find(line => line.includes('registration-result-browser.mjs:'))?.trim();
-    evidence.visibleFeedback = await page?.locator('[data-register-message]').textContent().catch(() => null);
+    evidence.visibleFeedback = page && await page.locator('[data-register-message]').count()
+        ? await page.locator('[data-register-message]').textContent().catch(() => null) : null;
+    evidence.failurePage = page ? { url: page.url(), title: await page.title().catch(() => null),
+        restrictedPresent: await page.locator('[data-billing-restricted]').count().catch(() => null),
+        billingPresent: await page.locator('[data-billing-page]').count().catch(() => null),
+        scripts: await page.evaluate(() => [...document.scripts].map(script => script.src).filter(Boolean)).catch(() => null) } : null;
+    if (created && page) {
+        await page.screenshot({ path: resolve(output, 'failure.png'), fullPage: true }).catch(() => {});
+    }
     evidence.registrationRequests = requests.map(request => ({ method: request.method(), url: request.url() }));
     console.error('QA FAILED ' + JSON.stringify({ phase, message: evidence.failure, location: evidence.failureLocation }));
     process.exitCode = 1;

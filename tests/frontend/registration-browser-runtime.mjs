@@ -52,6 +52,8 @@ export async function readDatabaseEvidence(env, prefix) {
 
 export async function prepareRuntime(sourceEnv = process.env) {
     validateEnvironment(sourceEnv);
+    const builtAssetsQa = sourceEnv.QA_CANONICAL_BUILT_ASSETS === '1';
+    if (builtAssetsQa) assert(sourceEnv.QA_SUBSCRIPTION_BROWSER === '1', 'Isolated built-assets router guard opt-in required');
     const [major, minor] = process.versions.node.split('.').map(Number);
     assert(major > 22 || (major === 22 && minor >= 12), 'Node 22.12+ required (project Vite pipeline)');
     // Same immutable process environment goes to the guard and the single PHP server.
@@ -69,7 +71,7 @@ export async function prepareRuntime(sourceEnv = process.env) {
     // A dev-server hot pointer would bypass the built, delivered assets.
     let hot = false;
     try { await access(resolve(root, 'public/hot')); hot = true; } catch { /* No hot pointer. */ }
-    assert(!hot, 'Remove only the owned public/hot pointer / stop Vite dev before acceptance');
+    assert(!hot || builtAssetsQa, 'Remove only the owned public/hot pointer / stop Vite dev before acceptance');
     let manifest;
     try { manifest = JSON.parse(await readFile(resolve(root, 'public/build/manifest.json'), 'utf8')); }
     catch { throw new Error('Build assets first with npm run build'); }
@@ -86,6 +88,11 @@ export async function prepareRuntime(sourceEnv = process.env) {
 
 export async function startServer(env, router = null) {
     await assertPortAvailable();
+    if (env.QA_CANONICAL_BUILT_ASSETS === '1') {
+        const isolatedRouter = 'tests/frontend/canonical-browser-router.php';
+        assert(!router || router === isolatedRouter, 'Built-assets opt-in requires the guarded canonical router');
+        router = isolatedRouter;
+    }
     const child = spawn(env.QA_PHP || 'php', ['-S', '127.0.0.1:8840',
         router ? resolve(root, router) : resolve(root, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
     { cwd: resolve(root, 'public'), env, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });

@@ -13,7 +13,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Compuerta COMERCIAL central: tras autenticar y verificar operabilidad, exige que el negocio del usuario
- * tenga una suscripción pagada VIGENTE para operar los módulos del ERP. ROL-01 NO queda exento. Es una
+ * tenga acceso comercial VIGENTE (suscripción pagada o concesión demo explícita y caducable).
+ * ROL-01 NO queda exento. Es una
  * condición ADICIONAL: no reemplaza rol/perfil/sucursal/tenant. Se aplica a las rutas operativas (no a
  * identidad /me, salida /logout, cambio de contraseña propia ni a /billing de contratación).
  */

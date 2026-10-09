@@ -1,5 +1,6 @@
 <?php
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -51,6 +52,18 @@ return [
     */
 
     'channels' => [
+
+        // Registration infrastructure failures: one allowlisted JSON event in container logs.
+        // RegistrationFailureReporter builds an isolated sink from this configuration (no shared Context).
+        // Independent from LOG_CHANNEL/LOG_LEVEL; never pass a raw exception, SQL or request here.
+        'registration' => [
+            'driver' => 'monolog',
+            'name' => 'registration',
+            'handler' => StreamHandler::class,
+            'handler_with' => ['stream' => 'php://stderr'],
+            'formatter' => JsonFormatter::class,
+            'level' => 'error',
+        ],
 
         'stack' => [
             'driver' => 'stack',

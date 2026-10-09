@@ -47,6 +47,9 @@ FROM php:8.3-apache
 
 WORKDIR /var/www/html
 
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.revision=$GIT_SHA
+
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y \
     libicu-dev \
@@ -90,6 +93,13 @@ RUN rm -f bootstrap/cache/*.php
 
 # Copiar archivos compilados de Vite
 COPY --from=frontend /app/public/build /var/www/html/public/build
+
+# Fail the build before publishing a broken PHP application or a local Vite pointer.
+# This does not boot Laravel, access a database or run migrations.
+RUN find app bootstrap config routes -type f -name '*.php' -print0 \
+    | xargs -0 -n 1 php -l \
+    && test ! -e public/hot \
+    && test -s public/build/manifest.json
 
 # Permisos de Laravel
 RUN chown -R www-data:www-data /var/www/html/storage \

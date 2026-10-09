@@ -6,9 +6,10 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 require __DIR__.'/subscription-qa-guard.php';
+$action = $argv[1] ?? 'preflight';
 try {
     subscriptionQaGuard();
-    $action = $argv[1] ?? 'preflight'; $token = $argv[2] ?? '';
+    $token = $argv[2] ?? '';
     if ($action === 'migrate') {
         foreach (['2026_10_06_000001_create_billing_subscription_tables.php','2026_10_06_000002_add_webhook_recovery_columns.php','2026_10_06_000003_add_expires_at_to_checkout_intents.php','2026_10_06_000004_add_pending_variant_to_plan_subscriptions.php'] as $migration) {
             if (Illuminate\Support\Facades\Artisan::call('migrate', ['--path'=>'database/migrations/'.$migration, '--force'=>true]) !== 0) throw new RuntimeException('Progressive migration rejected');

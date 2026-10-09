@@ -33,7 +33,13 @@ export function subscription(payload) {
     if (!value || !Object.hasOwn(STATES, value.status) || typeof value.grants_access !== 'boolean') fail();
     if (!date(value.paid_until) || !(value.plan_key === null || text(value.plan_key))
         || !(value.period === null || Object.hasOwn(PERIODS, value.period))) fail();
-    if (value.status === 'none' && (value.grants_access || value.plan_key !== null || value.period !== null || value.paid_until !== null)) fail();
+    const demo = value.access_source === 'demo';
+    if (demo && (!value.grants_access || !text(value.demo_access?.plan_key)
+        || !text(value.demo_access?.starts_at) || !date(value.demo_access.starts_at)
+        || !text(value.demo_access?.expires_at) || !date(value.demo_access.expires_at)
+        || Date.parse(value.demo_access.starts_at) >= Date.parse(value.demo_access.expires_at))) fail();
+    if (!demo && value.demo_access != null) fail();
+    if (value.status === 'none' && ((value.grants_access && !demo) || value.plan_key !== null || value.period !== null || value.paid_until !== null)) fail();
     for (const field of ['renews_at', 'canceled_at']) if (Object.hasOwn(value, field) && !date(value[field])) fail();
     if (value.pending_change !== undefined && value.pending_change !== null) {
         const pending = value.pending_change;

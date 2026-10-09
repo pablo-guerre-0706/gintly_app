@@ -27,6 +27,14 @@ return [
     'deployment_purpose' => env('BILLING_DEPLOYMENT_PURPOSE', 'demo'),   // commercial | demo
     'provider_mode'      => env('BILLING_PROVIDER_MODE', 'test'),        // live | test
 
+    // Explicit, expiring evaluation access; never enables other tenants or simulates a paid subscription.
+    // Requires demo/test AND this opt-in AND the selected business slug AND a CLI-created grant.
+    'demo_access' => [
+        'enabled' => env('BILLING_DEMO_ACCESS_ENABLED', false),
+        'business_slug' => env('BILLING_DEMO_BUSINESS_SLUG', ''),
+        'max_days' => 30,
+    ],
+
     // Credenciales del proveedor (nunca en código; placeholders en .env.example).
     'api_key'        => env('LEMON_SQUEEZY_API_KEY'),
     'store_id'       => env('LEMON_SQUEEZY_STORE_ID'),

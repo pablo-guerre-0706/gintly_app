@@ -18,22 +18,23 @@ export default async function initBilling() {
     let context, plans = [], state = null, attempt, busy = false, reading = false, cooldown = 0, retryTimer = null, mutationUnknown = false;
     const controller = new AbortController(), dialog = confirmation(ui.find('billing-confirmation'));
     const canManage = root.dataset.canManage === 'true';
+    const demoActive = () => state?.access_source === 'demo';
     const poller = new SubscriptionPoller({ load: fetchSubscription, visible: () => !document.hidden,
-        onResult: value => { state = value; render(); if (value.grants_access) ui.notice('El servidor confirma acceso comercial vigente. Puedes continuar al panel.'); },
+        onResult: value => { state = value; render(); if (value.grants_access) ui.notice(demoActive() ? 'El servidor confirma acceso temporal de evaluación. Puedes continuar al panel.' : 'El servidor confirma acceso comercial vigente. Puedes continuar al panel.'); },
         onError: error => { ui.notice(billingError(error)); if (error.status === 401 || error.status === 403) poller.stop(); },
         onExhausted: () => ui.notice('Confirmación pendiente. Se completaron las 12 consultas de este ciclo; puedes actualizar el estado sin volver a contratar.') });
     const value = () => selection({ plan: form.elements.plan.value, period: form.elements.period.value }, plans);
     function buttons() {
-        const locked = busy || !attempt || attempt.state !== 'editing';
+        const locked = demoActive() || busy || !attempt || attempt.state !== 'editing';
         if (form) {
             form.setAttribute('aria-busy', String(busy)); ui.find('billing-fields').disabled = locked;
-            ui.find('billing-submit').disabled = busy || !state || reading || mutationUnknown || Date.now() < cooldown || (attempt && attempt.state !== 'editing');
+            ui.find('billing-submit').disabled = demoActive() || busy || !state || reading || mutationUnknown || Date.now() < cooldown || (attempt && attempt.state !== 'editing');
             ui.find('billing-submit').textContent = busy ? 'Procesando…' : state?.grants_access ? 'Solicitar cambio de plan' : 'Continuar al checkout alojado';
             const recovering = attempt && attempt.state !== 'editing';
             ui.find('billing-recovery').hidden = !recovering;
             ui.find('checkout-retry').disabled = busy || Date.now() < (attempt?.retryAt ?? 0) || ['blocked', 'expired', 'checkout'].includes(attempt?.state);
             ui.find('checkout-new').hidden = attempt?.state !== 'expired'; ui.find('checkout-new').disabled = busy;
-            ui.find('cancel-renewal').hidden = !state?.grants_access || state.status === 'canceled'; ui.find('cancel-renewal').disabled = busy || reading || mutationUnknown || Date.now() < cooldown;
+            ui.find('cancel-renewal').hidden = demoActive() || !state?.grants_access || state.status === 'canceled'; ui.find('cancel-renewal').disabled = demoActive() || busy || reading || mutationUnknown || Date.now() < cooldown;
         }
         refresh.disabled = busy || reading || Date.now() < cooldown;
     }
@@ -42,9 +43,9 @@ export default async function initBilling() {
             ui.renderState(state, plans, context.business.timezone || 'UTC');
             if (state.grants_access) attempt?.completed();
         }
-        ui.find('billing-readonly').hidden = canManage;
+        ui.find('billing-readonly').hidden = demoActive() || canManage;
         if (form) {
-            ui.find('billing-owner').hidden = false;
+            ui.find('billing-owner').hidden = demoActive();
             if (attempt?.snapshot) { form.elements.plan.value = attempt.snapshot.plan; form.elements.period.value = attempt.snapshot.period; }
             ui.renderCatalog(plans, form.elements.period.value);
             const plan = plans.find(plan => plan.key === form.elements.plan.value);
@@ -75,7 +76,7 @@ export default async function initBilling() {
         finally { reading = false; buttons(); }
     }
     async function checkoutSubmit() {
-        if (busy || reading || !state || !attempt || mutationUnknown || Date.now() < cooldown || Date.now() < attempt.retryAt) return;
+        if (demoActive() || busy || reading || !state || !attempt || mutationUnknown || Date.now() < cooldown || Date.now() < attempt.retryAt) return;
         busy = true; buttons(); if (form) clearFormErrors(form);
         try {
             const result = await attempt.submit(attempt.snapshot ? null : value());
@@ -85,7 +86,7 @@ export default async function initBilling() {
         finally { busy = false; buttons(); }
     }
     async function management(action, payload, source) {
-        if (busy || reading || mutationUnknown || !state?.grants_access || Date.now() < cooldown) return;
+        if (demoActive() || busy || reading || mutationUnknown || !state?.grants_access || Date.now() < cooldown) return;
         busy = true; buttons();
         const message = action === 'cancel' ? 'Cancelar renovación no elimina tu negocio ni su historial. Se conservará acceso hasta la vigencia que confirme el servidor. ¿Deseas cancelar la próxima renovación?' : 'El proveedor puede determinar un cargo prorrateado. El servidor decide límites y fecha efectiva; las capacidades no cambian por esta selección. ¿Solicitar el cambio indicado?';
         try {
@@ -102,7 +103,7 @@ export default async function initBilling() {
     }
     refresh.addEventListener('click', async () => { poller.stop(); const current = await read(); if (root.dataset.mode === 'return' && current && !current.grants_access) poller.start(1); });
     form?.addEventListener('change', () => { if (attempt?.state !== 'editing') return; savePreference(value()); render(); });
-    form?.addEventListener('submit', event => { event.preventDefault(); if (busy || reading || !state || mutationUnknown || Date.now() < cooldown) return; if (state.grants_access) { let payload; try { payload = value(); } catch (error) { errorNotice(error); return; } void management('change', payload, ui.find('billing-submit')); } else void checkoutSubmit(); });
+    form?.addEventListener('submit', event => { event.preventDefault(); if (demoActive() || busy || reading || !state || mutationUnknown || Date.now() < cooldown) return; if (state.grants_access) { let payload; try { payload = value(); } catch (error) { errorNotice(error); return; } void management('change', payload, ui.find('billing-submit')); } else void checkoutSubmit(); });
     ui.find('checkout-retry')?.addEventListener('click', checkoutSubmit);
     ui.find('checkout-new')?.addEventListener('click', () => { if (attempt.newAfterExpiry()) { ui.notice('Intento vencido descartado. Revisa la selección antes de enviar uno nuevo.'); render(); } });
     ui.find('cancel-renewal')?.addEventListener('click', event => { void management('cancel', null, event.currentTarget); });

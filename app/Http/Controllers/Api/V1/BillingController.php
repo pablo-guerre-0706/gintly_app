@@ -55,8 +55,12 @@ final class BillingController extends Controller
     /** Situación comercial del negocio de la sesión. Solo lectura. */
     public function subscription(Request $request): SubscriptionStatusResource
     {
+        $businessId = (int) $request->user()->business_id;
+
         return new SubscriptionStatusResource(
-            $this->access->subscriptionFor((int) $request->user()->business_id)
+            $this->access->subscriptionFor($businessId),
+            $this->access->hasPaidAccess($businessId) ? null : $this->access->demoGrantFor($businessId),
+            $this->access->grantsAccess($businessId),
         );
     }
 

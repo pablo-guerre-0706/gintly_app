@@ -6,6 +6,10 @@
 
 node_modules
 vendor
+public/hot
+public/hot.*
+storage/app/qa
+storage/app/integration
 
 bootstrap/cache/*.php
 

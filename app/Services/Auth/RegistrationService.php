@@ -12,6 +12,7 @@ use App\Exceptions\RegistrationLockUnavailableException;
 use App\Models\Business;
 use App\Models\RegistrationRequest;
 use App\Models\User;
+use App\Support\RegistrationFailureReporter;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -51,9 +52,7 @@ final class RegistrationService
 
         // Solo se continúa si GET_LOCK CONFIRMA la adquisición (1). Un timeout (0) o un error (NULL) NO son
         // éxito: son indisponibilidad de infraestructura → 500 sanitizado (nunca un 409 de slug/idempotencia).
-        if ($this->acquireLock($lockName) !== true) {
-            throw new RegistrationLockUnavailableException();
-        }
+        $this->acquireLock($lockName);
 
         try {
             // Lectura NUEVA previa: si la clave ya resolvió, reutiliza o rechaza según el fingerprint, sin
@@ -327,26 +326,30 @@ final class RegistrationService
     }
 
     /**
-     * Adquiere el lock con nombre. Devuelve true SOLO si GET_LOCK confirma (1); false ante timeout (0) o
+     * Adquiere el lock con nombre. Continúa SOLO si GET_LOCK confirma (1); lanza ante timeout (0) o
      * error/NULL. La espera es FINITA y acotada ([1, 60] s): nunca infinita (GET_LOCK con timeout negativo
      * espera para siempre). SQL parametrizado. Se fuerza el PDO de ESCRITURA para garantizar que el lock y la
      * transacción de escritura compartan la MISMA sesión MySQL aun si se añadiera una réplica de lectura.
      */
-    private function acquireLock(string $name): bool
+    private function acquireLock(string $name): void
     {
         $timeout = min(60, max(1, (int) config('gintly.registration.lock_timeout_seconds', 10)));
 
         try {
             $row = DB::select('SELECT GET_LOCK(?, ?) AS locked', [$name, $timeout], false);
-            $value = $row[0]->locked ?? null;
-
-            // 1 = adquirido; 0 = timeout; NULL = error. Solo 1 es éxito.
-            return $value !== null && (int) $value === 1;
         } catch (\Throwable $e) {
-            // Error de infraestructura al intentar el lock: NO se trata como adquisición.
-            report($e);
+            // Preserve the cause for a sanitized container diagnostic, not a raw SQL/DSN report.
+            throw new RegistrationLockUnavailableException(
+                reason: 'exception', waitSeconds: $timeout, previous: $e,
+            );
+        }
 
-            return false;
+        $value = $row[0]->locked ?? null;
+        if ($value === null || (int) $value !== 1) {
+            throw new RegistrationLockUnavailableException(
+                reason: $value === null ? 'null_result' : ((int) $value === 0 ? 'timeout' : 'unexpected_result'),
+                waitSeconds: $timeout,
+            );
         }
     }
 
@@ -356,7 +359,8 @@ final class RegistrationService
             // Misma sesión (PDO de escritura) que la adquisición.
             DB::select('SELECT RELEASE_LOCK(?)', [$name], false);
         } catch (\Throwable $e) {
-            report($e); // Nunca romper el flujo por liberar el lock.
+            // Reporting must not turn a committed registration into a failure.
+            app(RegistrationFailureReporter::class)->record($e, 'release_lock');
         }
     }
 }
