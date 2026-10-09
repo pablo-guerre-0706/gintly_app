@@ -714,3 +714,168 @@ Azure ni acreditado un pago TEST. Siguen pendientes el evento diagnóstico real,
 la variante TEST Inicial mensual y el webhook auténtico descritos anteriormente.
 No se repitieron altas ni checkouts inciertos, no se escribieron bases existentes,
 no se ejecutaron migraciones ni se realizaron cambios remotos.
+
+## Microcierre: Plan Inicial mensual, 9 de octubre 05:47 UTC
+
+Este apartado es posterior al rebase local. No se publicó ninguna modificación,
+no se incorporó MFA y no se reenvió ninguno de los intentos locales anteriores.
+
+### Causa comprobada, no atribuida al frontend
+
+- Configuración efectiva Laravel/PDO: entorno local, conexión MySQL local a
+  `gintly_app`; propósito `demo`, modo `test`, configuración no cacheada.
+- Tienda TEST configurada `492614`: GET real 200, moneda NIO.
+- `LS_TEST_VARIANT_BASIC_MONTHLY=1421468`: GET `/v1/variants/1421468`
+  real **404**, JSON:API `Not Found`.
+- GET `/v1/products/1421468`: **200**. El identificador configurado como
+  variante mensual corresponde realmente al **producto**, dentro de la tienda
+  configurada y en TEST. No debe usarse un ID de producto en la relación variant.
+- Listado completo de variantes del producto: **una página, seis registros**.
+  Cinco variantes publicadas coinciden con Inicial anual, Comercio mensual/anual
+  y Cadena mensual/anual. La sexta, `Default`, está pendiente y es anual; no sirve
+  como reemplazo de Inicial mensual. No existe una variante mensual publicada
+  verificable para esa selección. No se inventó ni sustituyó ningún identificador.
+- El intento local **3**, negocio **3**, Inicial mensual, quedó `uncertain` a
+  `2026-10-09 05:13:56 UTC`, exactamente cuando el log del gateway registró
+  `Lemon Squeezy checkout HTTP 404`. Se preservó sin reenviarlo ni cambiar su clave.
+
+`LemonSqueezyGateway::createCheckout()` transforma un fallo HTTP del proveedor
+en `BillingUnavailableException`; esta responde HTTP **503** con el código
+**BILLING_UNAVAILABLE**. `SubscriptionService::checkout()` conserva el intento
+como `uncertain` antes de propagar la excepción. No entrega URL ni concede acceso.
+
+### Captura HTTP nueva y correlación, exclusivamente QA
+
+Se utilizó el router canónico existente, con gateway, sesiones, CSRF y middleware
+reales, sin dobles de pago ni interceptación. La guarda comprobó configuración
+efectiva Laravel y `SELECT DATABASE()` por PDO antes de cualquier escritura.
+
+URL local: `http://127.0.0.1:8840`. Base autorizada:
+`gintly_frontend_qa_rol03`. Fixture conservado intencionalmente:
+`QA-REGISTER-MODSUB-6890dfab87c6`, negocio QA **534**, intento QA **110**.
+No se almacenaron sus contraseñas ni cookies en archivos o informes.
+
+| Solicitud real | Resultado |
+| --- | --- |
+| GET /sanctum/csrf-cookie | 204 |
+| POST /api/v1/auth/register, alta descartable única | 201 JSON |
+| POST /api/v1/auth/login | 200 JSON |
+| POST /api/v1/billing/checkout, `{plan:basic, period:monthly}` | **503 JSON**, `BILLING_UNAVAILABLE` |
+| Consulta posterior del intento en QA | Una fila `uncertain`, sin URL; variante `1421468` |
+| Consulta GET paginada del proveedor por la clave del intento | `outcome=absent`, sin checkout encontrado |
+| POST /api/v1/auth/logout | 204 |
+
+Mensaje sanitizado de indisponibilidad: «La contratación no está disponible en
+este momento. Intente más tarde». El log del gateway y `updated_at` del intento
+coinciden en **2026-10-09 05:47:36 UTC**, HTTP del proveedor **404**. Solo se hizo
+**un POST de checkout**, con un UUID en memoria; no hubo reenvíos, cobros, apertura
+del checkout alojado, webhooks simulados ni activación de suscripción.
+El servidor temporal quedó detenido. La demo local no pertenece a este fixture.
+
+### Corrección local mínima
+
+`CheckoutResultUnknownException` contenía un comentario y mensaje que recomendaban
+crear una solicitud nueva. Se corrigieron para **conservar la misma solicitud,
+UUID y selección**, acorde con el servicio y el frontend existentes. No cambió
+su código `CHECKOUT_RESULT_UNKNOWN`, HTTP 409, ni la adquisición/liberación de
+locks, las transacciones, la reconciliación o las reglas de acceso.
+
+No se modificó `.env`: no existe un ID alternativo autorizado que permita corregir
+el mapeo local sin crear/publicar antes la variante en Lemon Squeezy. La ausencia
+de caché descarta que ese 404 se deba a una configuración antigua cacheada.
+
+### Ajustes externos necesarios (no ejecutados)
+
+1. En la tienda **TEST** correcta, crear/publicar la variante **Plan Inicial
+   mensual**, suscripción mensual y precio del catálogo NIO **1,160.00**.
+   No reutilizar Inicial anual, otra categoría ni el producto como variante.
+2. Copiar el **ID real de variante** y comprobar `GET /v1/variants/{id}`:
+   200, TEST, publicada, suscripción, `interval=month`, `interval_count=1`,
+   precio `116000` unidades menores. Comprobar también que su producto pertenece
+   a la tienda configurada. La documentación oficial distingue expresamente
+   [variantes](https://docs.lemonsqueezy.com/api/variants/list-all-variants) y las
+   relaciones de [checkout](https://docs.lemonsqueezy.com/api/checkouts/create-checkout).
+3. Solo entonces actualizar `LS_TEST_VARIANT_BASIC_MONTHLY` localmente y en
+   Azure App Settings. Mantener `BILLING_DEPLOYMENT_PURPOSE=demo`,
+   `BILLING_PROVIDER_MODE=test` y credenciales/tienda TEST coherentes. No tocar LIVE.
+   Tras el cambio, limpiar/reconstruir únicamente la configuración si estuviera
+   cacheada, con autorización del operador; no regenerar APP_KEY ni migrar.
+4. El webhook TEST consultado sigue apuntando al host `azurewebsites.net`, ruta
+   `/`, y solo tiene tres eventos. Corregirlo a
+   `https://gintly-app-web.azurewebsites.net/api/v1/billing/webhook` y suscribir:
+   `subscription_created`, `subscription_updated`, `subscription_cancelled`,
+   `subscription_expired`, `subscription_payment_success`,
+   `subscription_payment_failed`, `subscription_payment_refunded`.
+   Verificar privadamente que el secreto firmado coincida con App Settings.
+   Este error no causa el 404 del checkout, pero impediría confirmar la vigencia.
+5. Recuperar **el mismo intento** después de corregir la variante: el backend
+   primero consulta al proveedor. No borrar filas inciertas ni rotar automáticamente
+   la clave. Confirmar checkout 201 y pago TEST auténtico/webhook antes de esperar
+   acceso operativo; un retorno al navegador no acredita pago.
+
+### Ejecutable acotado y reproducible
+
+`tests/frontend/billing-checkout-diagnostic.mjs` es infraestructura CLI de pruebas,
+no una ruta pública. Usa Node 22.12+ (comprobado con 24.19.0), PHP con extensiones
+del proyecto y las dependencias instaladas. No requiere Playwright ni un navegador.
+Reutiliza los helpers entregados `registration-browser-runtime.mjs`,
+`registration-browser-db.php`, `subscription-qa-guard.php` y
+`canonical-browser-router.php`; no depende de scripts omitidos en `storage/app/qa`.
+
+```powershell
+Set-Location C:\laragon\www\gintly_app
+$env:QA_REGISTRATION_BROWSER = '1'
+$env:QA_SUBSCRIPTION_BROWSER = '1'
+$env:APP_ENV = 'local'
+$env:APP_URL = 'http://127.0.0.1:8840'
+$env:DB_CONNECTION = 'mysql'
+$env:DB_HOST = '127.0.0.1'
+$env:DB_DATABASE = 'gintly_frontend_qa_rol03'
+$env:DB_URL = ''
+$env:DB_SOCKET = ''
+$env:QA_PHP = (Get-Command php).Source
+node tests/frontend/billing-checkout-diagnostic.mjs
+# Solo para una reproducción NUEVA descartable del caso confirmado de variante 404:
+node tests/frontend/billing-checkout-diagnostic.mjs --reproduce
+```
+
+Sin `--reproduce` solo verifica configuración, esquema y GET del proveedor.
+Con ese flag exige primero el 404 real, puerto disponible y guardas QA; crea un
+fixture único, hace un solo checkout, consulta el intento y detiene su servidor.
+Nunca reintenta escrituras ni elimina fixtures. No ejecutar repetidamente para
+resolver el intento de un usuario. Tras corregir la variante, el modo reproducción
+rechaza el caso y no crea otro fixture: utilizar el flujo normal de contratación.
+
+Fuentes de este microcierre: `app/Exceptions/CheckoutResultUnknownException.php`,
+`tests/Feature/ModSub/LemonSqueezyGatewayTest.php`, este documento (modificados)
+y `tests/frontend/billing-checkout-diagnostic.mjs` (nuevo). `.env`, datos QA,
+sesiones, logs y cachés quedan excluidos. README y otros cambios ajenos se conservan.
+
+### Validaciones finales de este microcierre
+
+Todos los comandos siguientes terminaron con código de salida **0**:
+
+- `php vendor/phpunit/phpunit/phpunit --do-not-cache-result tests/Feature/ModSub/LemonSqueezyGatewayTest.php --colors=never`:
+  **13 pruebas, 57 aserciones**, ninguna omitida. Transporte del proveedor simulado;
+  no constituye pago real. Incluye el 404 sanitizado a 503 sin repetir el POST y
+  el mensaje correcto de recuperación con el mismo intento.
+- `php vendor/phpunit/phpunit/phpunit --do-not-cache-result --filter DemoAccessTest --colors=never`:
+  **21 pruebas, 178 aserciones**, ninguna omitida; SQLite en memoria protegido.
+- `node --test tests/frontend/billing.test.mjs tests/frontend/api-client-billing.test.mjs tests/frontend/billing-demo.test.mjs`:
+  **23 aprobadas**, cero fallos/canceladas/omitidas/TODO.
+- `node --check tests/frontend/billing-checkout-diagnostic.mjs`: sintaxis correcta.
+- `php -l` de excepción y prueba PHP modificadas: **2 archivos**, sin errores.
+- `php artisan route:list --path=api/v1/billing --json`: **6 rutas** correctas,
+  incluido POST checkout y POST webhook; no se modificaron rutas.
+- Diagnóstico real `--reproduce`: **una ejecución**, resultados HTTP anteriores,
+  servidor detenido; segunda ejecución **sin flag**, solo lectura, guardas QA y
+  variante 404 confirmadas, sin otra creación.
+- Lectura final de `gintly_app`: intentos **1/2/3** conservaron exactamente sus
+  estados, huellas de clave y `updated_at`; demo con acceso vigente por concesión
+  y sin acceso pagado. No se alteró su vínculo de propietario ni la compuerta.
+- `git diff --check`: limpio. No se hizo staging, commit, push ni despliegue.
+
+No se reconstruyó el bundle: no cambiaron fuentes frontend de la aplicación,
+assets ni dependencias. El nuevo JavaScript es únicamente un ejecutable CLI QA.
+**Contratación TEST no cerrada:** pendiente publicar/configurar la variante mensual
+y corregir el webhook externo; no se acredita compra, suscripción activa ni Azure.

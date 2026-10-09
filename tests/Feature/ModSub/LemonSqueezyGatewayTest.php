@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\ModSub;
 
 use App\Exceptions\BillingUnavailableException;
+use App\Exceptions\CheckoutResultUnknownException;
 use App\Services\Billing\BillingMode;
 use App\Services\Billing\LemonSqueezyGateway;
 use Illuminate\Support\Facades\Http;
@@ -35,6 +36,40 @@ final class LemonSqueezyGatewayTest extends TestCase
     private function gateway(): LemonSqueezyGateway
     {
         return new LemonSqueezyGateway(new BillingMode());
+    }
+
+    public function test_variante_inexistente_se_sanitiza_sin_repetir_el_post(): void
+    {
+        $this->configure();
+        Http::fake([
+            'api.lemonsqueezy.com/v1/checkouts' => Http::response([
+                'errors' => [['title' => 'Not Found', 'detail' => 'provider-private-details']],
+            ], 404),
+        ]);
+
+        try {
+            $this->gateway()->createCheckout([
+                'variant_id' => '555', 'store_id' => 'store_9', 'mode' => 'test',
+                'email' => 'owner@negocio.test', 'business_id' => 42, 'intent_key' => 'key-404',
+            ]);
+            $this->fail('Un HTTP 404 del proveedor no debe producir un checkout exitoso.');
+        } catch (BillingUnavailableException $error) {
+            $response = $error->render();
+            $this->assertSame(503, $response->getStatusCode());
+            $this->assertSame('BILLING_UNAVAILABLE', $response->getData(true)['code']);
+            $this->assertStringNotContainsString('provider-private-details', $response->getContent());
+        }
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_resultado_incierto_indica_conservar_el_mismo_intento(): void
+    {
+        $response = (new CheckoutResultUnknownException())->render();
+        $this->assertSame(409, $response->getStatusCode());
+        $this->assertSame('CHECKOUT_RESULT_UNKNOWN', $response->getData(true)['code']);
+        $this->assertStringContainsString('misma solicitud y selección', $response->getData(true)['message']);
+        $this->assertStringNotContainsString('nueva solicitud', $response->getData(true)['message']);
     }
 
     public function test_checkout_envia_jsonapi_sin_trial_restringido_a_la_variante(): void
