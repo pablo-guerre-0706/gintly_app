@@ -177,7 +177,7 @@ Con los servicios de Laragon (Apache y MySQL) activos en Laragon, ingresa desde 
 El control de acceso se implementa con `spatie/laravel-permission` (roles y permisos por negocio) reforzado con *Middlewares* y *Policies* de Laravel, bajo el principio de menor privilegio:
 **ROL-01** Propietario / Dirección. Acceso total, reportes financieros y gestión absoluta.
 **ROL-02** Administrador. Supervisa, valida anomalías y tiene acceso general con permisos dados por el propietario.
-**ROL-03** Usuario Operativo. Ejecuta operaciones diarias en formularios funcionales, navegación estándar.
+**ROL-03** Usuario Operativo. Ejecuta operaciones diarias en formularios funcionales, navegación estándar. Para el cumplimiento de sus tareas/funcionalidades el ROL esta dividido en Perfiles especificos: Cajero, Facturador, Responsable de bodega y despachador, sin perjuicio de otros perfiles que de acuerdo a la necesidad del cliente se ajuste a sus necesidades.
 **ROL-SYS** Sistema. Procesos automáticos: descuentos transaccionales, cron de conciliación, cálculo de discrepancias y enrutamiento de alertas.
 
 ---
