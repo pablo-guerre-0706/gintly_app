@@ -8,7 +8,7 @@ const PROFILE_META = Object.freeze({
         icon: 'fa-cash-register',
         metrics: Object.freeze([
             Object.freeze({ key: 'sesion_caja_abierta', label: 'Sesión de caja', nullable: true, format: (value) => value === null ? 'Sin sesión abierta' : `Sesión #${value}` }),
-            Object.freeze({ key: 'cxc_cobrables', label: 'CxC cobrables', format: formatCount }),
+            Object.freeze({ key: 'cxc_cobrables', label: 'Cuentas por cobrar disponibles para cobro', format: formatCount }),
         ]),
     }),
     facturador: Object.freeze({
@@ -137,19 +137,21 @@ function renderStatus(data, context) {
         const heading = document.createElement('h3');
         const icon = document.createElement('i');
         const list = document.createElement('dl');
-        card.className = 'rounded-2xl border border-slate-200 bg-slate-50 p-5';
-        heading.className = 'flex items-center gap-3 font-semibold text-gintly-text-primary';
-        icon.className = `fa-solid ${definition.icon} text-gintly-brand`;
+        card.className = 'min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6';
+        card.dataset.operatorProfile = profile;
+        heading.className = 'flex min-w-0 items-center gap-3 text-base font-semibold text-gintly-text-primary';
+        icon.className = `fa-solid ${definition.icon} grid size-10 shrink-0 place-items-center rounded-xl bg-gintly-brand/10 text-gintly-brand`;
         icon.setAttribute('aria-hidden', 'true');
         heading.append(icon, definition.label);
-        list.className = 'mt-4 space-y-3';
+        list.className = 'mt-5 grid min-w-0 gap-3';
         definition.metrics.forEach((metric) => {
             const row = document.createElement('div');
             const label = document.createElement('dt');
             const value = document.createElement('dd');
-            row.className = 'flex items-start justify-between gap-4 text-sm';
-            label.className = 'text-gintly-text-secondary';
-            value.className = 'text-end font-semibold text-gintly-text-primary';
+            row.className = 'grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-4 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(9rem,auto)] sm:items-center sm:gap-6';
+            row.dataset.operatorMetric = metric.key;
+            label.className = 'min-w-0 leading-5 text-gintly-text-secondary';
+            value.className = 'min-w-0 break-words text-base font-semibold leading-6 text-gintly-text-primary sm:text-right';
             label.textContent = metric.label;
             value.textContent = metric.format(values[metric.key]);
             row.append(label, value);

@@ -29,7 +29,7 @@
             title="Estado de la jornada"
             description="Situaciones reales de tu sucursal y de los perfiles que tienes asignados."
         >
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-operator-status-grid></div>
+            <div class="grid min-w-0 gap-5 lg:grid-cols-2" data-operator-status-grid></div>
         </x-dashboard.async-section>
 
         <x-dashboard.async-section
